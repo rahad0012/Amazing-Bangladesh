@@ -1,0 +1,6 @@
+{
+  "name": "Bangladesh Tourism - Discover Beautiful Bangladesh",
+  "description": "Bilingual tourism platform to discover all 8 administrative divisions, 64 districts, natural destinations, historical heritage, and travel guides in Bangladesh in Bengali and English.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

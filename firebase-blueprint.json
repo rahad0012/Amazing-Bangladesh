@@ -1,0 +1,226 @@
+{
+  "entities": {
+    "Division": {
+      "title": "Division",
+      "description": "An administrative division of Bangladesh (one of 8 divisions)",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name_en": { "type": "string" },
+        "name_bn": { "type": "string" },
+        "slug": { "type": "string" },
+        "description_en": { "type": "string" },
+        "description_bn": { "type": "string" },
+        "headquarters_en": { "type": "string" },
+        "headquarters_bn": { "type": "string" },
+        "area_sq_km": { "type": "number" },
+        "districts_count": { "type": "number" },
+        "image_url": { "type": "string" },
+        "thumbnail_url": { "type": "string" },
+        "is_published": { "type": "boolean" },
+        "order": { "type": "number" },
+        "created_at": { "type": "string" },
+        "updated_at": { "type": "string" }
+      },
+      "required": ["id", "name_en", "name_bn", "slug", "is_published"]
+    },
+    "District": {
+      "title": "District",
+      "description": "An administrative district of Bangladesh (one of 64 districts)",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "division_id": { "type": "string" },
+        "name_en": { "type": "string" },
+        "name_bn": { "type": "string" },
+        "slug": { "type": "string" },
+        "description_en": { "type": "string" },
+        "description_bn": { "type": "string" },
+        "famous_for_en": { "type": "string" },
+        "famous_for_bn": { "type": "string" },
+        "image_url": { "type": "string" },
+        "latitude": { "type": "number" },
+        "longitude": { "type": "number" },
+        "seo_title_en": { "type": "string" },
+        "seo_title_bn": { "type": "string" },
+        "seo_description_en": { "type": "string" },
+        "seo_description_bn": { "type": "string" },
+        "is_published": { "type": "boolean" },
+        "popular_spots_count": { "type": "number" },
+        "created_at": { "type": "string" },
+        "updated_at": { "type": "string" }
+      },
+      "required": ["id", "division_id", "name_en", "name_bn", "slug", "is_published"]
+    },
+    "Category": {
+      "title": "Category",
+      "description": "Tourism spot category (e.g., Historical, Natural, Hills, Beaches)",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name_en": { "type": "string" },
+        "name_bn": { "type": "string" },
+        "slug": { "type": "string" },
+        "icon": { "type": "string" },
+        "image_url": { "type": "string" },
+        "description_en": { "type": "string" },
+        "description_bn": { "type": "string" },
+        "is_published": { "type": "boolean" },
+        "created_at": { "type": "string" },
+        "updated_at": { "type": "string" }
+      },
+      "required": ["id", "name_en", "name_bn", "slug", "is_published"]
+    },
+    "TouristSpot": {
+      "title": "TouristSpot",
+      "description": "A verified tourist destination or attraction in Bangladesh",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "division_id": { "type": "string" },
+        "district_id": { "type": "string" },
+        "category_ids": { "type": "array" },
+        "name_en": { "type": "string" },
+        "name_bn": { "type": "string" },
+        "slug": { "type": "string" },
+        "short_desc_en": { "type": "string" },
+        "short_desc_bn": { "type": "string" },
+        "overview_en": { "type": "string" },
+        "overview_bn": { "type": "string" },
+        "history_en": { "type": "string" },
+        "history_bn": { "type": "string" },
+        "how_to_go_en": { "type": "string" },
+        "how_to_go_bn": { "type": "string" },
+        "best_time_en": { "type": "string" },
+        "best_time_bn": { "type": "string" },
+        "tips_en": { "type": "string" },
+        "tips_bn": { "type": "string" },
+        "image_url": { "type": "string" },
+        "gallery_urls": { "type": "array" },
+        "google_maps_url": { "type": "string" },
+        "seo_title_en": { "type": "string" },
+        "seo_title_bn": { "type": "string" },
+        "seo_description_en": { "type": "string" },
+        "seo_description_bn": { "type": "string" },
+        "rating": { "type": "number" },
+        "is_featured": { "type": "boolean" },
+        "is_published": { "type": "boolean" },
+        "created_at": { "type": "string" },
+        "updated_at": { "type": "string" }
+      },
+      "required": ["id", "division_id", "district_id", "name_en", "name_bn", "slug", "is_published"]
+    },
+    "Article": {
+      "title": "Article",
+      "description": "Travel guide, itinerary, or cultural story",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title_en": { "type": "string" },
+        "title_bn": { "type": "string" },
+        "slug": { "type": "string" },
+        "excerpt_en": { "type": "string" },
+        "excerpt_bn": { "type": "string" },
+        "content_en": { "type": "string" },
+        "content_bn": { "type": "string" },
+        "author_en": { "type": "string" },
+        "author_bn": { "type": "string" },
+        "image_url": { "type": "string" },
+        "category_id": { "type": "string" },
+        "read_time_en": { "type": "string" },
+        "read_time_bn": { "type": "string" },
+        "related_district_id": { "type": "string" },
+        "related_spot_id": { "type": "string" },
+        "tags": { "type": "array" },
+        "seo_title_en": { "type": "string" },
+        "seo_title_bn": { "type": "string" },
+        "seo_description_en": { "type": "string" },
+        "seo_description_bn": { "type": "string" },
+        "is_published": { "type": "boolean" },
+        "status": { "type": "string" },
+        "scheduled_at": { "type": "string" },
+        "published_at": { "type": "string" },
+        "created_at": { "type": "string" },
+        "updated_at": { "type": "string" }
+      },
+      "required": ["id", "title_en", "title_bn", "slug", "is_published"]
+    },
+    "MediaItem": {
+      "title": "MediaItem",
+      "description": "An image or asset registered in the Image Manager",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "url": { "type": "string" },
+        "file_name": { "type": "string" },
+        "alt_en": { "type": "string" },
+        "alt_bn": { "type": "string" },
+        "file_size": { "type": "number" },
+        "mime_type": { "type": "string" },
+        "uploaded_at": { "type": "string" }
+      },
+      "required": ["id", "url", "file_name"]
+    },
+    "Admin": {
+      "title": "Admin",
+      "description": "Authorized site administrator",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string" },
+        "role": { "type": "string" },
+        "created_at": { "type": "string" }
+      },
+      "required": ["uid", "email", "role"]
+    },
+    "SiteSettings": {
+      "title": "SiteSettings",
+      "description": "Global settings for the Bangladesh Tourism portal",
+      "type": "object",
+      "properties": {
+        "site_title_en": { "type": "string" },
+        "site_title_bn": { "type": "string" },
+        "hero_heading_en": { "type": "string" },
+        "hero_heading_bn": { "type": "string" },
+        "hero_subtitle_en": { "type": "string" },
+        "hero_subtitle_bn": { "type": "string" },
+        "featured_spots_ids": { "type": "array" }
+      },
+      "required": ["site_title_en", "site_title_bn"]
+    }
+  },
+  "firestore": {
+    "/divisions/{divisionId}": {
+      "schema": { "$ref": "#/entities/Division" },
+      "description": "Administrative divisions of Bangladesh"
+    },
+    "/districts/{districtId}": {
+      "schema": { "$ref": "#/entities/District" },
+      "description": "64 administrative districts of Bangladesh"
+    },
+    "/categories/{categoryId}": {
+      "schema": { "$ref": "#/entities/Category" },
+      "description": "Destination categories"
+    },
+    "/tourist_spots/{spotId}": {
+      "schema": { "$ref": "#/entities/TouristSpot" },
+      "description": "Tourist attractions and destinations"
+    },
+    "/articles/{articleId}": {
+      "schema": { "$ref": "#/entities/Article" },
+      "description": "Travel guides, itineraries, and stories"
+    },
+    "/media/{mediaId}": {
+      "schema": { "$ref": "#/entities/MediaItem" },
+      "description": "Uploaded image assets and metadata"
+    },
+    "/admins/{adminId}": {
+      "schema": { "$ref": "#/entities/Admin" },
+      "description": "Authorized administrative user registry"
+    },
+    "/site_settings/{settingId}": {
+      "schema": { "$ref": "#/entities/SiteSettings" },
+      "description": "Global website configuration"
+    }
+  }
+}
