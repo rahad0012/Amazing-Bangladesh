@@ -187,6 +187,18 @@
         "featured_spots_ids": { "type": "array" }
       },
       "required": ["site_title_en", "site_title_bn"]
+    },
+    "NewsletterSubscriber": {
+      "title": "NewsletterSubscriber",
+      "description": "Verified email subscriber to the tourism newsletter",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "email": { "type": "string" },
+        "lang": { "type": "string" },
+        "subscribed_at": { "type": "string" }
+      },
+      "required": ["id", "email", "subscribed_at"]
     }
   },
   "firestore": {
@@ -221,6 +233,10 @@
     "/site_settings/{settingId}": {
       "schema": { "$ref": "#/entities/SiteSettings" },
       "description": "Global website configuration"
+    },
+    "/newsletter_subscribers/{subId}": {
+      "schema": { "$ref": "#/entities/NewsletterSubscriber" },
+      "description": "Email subscribers to tourism updates and travel guides"
     }
   }
 }

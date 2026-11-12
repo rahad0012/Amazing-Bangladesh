@@ -55,6 +55,13 @@ import {
 } from './i18n';
 
 import { 
+  renderDivisionCard, 
+  renderDestinationCard, 
+  renderDistrictCard, 
+  renderCategoryPill 
+} from './components';
+
+import { 
   auth, 
   db, 
   loginWithGoogle, 
@@ -589,11 +596,11 @@ function renderApp(): void {
           <button class="filter-pill ${state.categoryFilter === 'all' ? 'active' : ''}" data-cat-filter="all">
             <i class="bi bi-stars"></i> ${t('filter_all_categories')}
           </button>
-          ${publishedCategories.map(c => `
-            <button class="filter-pill ${state.categoryFilter === c.id ? 'active' : ''}" data-cat-filter="${c.id}">
-              <i class="bi ${c.icon}"></i> ${isBn ? c.name_bn : c.name_en}
-            </button>
-          `).join('')}
+          ${publishedCategories.map(c => renderCategoryPill({
+            category: c,
+            isActive: state.categoryFilter === c.id,
+            lang: state.lang
+          })).join('')}
         </div>
       </div>
     </div>
@@ -639,31 +646,10 @@ function renderApp(): void {
       </div>
 
       <div class="row g-4">
-        ${publishedDivisions.map(div => `
-          <div class="col-lg-3 col-md-6">
-            <div class="card-travel division-card-action" data-division-id="${div.id}" style="cursor: pointer;">
-              <div class="card-travel-img-box">
-                <img src="${optimizeImageUrl(div.image_url, 600)}" alt="${escapeHtml(isBn ? div.name_bn : div.name_en)} - ${escapeHtml(isBn ? div.headquarters_bn : div.headquarters_en)}" class="card-travel-img" loading="lazy" decoding="async">
-                <span class="card-badge-division">
-                  <i class="bi bi-geo-alt me-1"></i>${div.districts_count} ${t('districts_count_label')}
-                </span>
-                <span class="card-badge-rating">
-                  <i class="bi bi-building me-1"></i>${escapeHtml(isBn ? div.headquarters_bn : div.headquarters_en)}
-                </span>
-              </div>
-              <div class="card-travel-body">
-                <h4 class="card-travel-title">${escapeHtml(isBn ? div.name_bn : div.name_en)}</h4>
-                <div class="card-travel-location">
-                  <i class="bi bi-rulers"></i> ${div.area_sq_km.toLocaleString()} ${t('area_sqkm')}
-                </div>
-                <p class="card-travel-desc small">${escapeHtml(isBn ? div.description_bn : div.description_en)}</p>
-                <button class="btn btn-outline-bd btn-sm w-100 mt-auto">
-                  <i class="bi bi-arrow-right-circle me-1"></i>${t('view_districts')} (${div.districts_count})
-                </button>
-              </div>
-            </div>
-          </div>
-        `).join('')}
+        ${publishedDivisions.map(div => renderDivisionCard({
+          division: div,
+          lang: state.lang
+        })).join('')}
       </div>
     </section>
 
@@ -699,35 +685,13 @@ function renderApp(): void {
             const division = cmsStore.divisions.find(d => d.id === spot.division_id);
             const district = cmsStore.districts.find(d => d.id === spot.district_id);
             const isBookmarked = state.bookmarkedIds.has(spot.id);
-            return `
-              <div class="col-lg-4 col-md-6">
-                <div class="card-travel">
-                  <div class="card-travel-img-box">
-                    <img src="${optimizeImageUrl(spot.image_url, 600)}" alt="${escapeHtml(isBn ? spot.name_bn : spot.name_en)} - ${escapeHtml(isBn ? district?.name_bn || '' : district?.name_en || '')}" class="card-travel-img" loading="lazy" decoding="async">
-                    <span class="card-badge-division">
-                      <i class="bi bi-geo-alt me-1"></i>${escapeHtml(isBn ? district?.name_bn || '' : district?.name_en || '')}, ${escapeHtml(isBn ? division?.name_bn || '' : division?.name_en || '')}
-                    </span>
-                    <span class="card-badge-rating">
-                      <i class="bi bi-star-fill text-warning"></i> ${spot.rating}
-                    </span>
-                    <button class="card-bookmark-btn ${isBookmarked ? 'active' : ''}" data-spot-bookmark="${spot.id}" title="${t('save_place')}">
-                      <i class="bi ${isBookmarked ? 'bi-heart-fill' : 'bi-heart'}"></i>
-                    </button>
-                  </div>
-                  <div class="card-travel-body">
-                    <h4 class="card-travel-title">${escapeHtml(isBn ? spot.name_bn : spot.name_en)}</h4>
-                    <div class="card-travel-location">
-                      <i class="bi bi-pin-map text-warning"></i>
-                      <span>${escapeHtml(isBn ? district?.name_bn || '' : district?.name_en || '')}</span>
-                    </div>
-                    <p class="card-travel-desc">${escapeHtml(isBn ? spot.short_desc_bn : spot.short_desc_en)}</p>
-                    <button class="btn btn-primary-bd btn-sm w-100 mt-auto spot-detail-btn" data-spot-id="${spot.id}">
-                      <i class="bi bi-info-circle me-1"></i>${t('view_details')}
-                    </button>
-                  </div>
-                </div>
-              </div>
-            `;
+            return renderDestinationCard({
+              spot,
+              division,
+              district,
+              isBookmarked,
+              lang: state.lang
+            });
           }).join('')}
         </div>
       `}
@@ -766,26 +730,12 @@ function renderApp(): void {
         ${filteredDistricts.map(dist => {
           const div = cmsStore.divisions.find(d => d.id === dist.division_id);
           const spotsInDist = publishedSpots.filter(s => s.district_id === dist.id).length;
-          return `
-            <div class="col-xl-3 col-lg-4 col-md-6">
-              <div class="district-card-mini">
-                <div class="d-flex justify-content-between align-items-start mb-2">
-                  <h5 class="fw-bold text-primary-bd mb-0">${isBn ? dist.name_bn : dist.name_en}</h5>
-                  <span class="badge bg-secondary-bd text-white small">${isBn ? div?.name_bn : div?.name_en}</span>
-                </div>
-                <div class="small text-muted mb-2">
-                  <i class="bi bi-award text-warning me-1"></i>
-                  <strong>${t('famous_for')}:</strong> ${isBn ? dist.famous_for_bn : dist.famous_for_en}
-                </div>
-                <p class="small text-secondary mb-3 flex-grow-1" style="font-size: 0.85rem;">
-                  ${isBn ? dist.description_bn : dist.description_en}
-                </p>
-                <button class="btn btn-outline-bd btn-sm w-100 district-explore-btn" data-district-id="${dist.id}">
-                  <i class="bi bi-compass me-1"></i>${isBn ? 'দর্শনীয় স্থানসমূহ' : 'Explore Spots'} (${spotsInDist})
-                </button>
-              </div>
-            </div>
-          `;
+          return renderDistrictCard({
+            district: dist,
+            division: div,
+            spotCount: spotsInDist,
+            lang: state.lang
+          });
         }).join('')}
       </div>
     </section>

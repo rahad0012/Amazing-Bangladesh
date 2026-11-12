@@ -85,6 +85,11 @@ export function renderNavbar(options: NavbarOptions): string {
           </ul>
 
           <div class="d-flex align-items-center gap-2 mt-3 mt-lg-0">
+            <!-- Navbar Quick Search Trigger -->
+            <button class="btn btn-outline-light btn-sm rounded-circle p-2 d-flex align-items-center justify-content-center" id="btn-nav-search" title="${isBn ? 'অনুসন্ধান করুন' : 'Search'}" aria-label="Search">
+              <i class="bi bi-search text-warning"></i>
+            </button>
+
             <!-- Saved Favorites Trigger -->
             <button class="btn btn-outline-light btn-sm rounded-pill px-3 position-relative" id="btn-saved-places" title="${savedLabel}">
               <i class="bi bi-bookmark-heart text-danger"></i>

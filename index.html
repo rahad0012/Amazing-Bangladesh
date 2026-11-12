@@ -119,67 +119,8 @@
     <!-- Accessibility Skip Link -->
     <a href="#app-root" class="skip-to-content-link">Skip to main content / মূল বিষয়বস্তুতে যান</a>
 
-    <!-- Navbar Component -->
-    <nav class="navbar navbar-expand-lg site-navbar sticky-top" id="main-nav">
-      <div class="container">
-        <a class="navbar-brand navbar-brand-logo" href="#" id="brand-link">
-          <span class="fs-4 text-warning"><i class="bi bi-compass-fill"></i></span>
-          <div class="d-flex flex-column lh-1">
-            <span class="fs-5 fw-bold" id="brand-title">অপরূপ বাংলাদেশ</span>
-            <small class="text-white-50 fs-8" id="brand-subtitle">Tourism Portal</small>
-          </div>
-          <span class="navbar-brand-badge ms-2">Official</span>
-        </a>
-
-        <button class="navbar-toggler text-white border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navbarContent" aria-controls="navbarContent" aria-expanded="false" aria-label="Toggle navigation">
-          <i class="bi bi-list fs-2"></i>
-        </button>
-
-        <div class="collapse navbar-collapse" id="navbarContent">
-          <ul class="navbar-nav me-auto mb-2 mb-lg-0 ms-lg-3 gap-1">
-            <li class="nav-item">
-              <a class="nav-link-custom active" href="#" data-nav="home" id="nav-item-home">মূলপাতা</a>
-            </li>
-            <li class="nav-item">
-              <a class="nav-link-custom" href="#divisions" data-nav="divisions" id="nav-item-divisions">বিভাগসমূহ (৮)</a>
-            </li>
-            <li class="nav-item">
-              <a class="nav-link-custom" href="#districts" data-nav="districts" id="nav-item-districts">৬৪ জেলা গাইড</a>
-            </li>
-            <li class="nav-item">
-              <a class="nav-link-custom" href="#spots" data-nav="spots" id="nav-item-spots">দর্শনীয় স্থান</a>
-            </li>
-            <li class="nav-item">
-              <a class="nav-link-custom" href="#guides" data-nav="guides" id="nav-item-guides">ভ্রমণ নির্দেশিকা</a>
-            </li>
-            <li class="nav-item">
-              <a class="nav-link-custom" href="#planner" data-nav="planner" id="nav-item-planner">ট্যুর প্ল্যানার</a>
-            </li>
-          </ul>
-
-          <div class="d-flex align-items-center gap-2 mt-3 mt-lg-0">
-            <!-- Saved Favorites Trigger -->
-            <button class="btn btn-outline-light btn-sm rounded-pill px-3 position-relative" id="btn-saved-places" title="Saved Destinations">
-              <i class="bi bi-bookmark-heart text-danger"></i>
-              <span id="label-saved-text" class="d-none d-xl-inline ms-1">পছন্দ</span>
-              <span class="badge bg-danger ms-1" id="saved-badge-count">0</span>
-            </button>
-
-            <!-- Language Switcher in Navbar -->
-            <button class="lang-switcher-btn" id="lang-switcher" aria-label="Switch Language">
-              <i class="bi bi-translate"></i>
-              <span id="lang-btn-text">English</span>
-            </button>
-
-            <!-- Admin / Firebase Portal Trigger -->
-            <button class="btn btn-warning btn-sm fw-semibold rounded-pill px-3" id="btn-admin-portal" title="Admin & Database">
-              <i class="bi bi-shield-lock-fill me-1"></i>
-              <span id="label-admin-text">অ্যাডমিন</span>
-            </button>
-          </div>
-        </div>
-      </div>
-    </nav>
+    <!-- Section 1: Navbar (Dynamic Reusable Component) -->
+    <header id="navbar-root"></header>
 
     <!-- Main Dynamic Application Container -->
     <main id="app-root">
@@ -191,80 +132,8 @@
       </div>
     </main>
 
-    <!-- Global Footer -->
-    <footer class="site-footer">
-      <div class="container">
-        <div class="row g-4 mb-4">
-          <div class="col-lg-4 col-md-6">
-            <div class="d-flex align-items-center gap-2 mb-3">
-              <span class="fs-3 text-warning"><i class="bi bi-compass-fill"></i></span>
-              <h5 class="text-white mb-0 fw-bold" id="footer-brand-title">অপরূপ বাংলাদেশ</h5>
-            </div>
-            <p class="small text-white-50" id="footer-about-desc">
-              অফিসিয়াল তথ্যভাণ্ডার যার মাধ্যমে দেশি ও বিদেশি পর্যটকরা বাংলাদেশের সমৃদ্ধ সংস্কৃতি, ঐতিহ্য এবং অনুপম প্রাকৃতিক রূপ স্বাচ্ছন্দ্যে ঘুরে দেখতে পারেন।
-            </p>
-            <div class="d-flex gap-2">
-              <span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1">৮ বিভাগ</span>
-              <span class="badge bg-warning-subtle text-warning border border-warning-subtle px-2 py-1">৬৪ জেলা</span>
-              <span class="badge bg-light text-dark px-2 py-1">দ্বিভাষিক পোর্টাল</span>
-            </div>
-          </div>
-
-          <div class="col-lg-2 col-md-6">
-            <h6 class="footer-heading" id="footer-nav-heading">গুরুত্বপূর্ণ লিংক</h6>
-            <a href="#divisions" class="footer-link" id="footer-link-divisions">৮ প্রশাসনিক বিভাগ</a>
-            <a href="#districts" class="footer-link" id="footer-link-districts">৬৪ জেলা নির্দেশিকা</a>
-            <a href="#spots" class="footer-link" id="footer-link-spots">শীর্ষ দর্শনীয় স্থান</a>
-            <a href="#guides" class="footer-link" id="footer-link-guides">ভ্রমণ ব্লগ ও টিপস</a>
-            <a href="#planner" class="footer-link" id="footer-link-planner">ট্যুর প্ল্যানার</a>
-          </div>
-
-          <div class="col-lg-3 col-md-6">
-            <h6 class="footer-heading" id="footer-emergency-title">জরুরি হেল্পলাইন</h6>
-            <div class="small mb-2 text-white-50">
-              <i class="bi bi-telephone-fill text-warning me-2"></i>
-              <span id="footer-em-999">জাতীয় জরুরি সেবা: ৯৯৯</span>
-            </div>
-            <div class="small mb-2 text-white-50">
-              <i class="bi bi-shield-shaded text-warning me-2"></i>
-              <span id="footer-em-police">ট্যুরিস্ট পুলিশ: ০১৩২০-১৬৩৫৯৯</span>
-            </div>
-            <div class="small mb-2 text-white-50">
-              <i class="bi bi-info-circle-fill text-warning me-2"></i>
-              <span id="footer-em-333">সরকারি তথ্য সেবা: ৩৩৩</span>
-            </div>
-            <div class="small text-white-50">
-              <i class="bi bi-hospital-fill text-warning me-2"></i>
-              <span>স্বাস্থ্য বাতায়ন: ১৬২৬৩</span>
-            </div>
-          </div>
-
-          <div class="col-lg-3 col-md-6">
-            <h6 class="footer-heading" id="footer-db-status-title">সিস্টেম ও ডাটাবেস</h6>
-            <div class="p-3 rounded-3" style="background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1);">
-              <div class="d-flex align-items-center gap-2 mb-2">
-                <span class="spinner-grow spinner-grow-sm text-success" role="status"></span>
-                <span class="small text-white fw-semibold" id="footer-db-status">ফায়ারবেস ক্লাউড ফায়ারস্টোর যুক্ত</span>
-              </div>
-              <p class="small text-white-50 mb-0" style="font-size: 0.8rem;">
-                Firebase Enterprise Edition Database: starlit-airship-r07pf
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <hr class="border-secondary my-4">
-
-        <div class="d-flex flex-column flex-md-row justify-content-between align-items-center gap-2 small text-white-50">
-          <div id="footer-copyright">
-            © ২০২৬ অপরূপ বাংলাদেশ। গণপ্রজাতন্ত্রী বাংলাদেশ পর্যটন পোর্টাল। সর্বস্বত্ব সংরক্ষিত।
-          </div>
-          <div>
-            Built with HTML5, CSS3, Bootstrap 5, Vanilla ES6+ & Firebase
-          </div>
-        </div>
-      </div>
-    </footer>
+    <!-- Section 9: Footer (Dynamic Reusable Component) -->
+    <div id="footer-root"></div>
 
     <!-- Spot Details Modal -->
     <div class="modal fade" id="spotDetailsModal" tabindex="-1" aria-labelledby="spotDetailsModalLabel" aria-hidden="true">

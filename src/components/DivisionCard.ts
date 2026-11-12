@@ -40,7 +40,10 @@ export function renderDivisionCard(props: DivisionCardProps): string {
           </span>
         </div>
         <div class="card-travel-body">
-          <h4 class="card-travel-title">${escapeHtml(name)}</h4>
+          <div class="d-flex justify-content-between align-items-start mb-1">
+            <h4 class="card-travel-title mb-0">${escapeHtml(isBn ? division.name_bn : division.name_en)}</h4>
+            <span class="badge bg-light text-secondary border small">${escapeHtml(isBn ? division.name_en : division.name_bn)}</span>
+          </div>
           <div class="card-travel-location">
             <i class="bi bi-rulers"></i> ${formatAreaSqKm(division.area_sq_km, lang)}
           </div>

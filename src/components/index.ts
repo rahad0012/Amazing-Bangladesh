@@ -9,3 +9,4 @@ export * from './DivisionCard';
 export * from './DistrictCard';
 export * from './CategoryCard';
 export * from './Breadcrumb';
+export * from './Newsletter';

@@ -66,8 +66,8 @@ export interface CmsStore {
 // Load persisted overrides from localStorage if present
 const storedDivisions = localStorage.getItem('bd_cms_divisions');
 const storedDistricts = localStorage.getItem('bd_cms_districts');
-const storedCategories = localStorage.getItem('bd_cms_categories');
-const storedSpots = localStorage.getItem('bd_cms_spots');
+const storedCategories = localStorage.getItem('bd_cms_categories_v2');
+const storedSpots = localStorage.getItem('bd_cms_spots_v2');
 const storedArticles = localStorage.getItem('bd_cms_articles');
 const storedMedia = localStorage.getItem('bd_cms_media');
 
@@ -97,8 +97,8 @@ export const cmsStore: CmsStore = {
 export function persistStore(): void {
   localStorage.setItem('bd_cms_divisions', JSON.stringify(cmsStore.divisions));
   localStorage.setItem('bd_cms_districts', JSON.stringify(cmsStore.districts));
-  localStorage.setItem('bd_cms_categories', JSON.stringify(cmsStore.categories));
-  localStorage.setItem('bd_cms_spots', JSON.stringify(cmsStore.spots));
+  localStorage.setItem('bd_cms_categories_v2', JSON.stringify(cmsStore.categories));
+  localStorage.setItem('bd_cms_spots_v2', JSON.stringify(cmsStore.spots));
   localStorage.setItem('bd_cms_articles', JSON.stringify(cmsStore.articles));
   localStorage.setItem('bd_cms_media', JSON.stringify(cmsStore.media));
 }
@@ -108,7 +108,7 @@ export function canWriteAdmin(): boolean {
   if (cmsStore.isDemoAdmin) return true;
   const user = auth.currentUser;
   if (!user) return false;
-  return user.email === 'bluesky90987@gmail.com' || user.emailVerified === true;
+  return user.email === 'bluesky90987@gmail.com' || user.email === 'mdrahad0529@gmail.com' || user.emailVerified === true;
 }
 
 // ============================================================================

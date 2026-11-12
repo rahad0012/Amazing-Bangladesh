@@ -13,7 +13,7 @@ service cloud.firestore {
     function isAdmin() {
       return isSignedIn() && (
         exists(/databases/$(database)/documents/admins/$(request.auth.uid)) ||
-        (request.auth.token.email == "bluesky90987@gmail.com" && request.auth.token.email_verified == true)
+        (request.auth.token.email in ["bluesky90987@gmail.com", "mdrahad0529@gmail.com"] && request.auth.token.email_verified == true)
       );
     }
 
@@ -60,6 +60,14 @@ service cloud.firestore {
     match /admins/{adminId} {
       allow read: if isAdmin();
       allow write: if isAdmin();
+    }
+
+    match /newsletter_subscribers/{subId} {
+      allow create: if isValidId(subId) && 
+        request.resource.data.email is string && 
+        request.resource.data.email.size() <= 128 &&
+        request.resource.data.email.matches('^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$');
+      allow read, delete: if isAdmin();
     }
   }
 }

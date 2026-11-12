@@ -118,3 +118,29 @@ export function showToastNotification(message: string, type: 'success' | 'error'
     setTimeout(() => toastEl.remove(), 4000);
   }
 }
+
+export function renderCardSkeleton(count: number = 3, colClass: string = 'col-lg-4 col-md-6 mb-4'): string {
+  const item = `
+    <div class="${colClass}">
+      <div class="card-travel border-0 shadow-sm" aria-hidden="true">
+        <div class="placeholder-glow" style="height: 220px; background: #e2e8f0; border-top-left-radius: 16px; border-top-right-radius: 16px;">
+          <span class="placeholder col-12 h-100 w-100 d-block"></span>
+        </div>
+        <div class="card-travel-body">
+          <h5 class="card-title placeholder-glow mb-2">
+            <span class="placeholder col-8"></span>
+          </h5>
+          <p class="placeholder-glow mb-2">
+            <span class="placeholder col-4"></span>
+          </p>
+          <p class="card-text placeholder-glow mb-3">
+            <span class="placeholder col-11"></span>
+            <span class="placeholder col-7"></span>
+          </p>
+          <span class="btn btn-primary-bd disabled placeholder col-12 mt-auto" style="height: 38px;"></span>
+        </div>
+      </div>
+    </div>
+  `;
+  return Array(count).fill(item).join('');
+}

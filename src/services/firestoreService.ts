@@ -32,7 +32,8 @@ export const COLLECTIONS = {
   TOURIST_SPOTS: 'tourist_spots',
   ARTICLES: 'articles',
   ADMINS: 'admins',
-  SITE_SETTINGS: 'site_settings'
+  SITE_SETTINGS: 'site_settings',
+  NEWSLETTER_SUBSCRIBERS: 'newsletter_subscribers'
 } as const;
 
 export class FirestoreService {
@@ -144,9 +145,36 @@ export class FirestoreService {
       const spots: TouristSpot[] = [];
       snapshot.forEach(docSnap => spots.push({ id: docSnap.id, ...docSnap.data() } as TouristSpot));
       return spots;
-    } catch (error) {
-      console.warn('Error fetching spots by location:', error);
-      return [];
+  /**
+   * Register a newsletter subscriber
+   */
+  static async subscribeNewsletter(
+    email: string, 
+    lang: string = 'bn'
+  ): Promise<{ success: boolean; message?: string }> {
+    try {
+      const cleanEmail = email.trim().toLowerCase();
+      // Generate clean valid subId from timestamp and hash
+      const subId = `sub_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+      const docRef = doc(db, COLLECTIONS.NEWSLETTER_SUBSCRIBERS, subId);
+      await setDoc(docRef, {
+        id: subId,
+        email: cleanEmail,
+        lang,
+        subscribed_at: new Date().toISOString()
+      });
+      return { success: true };
+    } catch (error: any) {
+      console.warn('Newsletter firestore registration failed, saving locally:', error);
+      // Local fallback for offline/restricted mode
+      try {
+        const localSubs = JSON.parse(localStorage.getItem('bd_tourism_subscribers') || '[]');
+        localSubs.push({ email, lang, subscribed_at: new Date().toISOString() });
+        localStorage.setItem('bd_tourism_subscribers', JSON.stringify(localSubs));
+        return { success: true };
+      } catch {
+        return { success: false, message: error?.message || 'Subscription failed' };
+      }
     }
   }
 }
