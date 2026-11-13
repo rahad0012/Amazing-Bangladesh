@@ -2,7 +2,7 @@
  * Firebase Client Initialization & Utilities
  * Bangladesh Tourism Platform
  */
-import { initializeApp } from 'firebase/app';
+import { initializeApp, getApps, getApp } from 'firebase/app';
 import { 
   getAuth, 
   GoogleAuthProvider, 
@@ -31,8 +31,8 @@ import {
 } from 'firebase/storage';
 import firebaseConfig from '../firebase-applet-config.json';
 
-// Initialize Firebase App
-const app = initializeApp(firebaseConfig);
+// Initialize Firebase App singleton
+const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
 
 // Initialize Firestore with custom database ID
 export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);

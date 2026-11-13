@@ -10,10 +10,16 @@ service cloud.firestore {
       return request.auth != null;
     }
 
+    function isAdminEmail() {
+      return isSignedIn() &&
+        request.auth.token.email in ["bluesky90987@gmail.com", "mdrahad0529@gmail.com"] &&
+        request.auth.token.email_verified == true;
+    }
+
     function isAdmin() {
       return isSignedIn() && (
-        exists(/databases/$(database)/documents/admins/$(request.auth.uid)) ||
-        (request.auth.token.email in ["bluesky90987@gmail.com", "mdrahad0529@gmail.com"] && request.auth.token.email_verified == true)
+        isAdminEmail() ||
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid))
       );
     }
 
@@ -21,53 +27,63 @@ service cloud.firestore {
       return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
     }
 
-    // Public read for published tourism content; write by admins
+    // Public read for published tourism content; list enforces is_published == true or admin email
     match /divisions/{divisionId} {
-      allow read: if isValidId(divisionId);
-      allow write: if isAdmin();
+      allow get: if isValidId(divisionId) && (resource.data.is_published == true || isAdmin());
+      allow list: if resource.data.is_published == true || isAdminEmail();
+      allow write: if isValidId(divisionId) && isAdmin();
     }
 
     match /districts/{districtId} {
-      allow read: if isValidId(districtId);
-      allow write: if isAdmin();
+      allow get: if isValidId(districtId) && (resource.data.is_published == true || isAdmin());
+      allow list: if resource.data.is_published == true || isAdminEmail();
+      allow write: if isValidId(districtId) && isAdmin();
     }
 
     match /categories/{categoryId} {
-      allow read: if isValidId(categoryId);
-      allow write: if isAdmin();
+      allow get: if isValidId(categoryId) && (resource.data.is_published == true || isAdmin());
+      allow list: if resource.data.is_published == true || isAdminEmail();
+      allow write: if isValidId(categoryId) && isAdmin();
     }
 
     match /tourist_spots/{spotId} {
-      allow read: if isValidId(spotId);
-      allow write: if isAdmin();
+      allow get: if isValidId(spotId) && (resource.data.is_published == true || isAdmin());
+      allow list: if resource.data.is_published == true || isAdminEmail();
+      allow write: if isValidId(spotId) && isAdmin();
     }
 
     match /articles/{articleId} {
-      allow read: if isValidId(articleId);
-      allow write: if isAdmin();
+      allow get: if isValidId(articleId) && (resource.data.is_published == true || isAdmin());
+      allow list: if resource.data.is_published == true || isAdminEmail();
+      allow write: if isValidId(articleId) && isAdmin();
     }
 
     match /media/{mediaId} {
-      allow read: if isValidId(mediaId);
-      allow write: if isAdmin();
+      allow get: if isValidId(mediaId);
+      allow list: if true;
+      allow write: if isValidId(mediaId) && isAdmin();
     }
 
     match /site_settings/{settingId} {
-      allow read: if isValidId(settingId);
-      allow write: if isAdmin();
+      allow get: if isValidId(settingId);
+      allow list: if true;
+      allow write: if isValidId(settingId) && isAdmin();
     }
 
     match /admins/{adminId} {
-      allow read: if isAdmin();
-      allow write: if isAdmin();
+      allow get: if isValidId(adminId) && isAdmin();
+      allow list: if isAdminEmail();
+      allow write: if isValidId(adminId) && isAdmin();
     }
 
     match /newsletter_subscribers/{subId} {
-      allow create: if isValidId(subId) && 
-        request.resource.data.email is string && 
+      allow create: if isValidId(subId) &&
+        request.resource.data.email is string &&
         request.resource.data.email.size() <= 128 &&
         request.resource.data.email.matches('^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$');
-      allow read, delete: if isAdmin();
+      allow get: if isValidId(subId) && isAdmin();
+      allow list: if isAdminEmail();
+      allow delete: if isValidId(subId) && isAdmin();
     }
   }
 }

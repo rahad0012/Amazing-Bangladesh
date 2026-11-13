@@ -31,8 +31,9 @@ export const BREAKPOINTS = {
 } as const;
 
 export const TYPOGRAPHY = {
-  fontBn: "'Hind Siliguri', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
-  fontEn: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif"
+  fontBn: "'Anek Bangla', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+  fontBnDisplay: "'Noto Serif Bengali', 'Anek Bangla', 'Inter', serif",
+  fontEn: "'Inter', 'Anek Bangla', -apple-system, BlinkMacSystemFont, sans-serif"
 } as const;
 
 export const SITE_METADATA = {

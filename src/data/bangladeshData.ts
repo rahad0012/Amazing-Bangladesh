@@ -195,8 +195,8 @@ export const DIVISIONS: Division[] = [
     headquarters_bn: "খুলনা",
     area_sq_km: 22284.22,
     districts_count: 10,
-    image_url: "https://images.unsplash.com/photo-1618083815234-b38466e31b6f?auto=format&fit=crop&w=1200&q=80",
-    thumbnail_url: "https://images.unsplash.com/photo-1618083815234-b38466e31b6f?auto=format&fit=crop&w=400&q=80",
+    image_url: "https://images.unsplash.com/photo-1448375240586-882707db888b?auto=format&fit=crop&w=1200&q=80",
+    thumbnail_url: "https://images.unsplash.com/photo-1448375240586-882707db888b?auto=format&fit=crop&w=400&q=80",
     is_published: true,
     order: 4
   },
@@ -211,8 +211,8 @@ export const DIVISIONS: Division[] = [
     headquarters_bn: "রাজশাহী",
     area_sq_km: 18153.08,
     districts_count: 8,
-    image_url: "https://images.unsplash.com/photo-1628080208137-a1622b7a977d?auto=format&fit=crop&w=1200&q=80",
-    thumbnail_url: "https://images.unsplash.com/photo-1628080208137-a1622b7a977d?auto=format&fit=crop&w=400&q=80",
+    image_url: "https://images.unsplash.com/photo-1582510003544-4d00b7f74220?auto=format&fit=crop&w=1200&q=80",
+    thumbnail_url: "https://images.unsplash.com/photo-1582510003544-4d00b7f74220?auto=format&fit=crop&w=400&q=80",
     is_published: true,
     order: 5
   },
@@ -293,7 +293,7 @@ export const DISTRICTS: District[] = [
     description_bn: "ভাওয়াল জাতীয় উদ্যান, ঐতিহ্যবাহী শালবন এবং অসংখ্য মনোরম ইকো-রিসোর্টের জন্য জনপ্রিয়।",
     famous_for_en: "Bhawal National Park & Luxury Eco Resorts",
     famous_for_bn: "ভাওয়াল জাতীয় উদ্যান ও ইকো রিসোর্ট",
-    image_url: "https://images.unsplash.com/photo-1511497584788-87676104235f?auto=format&fit=crop&w=600&q=80",
+    image_url: "https://images.unsplash.com/photo-1513836279014-a89f7a76ae86?auto=format&fit=crop&w=600&q=80",
     is_published: true,
     popular_spots_count: 4
   },
@@ -405,7 +405,7 @@ export const DISTRICTS: District[] = [
     description_bn: "টুঙ্গিপাড়ায় জাতির পিতা বঙ্গবন্ধু শেখ মুজিবুর রহমানের সমাধিসৌধ এবং মধুমতি নদীর মনোরম দৃশ্য।",
     famous_for_en: "Tungipara Complex & Modhumoti River",
     famous_for_bn: "টুঙ্গিপাড়া সমাধিসৌধ ও মধুমতি নদী",
-    image_url: "https://images.unsplash.com/photo-1548625361-195977792186?auto=format&fit=crop&w=600&q=80",
+    image_url: "https://images.unsplash.com/photo-1564507592333-c60657eea523?auto=format&fit=crop&w=600&q=80",
     is_published: true,
     popular_spots_count: 2
   },
@@ -647,7 +647,7 @@ export const DISTRICTS: District[] = [
     description_bn: "রেমা-কালেঙ্গা বন্যপ্রাণী অভয়ারণ্য, সাতছড়ি জাতীয় উদ্যান ও সবুজ পাহাড়ি রিসোর্ট।",
     famous_for_en: "Satchari National Park & Rema-Kalenga Sanctuary",
     famous_for_bn: "সাতছড়ি জাতীয় উদ্যান ও রেমা-কালেঙ্গা",
-    image_url: "https://images.unsplash.com/photo-1511497584788-87676104235f?auto=format&fit=crop&w=600&q=80",
+    image_url: "https://images.unsplash.com/photo-1513836279014-a89f7a76ae86?auto=format&fit=crop&w=600&q=80",
     is_published: true,
     popular_spots_count: 4
   },
@@ -677,7 +677,7 @@ export const DISTRICTS: District[] = [
     description_bn: "সুন্দরবন ক্রুজ সাফারির প্রধান প্রবেশদ্বার, রূপসা নদী তীর ও ঐতিহাসিক খানজাহান আলীর ঐতিহ্য।",
     famous_for_en: "Sundarbans Gateway & Rupsha Riverfront",
     famous_for_bn: "সুন্দরবন প্রবেশদ্বার ও রূপসা রিভারফ্রন্ট",
-    image_url: "https://images.unsplash.com/photo-1618083815234-b38466e31b6f?auto=format&fit=crop&w=600&q=80",
+    image_url: "https://images.unsplash.com/photo-1448375240586-882707db888b?auto=format&fit=crop&w=600&q=80",
     is_published: true,
     popular_spots_count: 6
   },
@@ -691,7 +691,7 @@ export const DISTRICTS: District[] = [
     description_bn: "ইউনেস্কো বিশ্ব ঐতিহ্য ঐতিহাসিক মসজিদের শহর এবং ১৫ শতকের ষাট গম্বুজ মসজিদ।",
     famous_for_en: "Sixty Dome Mosque (Shat Gombuj) & Shrine",
     famous_for_bn: "ঐতিহাসিক ষাট গম্বুজ মসজিদ ও খানজাহান আলী মাজার",
-    image_url: "https://images.unsplash.com/photo-1548625361-195977792186?auto=format&fit=crop&w=600&q=80",
+    image_url: "https://images.unsplash.com/photo-1564507592333-c60657eea523?auto=format&fit=crop&w=600&q=80",
     is_published: true,
     popular_spots_count: 5
   },
@@ -819,7 +819,7 @@ export const DISTRICTS: District[] = [
     description_bn: "রেশম শিল্প, বরেন্দ্র গবেষণা জাদুঘর, পুঠিয়ার রাজবাড়ি ও টেরাকোটা মন্দির এবং আমের রাজ্য।",
     famous_for_en: "Puthia Temple Complex, Varendra Museum & Silk",
     famous_for_bn: "পুঠিয়া রাজবাড়ি মন্দির, বরেন্দ্র জাদুঘর ও সিল্ক",
-    image_url: "https://images.unsplash.com/photo-1628080208137-a1622b7a977d?auto=format&fit=crop&w=600&q=80",
+    image_url: "https://images.unsplash.com/photo-1582510003544-4d00b7f74220?auto=format&fit=crop&w=600&q=80",
     is_published: true,
     popular_spots_count: 6
   },
@@ -847,7 +847,7 @@ export const DISTRICTS: District[] = [
     description_bn: "ইউনেস্কো বিশ্ব ঐতিহ্য পাহাড়পুর সোমপুর মহাবিহার এবং ঐতিহাসিক কুসুম্বা মসজিদ।",
     famous_for_en: "Somapura Mahavihara (Paharpur) & Kusumba Mosque",
     famous_for_bn: "পাহাড়পুর বৌদ্ধবিহার ও কুসুম্বা মসজিদ",
-    image_url: "https://images.unsplash.com/photo-1548625361-195977792186?auto=format&fit=crop&w=600&q=80",
+    image_url: "https://images.unsplash.com/photo-1564507592333-c60657eea523?auto=format&fit=crop&w=600&q=80",
     is_published: true,
     popular_spots_count: 5
   },
@@ -903,7 +903,7 @@ export const DISTRICTS: District[] = [
     description_bn: "বাংলাদেশের আমের রাজধানী, সুলতানি আমলের ঐতিহাসিক ছোট সোনা মসজিদ ও কানসাট।",
     famous_for_en: "Choto Sona Mosque & Fazli / Khirsapat Mangoes",
     famous_for_bn: "ছোট সোনা মসজিদ ও হিমসাগর/ফজলি আম",
-    image_url: "https://images.unsplash.com/photo-1548625361-195977792186?auto=format&fit=crop&w=600&q=80",
+    image_url: "https://images.unsplash.com/photo-1564507592333-c60657eea523?auto=format&fit=crop&w=600&q=80",
     is_published: true,
     popular_spots_count: 4
   },
@@ -975,7 +975,7 @@ export const DISTRICTS: District[] = [
     description_bn: "কুড়িয়ানা পেয়ারা বাগান ও খাল, রায়েরকাঠি জমিদার বাড়ি ও বলেশ্বর নদী।",
     famous_for_en: "Kuriana Guava Orchards & Rayerkathi Estate",
     famous_for_bn: "কুড়িয়ানা পেয়ারা বাজার ও জমিদার বাড়ি",
-    image_url: "https://images.unsplash.com/photo-1511497584788-87676104235f?auto=format&fit=crop&w=600&q=80",
+    image_url: "https://images.unsplash.com/photo-1513836279014-a89f7a76ae86?auto=format&fit=crop&w=600&q=80",
     is_published: true,
     popular_spots_count: 3
   },
@@ -1061,7 +1061,7 @@ export const DISTRICTS: District[] = [
     description_bn: "ঐতিহাসিক বলিয়া মসজিদ, হরিপুর রাজবাড়ি এবং কুলিক নদীর মনোলোভা প্রকৃতি।",
     famous_for_en: "Ballia Mosque & Haripur Royal Palace",
     famous_for_bn: "বলিয়া মসজিদ ও হরিপুর রাজবাড়ি",
-    image_url: "https://images.unsplash.com/photo-1548625361-195977792186?auto=format&fit=crop&w=600&q=80",
+    image_url: "https://images.unsplash.com/photo-1564507592333-c60657eea523?auto=format&fit=crop&w=600&q=80",
     is_published: true,
     popular_spots_count: 3
   },
@@ -1117,7 +1117,7 @@ export const DISTRICTS: District[] = [
     description_bn: "চীনা মাটির টুকরোয় তৈরি অপরূপ চিনি মসজিদ এবং সৈয়দপুর রেলওয়ে ওয়ার্কশপ।",
     famous_for_en: "Chini Porcelain Mosque & Railway Heritage",
     famous_for_bn: "চিনি মসজিদ ও ঐতিহাসিক সৈয়দপুর",
-    image_url: "https://images.unsplash.com/photo-1548625361-195977792186?auto=format&fit=crop&w=600&q=80",
+    image_url: "https://images.unsplash.com/photo-1564507592333-c60657eea523?auto=format&fit=crop&w=600&q=80",
     is_published: true,
     popular_spots_count: 3
   },
@@ -1161,13 +1161,13 @@ export const DISTRICTS: District[] = [
     description_bn: "গারো পাহাড়ের পাদদেশে গজনী অবকাশ কেন্দ্র ও মধুটিলা ইকোপার্ক।",
     famous_for_en: "Ghazni Vacation Center & Madhutila Eco Park",
     famous_for_bn: "গজনী অবকাশ ও মধুটিলা ইকোপার্ক",
-    image_url: "https://images.unsplash.com/photo-1511497584788-87676104235f?auto=format&fit=crop&w=600&q=80",
+    image_url: "https://images.unsplash.com/photo-1513836279014-a89f7a76ae86?auto=format&fit=crop&w=600&q=80",
     is_published: true,
     popular_spots_count: 4
   },
   {
     id: "jamalpur",
-    division_id: "jamalpur",
+    division_id: "mymensingh",
     name_en: "Jamalpur",
     name_bn: "জামালপুর",
     slug: "jamalpur",
@@ -1316,9 +1316,9 @@ export const TOURIST_SPOTS: TouristSpot[] = [
     best_time_bn: "নভেম্বর থেকে মার্চ (আরামদায়ক শীতকালীন আবহাওয়া, শান্ত নদী এবং বন্যপ্রাণী দেখার সেরা সময়)।",
     tips_en: "Book through certified tour operators only. Never step into the forest without armed forest guards. Carry eco-friendly reusable bottles and mosquito repellent.",
     tips_bn: "সর্বদা বন বিভাগের অনুমোদিত গাইডের সাথে চলুন। প্লাস্টিক বর্জ্য ফেলবেন না। সানগ্লাস ও মসকিউটো রিপেলেন্ট সাথে রাখুন।",
-    image_url: "https://images.unsplash.com/photo-1618083815234-b38466e31b6f?auto=format&fit=crop&w=1200&q=80",
+    image_url: "https://images.unsplash.com/photo-1448375240586-882707db888b?auto=format&fit=crop&w=1200&q=80",
     gallery_urls: [
-      "https://images.unsplash.com/photo-1618083815234-b38466e31b6f?auto=format&fit=crop&w=800&q=80",
+      "https://images.unsplash.com/photo-1448375240586-882707db888b?auto=format&fit=crop&w=800&q=80",
       "https://images.unsplash.com/photo-1535262412227-85541e910204?auto=format&fit=crop&w=800&q=80"
     ],
     rating: 4.9,
@@ -1465,9 +1465,9 @@ export const TOURIST_SPOTS: TouristSpot[] = [
     best_time_bn: "জুলাই থেকে অক্টোবর (বর্ষা মৌসুমে যখন পুরো বনটি পানিতে ডুবে থাকে)।",
     tips_en: "Use hand-rowed silent boats rather than motor boats to preserve wildlife tranquility. Climb the watchtower for a canopy view.",
     tips_bn: "বনের নীরবতা বজায় রাখতে বৈঠাচালিত নৌকা বেছে নিন। ওয়াচটাওয়ারে উঠে চারপাশের সবুজের দৃশ্য ক্যামেরাবন্দী করুন।",
-    image_url: "https://images.unsplash.com/photo-1511497584788-87676104235f?auto=format&fit=crop&w=1200&q=80",
+    image_url: "https://images.unsplash.com/photo-1513836279014-a89f7a76ae86?auto=format&fit=crop&w=1200&q=80",
     gallery_urls: [
-      "https://images.unsplash.com/photo-1511497584788-87676104235f?auto=format&fit=crop&w=800&q=80"
+      "https://images.unsplash.com/photo-1513836279014-a89f7a76ae86?auto=format&fit=crop&w=800&q=80"
     ],
     rating: 4.7,
     is_featured: true,
@@ -1523,9 +1523,9 @@ export const TOURIST_SPOTS: TouristSpot[] = [
     best_time_bn: "অক্টোবর থেকে মার্চ মাস।",
     tips_en: "Visit nearby Khan Jahan Ali's shrine and Ghora Dighi lake in the same afternoon circuit.",
     tips_bn: "মসজিদ সংলগ্ন ঘোড়া দিঘি এবং খানজাহান আলীর মাজার একই সাথে পরিদর্শন করুন।",
-    image_url: "https://images.unsplash.com/photo-1548625361-195977792186?auto=format&fit=crop&w=1200&q=80",
+    image_url: "https://images.unsplash.com/photo-1564507592333-c60657eea523?auto=format&fit=crop&w=1200&q=80",
     gallery_urls: [
-      "https://images.unsplash.com/photo-1548625361-195977792186?auto=format&fit=crop&w=800&q=80"
+      "https://images.unsplash.com/photo-1564507592333-c60657eea523?auto=format&fit=crop&w=800&q=80"
     ],
     rating: 4.8,
     is_featured: false,
@@ -1663,7 +1663,7 @@ export const ARTICLES: Article[] = [
     content_bn: "সুন্দরবনের শ্বাসমূলের বন আর জোয়ার-ভাটার শান্ত জলপথে ভেসে চলা যেন এক ভিন্ন জগতের অনুভূতি। কটকা অভয়ারণ্য, হারবাড়িয়া ও করমজল পয়েন্ট ঘুরে দেখার বিস্তারিত টিপস।",
     author_en: "Tourism Board Travel Desk",
     author_bn: "বাংলাদেশ ট্যুরিজম বোর্ড ডেস্ক",
-    image_url: "https://images.unsplash.com/photo-1618083815234-b38466e31b6f?auto=format&fit=crop&w=800&q=80",
+    image_url: "https://images.unsplash.com/photo-1448375240586-882707db888b?auto=format&fit=crop&w=800&q=80",
     read_time_en: "6 min read",
     read_time_bn: "৬ মিনিট পঠন",
     related_district_id: "bagerhat",
@@ -1717,7 +1717,7 @@ export const ARTICLES: Article[] = [
 export const MEDIA_ITEMS: MediaItem[] = [
   {
     id: "media_sundarbans_1",
-    url: "https://images.unsplash.com/photo-1618083815234-b38466e31b6f?auto=format&fit=crop&w=1200&q=80",
+    url: "https://images.unsplash.com/photo-1448375240586-882707db888b?auto=format&fit=crop&w=1200&q=80",
     file_name: "sundarbans_mangrove_canopy.jpg",
     alt_en: "Lush green Sundarbans mangrove forest waterways and tiger habitat",
     alt_bn: "সুন্দরবনের শ্বাসমূলের বন এবং শান্ত জলপথের দৃশ্য",

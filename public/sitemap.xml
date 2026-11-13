@@ -10,6 +10,30 @@
     <priority>1.0</priority>
   </url>
 
+  <url>
+    <loc>https://bangladesh-tourism.netlify.app/divisions/</loc>
+    <xhtml:link rel="alternate" hreflang="bn" href="https://bangladesh-tourism.netlify.app/divisions/?lang=bn"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://bangladesh-tourism.netlify.app/divisions/?lang=en"/>
+    <changefreq>weekly</changefreq>
+    <priority>0.95</priority>
+  </url>
+
+  <url>
+    <loc>https://bangladesh-tourism.netlify.app/districts/</loc>
+    <xhtml:link rel="alternate" hreflang="bn" href="https://bangladesh-tourism.netlify.app/districts/?lang=bn"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://bangladesh-tourism.netlify.app/districts/?lang=en"/>
+    <changefreq>weekly</changefreq>
+    <priority>0.95</priority>
+  </url>
+
+  <url>
+    <loc>https://bangladesh-tourism.netlify.app/places/</loc>
+    <xhtml:link rel="alternate" hreflang="bn" href="https://bangladesh-tourism.netlify.app/places/?lang=bn"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://bangladesh-tourism.netlify.app/places/?lang=en"/>
+    <changefreq>weekly</changefreq>
+    <priority>0.95</priority>
+  </url>
+
   <!-- 8 Divisions -->
   <url>
     <loc>https://bangladesh-tourism.netlify.app/#division-dhaka</loc>

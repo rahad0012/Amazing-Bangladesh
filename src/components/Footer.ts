@@ -56,13 +56,13 @@ export function renderFooter(lang: Language): string {
               ${isBn ? 'গুরুত্বপূর্ণ লিংক' : 'Quick Links'}
             </h6>
             <ul class="list-unstyled d-flex flex-column gap-2 small">
-              <li><a href="#" class="footer-link text-white-50 text-decoration-none">${isBn ? 'মূলপাতা' : 'Home'}</a></li>
-              <li><a href="#divisions" class="footer-link text-white-50 text-decoration-none">${isBn ? 'বিভাগসমূহ (৮)' : '8 Divisions'}</a></li>
-              <li><a href="#districts" class="footer-link text-white-50 text-decoration-none">${isBn ? '৬৪ জেলা গাইড' : '64 Districts'}</a></li>
-              <li><a href="#spots" class="footer-link text-white-50 text-decoration-none">${isBn ? 'শীর্ষ দর্শনীয় স্থান' : 'Top Destinations'}</a></li>
-              <li><a href="#guides" class="footer-link text-white-50 text-decoration-none">${isBn ? 'ভ্রমণ নির্দেশিকা' : 'Travel Guides'}</a></li>
-              <li><a href="#categories" class="footer-link text-white-50 text-decoration-none">${isBn ? 'ক্যাটাগরি সমূহ' : 'Categories'}</a></li>
-              <li><a href="#newsletter-section" class="footer-link text-white-50 text-decoration-none">${isBn ? 'নিউজলেটার' : 'Newsletter'}</a></li>
+              <li><a href="/" class="footer-link text-white-50 text-decoration-none" data-nav="home">${isBn ? 'মূলপাতা' : 'Home'}</a></li>
+              <li><a href="/divisions/" class="footer-link text-white-50 text-decoration-none" data-nav="divisions">${isBn ? 'বিভাগসমূহ (৮)' : '8 Divisions'}</a></li>
+              <li><a href="/districts/" class="footer-link text-white-50 text-decoration-none" data-nav="districts">${isBn ? '৬৪ জেলা গাইড' : '64 Districts'}</a></li>
+              <li><a href="/places/" class="footer-link text-white-50 text-decoration-none" data-nav="spots">${isBn ? 'সকল দর্শনীয় স্থান' : 'All Destinations'}</a></li>
+              <li><a href="/#guides" class="footer-link text-white-50 text-decoration-none" data-nav="guides">${isBn ? 'ভ্রমণ নির্দেশিকা' : 'Travel Guides'}</a></li>
+              <li><a href="/#categories" class="footer-link text-white-50 text-decoration-none" data-nav="home">${isBn ? 'ক্যাটাগরি সমূহ' : 'Categories'}</a></li>
+              <li><a href="/#newsletter-section" class="footer-link text-white-50 text-decoration-none" data-nav="home">${isBn ? 'নিউজলেটার' : 'Newsletter'}</a></li>
             </ul>
           </div>
 
@@ -72,14 +72,14 @@ export function renderFooter(lang: Language): string {
               ${isBn ? '৮ প্রশাসনিক বিভাগ' : '8 Divisions'}
             </h6>
             <ul class="list-unstyled d-flex flex-column gap-2 small">
-              <li><a href="#division-dhaka" class="footer-link text-white-50 text-decoration-none">${isBn ? 'ঢাকা বিভাগ' : 'Dhaka Division'}</a></li>
-              <li><a href="#division-chattogram" class="footer-link text-white-50 text-decoration-none">${isBn ? 'চট্টগ্রাম বিভাগ' : 'Chattogram Division'}</a></li>
-              <li><a href="#division-sylhet" class="footer-link text-white-50 text-decoration-none">${isBn ? 'সিলেট বিভাগ' : 'Sylhet Division'}</a></li>
-              <li><a href="#division-khulna" class="footer-link text-white-50 text-decoration-none">${isBn ? 'খুলনা বিভাগ' : 'Khulna Division'}</a></li>
-              <li><a href="#division-rajshahi" class="footer-link text-white-50 text-decoration-none">${isBn ? 'রাজশাহী বিভাগ' : 'Rajshahi Division'}</a></li>
-              <li><a href="#division-barishal" class="footer-link text-white-50 text-decoration-none">${isBn ? 'বরিশাল বিভাগ' : 'Barishal Division'}</a></li>
-              <li><a href="#division-rangpur" class="footer-link text-white-50 text-decoration-none">${isBn ? 'রংপুর বিভাগ' : 'Rangpur Division'}</a></li>
-              <li><a href="#division-mymensingh" class="footer-link text-white-50 text-decoration-none">${isBn ? 'ময়মনসিংহ বিভাগ' : 'Mymensingh Division'}</a></li>
+              <li><a href="/divisions/dhaka/" class="footer-link text-white-50 text-decoration-none" data-division-slug="dhaka">${isBn ? 'ঢাকা বিভাগ' : 'Dhaka Division'}</a></li>
+              <li><a href="/divisions/chattogram/" class="footer-link text-white-50 text-decoration-none" data-division-slug="chattogram">${isBn ? 'চট্টগ্রাম বিভাগ' : 'Chattogram Division'}</a></li>
+              <li><a href="/divisions/sylhet/" class="footer-link text-white-50 text-decoration-none" data-division-slug="sylhet">${isBn ? 'সিলেট বিভাগ' : 'Sylhet Division'}</a></li>
+              <li><a href="/divisions/khulna/" class="footer-link text-white-50 text-decoration-none" data-division-slug="khulna">${isBn ? 'খুলনা বিভাগ' : 'Khulna Division'}</a></li>
+              <li><a href="/divisions/rajshahi/" class="footer-link text-white-50 text-decoration-none" data-division-slug="rajshahi">${isBn ? 'রাজশাহী বিভাগ' : 'Rajshahi Division'}</a></li>
+              <li><a href="/divisions/barishal/" class="footer-link text-white-50 text-decoration-none" data-division-slug="barishal">${isBn ? 'বরিশাল বিভাগ' : 'Barishal Division'}</a></li>
+              <li><a href="/divisions/rangpur/" class="footer-link text-white-50 text-decoration-none" data-division-slug="rangpur">${isBn ? 'রংপুর বিভাগ' : 'Rangpur Division'}</a></li>
+              <li><a href="/divisions/mymensingh/" class="footer-link text-white-50 text-decoration-none" data-division-slug="mymensingh">${isBn ? 'ময়মনসিংহ বিভাগ' : 'Mymensingh Division'}</a></li>
             </ul>
           </div>
 
