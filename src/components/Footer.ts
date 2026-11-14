@@ -17,10 +17,10 @@ export function renderFooter(lang: Language): string {
           <!-- Col 1: Brand Introduction -->
           <div class="col-lg-4 col-md-6">
             <div class="d-flex align-items-center gap-2 mb-3">
-              <span class="fs-3 text-warning"><i class="bi bi-compass-fill"></i></span>
-              <h5 class="text-white mb-0 fw-bold" id="footer-brand-title">
+              <span class="fs-3 text-warning"><i class="bi bi-compass-fill" aria-hidden="true"></i></span>
+              <h2 class="h5 text-white mb-0 fw-bold" id="footer-brand-title">
                 ${isBn ? 'অপরূপ বাংলাদেশ' : 'Beautiful Bangladesh'}
-              </h5>
+              </h2>
             </div>
             <p class="small text-white-50 lh-base" id="footer-about-desc">
               ${isBn 
@@ -52,9 +52,9 @@ export function renderFooter(lang: Language): string {
 
           <!-- Col 2: Quick Links -->
           <div class="col-lg-2 col-md-6 col-6">
-            <h6 class="footer-heading text-warning fw-bold mb-3">
+            <h3 class="h6 footer-heading text-warning fw-bold mb-3">
               ${isBn ? 'গুরুত্বপূর্ণ লিংক' : 'Quick Links'}
-            </h6>
+            </h3>
             <ul class="list-unstyled d-flex flex-column gap-2 small">
               <li><a href="/" class="footer-link text-white-50 text-decoration-none" data-nav="home">${isBn ? 'মূলপাতা' : 'Home'}</a></li>
               <li><a href="/divisions/" class="footer-link text-white-50 text-decoration-none" data-nav="divisions">${isBn ? 'বিভাগসমূহ (৮)' : '8 Divisions'}</a></li>
@@ -70,9 +70,9 @@ export function renderFooter(lang: Language): string {
 
           <!-- Col 3: Division Links -->
           <div class="col-lg-2 col-md-6 col-6">
-            <h6 class="footer-heading text-warning fw-bold mb-3">
+            <h3 class="h6 footer-heading text-warning fw-bold mb-3">
               ${isBn ? '৮ প্রশাসনিক বিভাগ' : '8 Divisions'}
-            </h6>
+            </h3>
             <ul class="list-unstyled d-flex flex-column gap-2 small">
               <li><a href="/divisions/dhaka/" class="footer-link text-white-50 text-decoration-none" data-division-slug="dhaka">${isBn ? 'ঢাকা বিভাগ' : 'Dhaka Division'}</a></li>
               <li><a href="/divisions/chattogram/" class="footer-link text-white-50 text-decoration-none" data-division-slug="chattogram">${isBn ? 'চট্টগ্রাম বিভাগ' : 'Chattogram Division'}</a></li>
@@ -87,9 +87,9 @@ export function renderFooter(lang: Language): string {
 
           <!-- Col 4: Contact Information & Emergency -->
           <div class="col-lg-4 col-md-6">
-            <h6 class="footer-heading text-warning fw-bold mb-3">
+            <h3 class="h6 footer-heading text-warning fw-bold mb-3">
               ${isBn ? 'যোগাযোগ ও হেল্পলাইন' : 'Contact & Helplines'}
-            </h6>
+            </h3>
             <div class="small mb-2 text-white-50">
               <i class="bi bi-geo-alt-fill text-warning me-2"></i>
               <span>${isBn ? 'পর্যটন ভবন, প্লট ই-৫/সি-১, আগারগাঁও, ঢাকা-১২০৭' : 'Tourism Bhaban, Plot E-5/C-1, Agargaon, Dhaka-1207'}</span>
@@ -114,7 +114,7 @@ export function renderFooter(lang: Language): string {
 
             <div class="p-2 rounded mt-3" style="background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1);">
               <div class="d-flex align-items-center gap-2">
-                <span class="spinner-grow spinner-grow-sm text-success" role="status"></span>
+                <span class="spinner-grow spinner-grow-sm text-success" aria-hidden="true"></span>
                 <span class="small text-white fw-semibold">
                   ${isBn ? 'ক্লাউড ফায়ারস্টোর ডাটাবেস সচল' : 'Cloud Firestore Active'}
                 </span>

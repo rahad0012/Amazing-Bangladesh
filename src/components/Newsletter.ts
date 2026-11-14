@@ -47,14 +47,14 @@ export function renderNewsletter(lang: Language): string {
                   id="newsletter-email-input" 
                   placeholder="${escapeHtml(placeholder)}" 
                   required
-                  aria-label="Email address"
+                  aria-label="${isBn ? 'ইমেইল ঠিকানা' : 'Email address'}"
                 >
                 <button class="btn btn-accent px-4 fw-bold text-dark" type="submit" id="newsletter-submit-btn">
                   <span id="newsletter-btn-text">${escapeHtml(buttonText)}</span>
-                  <span id="newsletter-btn-spinner" class="spinner-border spinner-border-sm ms-2 d-none" role="status" aria-hidden="true"></span>
+                  <span id="newsletter-btn-spinner" class="spinner-border spinner-border-sm ms-2 d-none" aria-hidden="true"></span>
                 </button>
               </div>
-              <div id="newsletter-feedback-msg" class="small mt-2" style="min-height: 22px;"></div>
+              <div id="newsletter-feedback-msg" class="small mt-2" style="min-height: 22px;" role="status" aria-live="polite"></div>
               <div class="small text-white-50 mt-1 d-flex align-items-center gap-1">
                 <i class="bi bi-shield-check text-warning"></i>
                 <span>${escapeHtml(privacyNote)}</span>

@@ -127,17 +127,64 @@ export async function logoutUser(): Promise<void> {
   }
 }
 
-// Upload file to Firebase Storage with Base64 fallback if offline or CORS-restricted
+export const ALLOWED_IMAGE_MIME_TYPES = [
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+  'image/gif',
+  'image/svg+xml'
+] as const;
+
+export const MAX_IMAGE_FILE_SIZE_BYTES = 5 * 1024 * 1024; // 5 MB
+
+export function validateImageFile(file: File): { valid: boolean; error?: string } {
+  if (!file) {
+    return { valid: false, error: 'No image file selected.' };
+  }
+  if (!ALLOWED_IMAGE_MIME_TYPES.includes(file.type as any)) {
+    return {
+      valid: false,
+      error: `Unsupported file type (${file.type || 'unknown'}). Allowed formats: JPEG, PNG, WEBP, GIF, SVG.`
+    };
+  }
+  if (file.size <= 0) {
+    return { valid: false, error: 'Selected image file is empty.' };
+  }
+  if (file.size > MAX_IMAGE_FILE_SIZE_BYTES) {
+    return {
+      valid: false,
+      error: `File size (${(file.size / (1024 * 1024)).toFixed(2)} MB) exceeds the 5 MB limit.`
+    };
+  }
+  return { valid: true };
+}
+
+// Upload file to Firebase Storage with guarded DataURL fallback for small offline previews
 export async function uploadImageFile(file: File, folder: string = 'destinations'): Promise<string> {
+  const check = validateImageFile(file);
+  if (!check.valid) {
+    throw new Error(check.error || 'Invalid image file.');
+  }
+
   try {
     const timestamp = Date.now();
     const cleanName = file.name.replace(/[^a-zA-Z0-9_.-]/g, '_');
-    const storageRef = ref(storage, `${folder}/${timestamp}_${cleanName}`);
-    const snapshot = await uploadBytes(storageRef, file);
+    const safeFolder = folder.replace(/[^a-zA-Z0-9_-]/g, '_') || 'destinations';
+    const storageRef = ref(storage, `${safeFolder}/${timestamp}_${cleanName}`);
+    const snapshot = await uploadBytes(storageRef, file, {
+      contentType: file.type
+    });
     const downloadUrl = await getDownloadURL(snapshot.ref);
     return downloadUrl;
-  } catch (storageError) {
-    console.warn('Storage upload encountered restriction, falling back to local object reader:', storageError);
+  } catch (storageError: any) {
+    console.warn('Storage upload encountered restriction:', storageError);
+    // Only fall back to DataURL for compact files so Firestore 1MB document limit is respected
+    if (file.size > 650 * 1024) {
+      throw new Error(
+        storageError?.message ||
+          'Firebase Storage upload failed. Please ensure Firebase Storage is enabled and you are signed in as an admin.'
+      );
+    }
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = () => resolve(reader.result as string);
@@ -157,4 +204,3 @@ export async function deleteStorageFile(fileUrl: string): Promise<void> {
     console.warn('Could not delete from storage, continuing:', e);
   }
 }
-

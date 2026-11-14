@@ -58,7 +58,7 @@ export function renderDestinationCard(props: DestinationCardProps): string {
 
   return `
     <div class="${colClass}">
-      <div class="card-travel h-100 d-flex flex-column" data-spot-card="${escapeHtml(spot.id)}">
+      <article class="card-travel h-100 d-flex flex-column" data-spot-card="${escapeHtml(spot.id)}">
         <div class="card-travel-img-box position-relative">
           <a href="${detailHref}" class="d-block w-100 h-100 text-decoration-none spot-detail-link" data-spot-slug="${spotSlug}" data-spot-id="${escapeHtml(spot.id)}" aria-label="${escapeHtml(name)}">
             <img 
@@ -72,12 +72,12 @@ export function renderDestinationCard(props: DestinationCardProps): string {
           </a>
           ${locationLabel ? `
             <span class="card-badge-division">
-              <i class="bi bi-geo-alt me-1"></i>${escapeHtml(locationLabel)}
+              <i class="bi bi-geo-alt me-1" aria-hidden="true"></i>${escapeHtml(locationLabel)}
             </span>
           ` : ''}
           ${hasRating ? `
             <span class="card-badge-rating">
-              <i class="bi bi-star-fill text-warning me-1"></i>${spot.rating}
+              <i class="bi bi-star-fill text-warning me-1" aria-hidden="true"></i>${spot.rating}
             </span>
           ` : ''}
           <button 
@@ -86,8 +86,9 @@ export function renderDestinationCard(props: DestinationCardProps): string {
             data-spot-bookmark="${escapeHtml(spot.id)}" 
             title="${escapeHtml(saveLabel)}"
             aria-label="${escapeHtml(saveLabel)}"
+            aria-pressed="${isBookmarked ? 'true' : 'false'}"
           >
-            <i class="bi ${isBookmarked ? 'bi-heart-fill' : 'bi-heart'}"></i>
+            <i class="bi ${isBookmarked ? 'bi-heart-fill' : 'bi-heart'}" aria-hidden="true"></i>
           </button>
         </div>
 
@@ -96,7 +97,7 @@ export function renderDestinationCard(props: DestinationCardProps): string {
             ${categoryName ? `
               <div class="d-flex align-items-center gap-1 flex-wrap">
                 <span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1 small">
-                  <i class="bi ${escapeHtml(primaryCategory?.icon || 'bi-tag')} me-1"></i>${escapeHtml(categoryName)}
+                  <i class="bi ${escapeHtml(primaryCategory?.icon || 'bi-tag')} me-1" aria-hidden="true"></i>${escapeHtml(categoryName)}
                 </span>
                 ${extraCategoriesCount > 0 ? `
                   <span class="badge bg-light text-secondary border px-2 py-1 small" title="${escapeHtml(resolvedCategories.slice(1).map(c => isBn ? c.name_bn : c.name_en).join(', '))}">
@@ -107,24 +108,24 @@ export function renderDestinationCard(props: DestinationCardProps): string {
             ` : '<span></span>'}
             ${districtName ? `
               <div class="small text-muted d-flex align-items-center">
-                <i class="bi bi-pin-map-fill text-warning me-1"></i>
+                <i class="bi bi-pin-map-fill text-warning me-1" aria-hidden="true"></i>
                 <span>${escapeHtml(districtName)}</span>
               </div>
             ` : ''}
           </div>
 
-          <h4 class="card-travel-title fw-bold mb-2">
+          <h3 class="h5 card-travel-title fw-bold mb-2">
             <a href="${detailHref}" class="text-decoration-none text-reset spot-detail-link" data-spot-slug="${spotSlug}" data-spot-id="${escapeHtml(spot.id)}">
               ${escapeHtml(name)}
             </a>
-          </h4>
+          </h3>
           <p class="card-travel-desc small text-secondary flex-grow-1 mb-3">${escapeHtml(shortDesc)}</p>
 
           <a href="${detailHref}" class="btn btn-primary-bd btn-sm w-100 mt-auto spot-detail-link" data-spot-slug="${spotSlug}" data-spot-id="${escapeHtml(spot.id)}">
-            <i class="bi bi-info-circle me-1"></i>${escapeHtml(detailLabel)}
+            <i class="bi bi-info-circle me-1" aria-hidden="true"></i>${escapeHtml(detailLabel)}
           </a>
         </div>
-      </div>
+      </article>
     </div>
   `;
 }

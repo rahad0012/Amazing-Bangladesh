@@ -51,7 +51,7 @@ export function renderDistrictCard(props: DistrictCardProps): string {
         <span class="badge bg-secondary-bd text-white small shadow-sm">${escapeHtml(divName || district.division_id)}</span>
       </div>
       <div class="position-absolute bottom-0 start-0 w-100 p-2 px-3" style="background: linear-gradient(transparent, rgba(18, 60, 50, 0.92));">
-        <h5 class="fw-bold text-white mb-0 lh-sm" style="text-shadow: 0 1px 3px rgba(0,0,0,0.8);">${escapeHtml(primaryName)}</h5>
+        <h3 class="h5 fw-bold text-white mb-0 lh-sm" style="text-shadow: 0 1px 3px rgba(0,0,0,0.8);">${escapeHtml(primaryName)}</h3>
         <div class="small text-warning fw-medium" style="font-size: 0.78rem; text-shadow: 0 1px 2px rgba(0,0,0,0.75);">
           ${escapeHtml(secondaryName)}
         </div>

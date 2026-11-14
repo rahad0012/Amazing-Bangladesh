@@ -1,0 +1,35 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isAdminUser() {
+      return isSignedIn() && (
+        request.auth.token.admin == true ||
+        request.auth.token.isAdmin == true ||
+        request.auth.token.role == 'admin' ||
+        request.auth.token.role == 'super_admin' ||
+        (
+          request.auth.token.email in ["bluesky90987@gmail.com", "mdrahad0529@gmail.com"] &&
+          request.auth.token.email_verified == true
+        )
+      );
+    }
+
+    function isValidImageUpload() {
+      return request.resource != null &&
+        request.resource.size > 0 &&
+        request.resource.size <= 5 * 1024 * 1024 &&
+        request.resource.contentType.matches('image/(jpeg|png|webp|gif|svg\\+xml)');
+    }
+
+    // Public read access for published destination media assets; writes & deletes strictly restricted to verified admins
+    match /{folder}/{allPaths=**} {
+      allow read: if true;
+      allow create, update: if isAdminUser() && isValidImageUpload();
+      allow delete: if isAdminUser();
+    }
+  }
+}

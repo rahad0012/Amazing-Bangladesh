@@ -1,5 +1,7 @@
 User-agent: *
 Allow: /
+Disallow: /admin/
+Disallow: /api/
 
-# Sitemaps
+# Update sitemap URL to your custom production domain before deploying to static hosts
 Sitemap: https://bangladesh-tourism.netlify.app/sitemap.xml

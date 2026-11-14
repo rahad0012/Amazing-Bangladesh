@@ -4,7 +4,7 @@
 
 import { Category } from '../data/bangladeshData';
 import { Language } from '../utils/langUtils';
-import { escapeHtml } from '../utils/formatUtils';
+import { escapeHtml, optimizeImageUrl } from '../utils/formatUtils';
 
 export interface CategoryComponentProps {
   category: Category;
@@ -48,7 +48,7 @@ export function renderCategoryGridCard(category: Category, count: number, lang: 
       <article class="card h-100 border-0 shadow-sm rounded-4 overflow-hidden category-card-action bg-white">
         <a href="${detailHref}" class="d-block position-relative text-decoration-none category-detail-link" data-category-slug="${slug}" style="height: 175px; background: #123C32;" aria-label="${escapeHtml(nameBn)} / ${escapeHtml(nameEn)}">
           <img
-            src="${escapeHtml(coverImg)}"
+            src="${escapeHtml(optimizeImageUrl(coverImg, 600) || fallbackImg)}"
             alt="${escapeHtml(primaryName)} (${escapeHtml(secondaryName)})"
             class="w-100 h-100"
             style="object-fit: cover; transition: transform 0.35s ease;"

@@ -213,6 +213,7 @@ export interface MediaItem {
   file_size: number;
   mime_type: string;
   uploaded_at: string;
+  updated_at?: string;
 }
 
 // 8 Official Administrative Divisions

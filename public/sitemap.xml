@@ -10,6 +10,7 @@
     <priority>1.0</priority>
   </url>
 
+  <!-- Primary Directories -->
   <url>
     <loc>https://bangladesh-tourism.netlify.app/divisions/</loc>
     <xhtml:link rel="alternate" hreflang="bn" href="https://bangladesh-tourism.netlify.app/divisions/?lang=bn"/>
@@ -17,7 +18,6 @@
     <changefreq>weekly</changefreq>
     <priority>0.95</priority>
   </url>
-
   <url>
     <loc>https://bangladesh-tourism.netlify.app/districts/</loc>
     <xhtml:link rel="alternate" hreflang="bn" href="https://bangladesh-tourism.netlify.app/districts/?lang=bn"/>
@@ -25,7 +25,6 @@
     <changefreq>weekly</changefreq>
     <priority>0.95</priority>
   </url>
-
   <url>
     <loc>https://bangladesh-tourism.netlify.app/places/</loc>
     <xhtml:link rel="alternate" hreflang="bn" href="https://bangladesh-tourism.netlify.app/places/?lang=bn"/>
@@ -33,103 +32,6 @@
     <changefreq>weekly</changefreq>
     <priority>0.95</priority>
   </url>
-
-  <!-- 8 Divisions -->
-  <url>
-    <loc>https://bangladesh-tourism.netlify.app/#division-dhaka</loc>
-    <xhtml:link rel="alternate" hreflang="bn" href="https://bangladesh-tourism.netlify.app/?division=dhaka&amp;lang=bn"/>
-    <xhtml:link rel="alternate" hreflang="en" href="https://bangladesh-tourism.netlify.app/?division=dhaka&amp;lang=en"/>
-    <changefreq>weekly</changefreq>
-    <priority>0.9</priority>
-  </url>
-  <url>
-    <loc>https://bangladesh-tourism.netlify.app/#division-chattogram</loc>
-    <xhtml:link rel="alternate" hreflang="bn" href="https://bangladesh-tourism.netlify.app/?division=chattogram&amp;lang=bn"/>
-    <xhtml:link rel="alternate" hreflang="en" href="https://bangladesh-tourism.netlify.app/?division=chattogram&amp;lang=en"/>
-    <changefreq>weekly</changefreq>
-    <priority>0.9</priority>
-  </url>
-  <url>
-    <loc>https://bangladesh-tourism.netlify.app/#division-sylhet</loc>
-    <xhtml:link rel="alternate" hreflang="bn" href="https://bangladesh-tourism.netlify.app/?division=sylhet&amp;lang=bn"/>
-    <xhtml:link rel="alternate" hreflang="en" href="https://bangladesh-tourism.netlify.app/?division=sylhet&amp;lang=en"/>
-    <changefreq>weekly</changefreq>
-    <priority>0.9</priority>
-  </url>
-  <url>
-    <loc>https://bangladesh-tourism.netlify.app/#division-khulna</loc>
-    <xhtml:link rel="alternate" hreflang="bn" href="https://bangladesh-tourism.netlify.app/?division=khulna&amp;lang=bn"/>
-    <xhtml:link rel="alternate" hreflang="en" href="https://bangladesh-tourism.netlify.app/?division=khulna&amp;lang=en"/>
-    <changefreq>weekly</changefreq>
-    <priority>0.9</priority>
-  </url>
-  <url>
-    <loc>https://bangladesh-tourism.netlify.app/#division-rajshahi</loc>
-    <xhtml:link rel="alternate" hreflang="bn" href="https://bangladesh-tourism.netlify.app/?division=rajshahi&amp;lang=bn"/>
-    <xhtml:link rel="alternate" hreflang="en" href="https://bangladesh-tourism.netlify.app/?division=rajshahi&amp;lang=en"/>
-    <changefreq>weekly</changefreq>
-    <priority>0.9</priority>
-  </url>
-  <url>
-    <loc>https://bangladesh-tourism.netlify.app/#division-barishal</loc>
-    <xhtml:link rel="alternate" hreflang="bn" href="https://bangladesh-tourism.netlify.app/?division=barishal&amp;lang=bn"/>
-    <xhtml:link rel="alternate" hreflang="en" href="https://bangladesh-tourism.netlify.app/?division=barishal&amp;lang=en"/>
-    <changefreq>weekly</changefreq>
-    <priority>0.9</priority>
-  </url>
-  <url>
-    <loc>https://bangladesh-tourism.netlify.app/#division-rangpur</loc>
-    <xhtml:link rel="alternate" hreflang="bn" href="https://bangladesh-tourism.netlify.app/?division=rangpur&amp;lang=bn"/>
-    <xhtml:link rel="alternate" hreflang="en" href="https://bangladesh-tourism.netlify.app/?division=rangpur&amp;lang=en"/>
-    <changefreq>weekly</changefreq>
-    <priority>0.9</priority>
-  </url>
-  <url>
-    <loc>https://bangladesh-tourism.netlify.app/#division-mymensingh</loc>
-    <xhtml:link rel="alternate" hreflang="bn" href="https://bangladesh-tourism.netlify.app/?division=mymensingh&amp;lang=bn"/>
-    <xhtml:link rel="alternate" hreflang="en" href="https://bangladesh-tourism.netlify.app/?division=mymensingh&amp;lang=en"/>
-    <changefreq>weekly</changefreq>
-    <priority>0.9</priority>
-  </url>
-
-  <!-- Top Attractions -->
-  <url>
-    <loc>https://bangladesh-tourism.netlify.app/#spot-sundarbans</loc>
-    <xhtml:link rel="alternate" hreflang="bn" href="https://bangladesh-tourism.netlify.app/?spot=sundarbans&amp;lang=bn"/>
-    <xhtml:link rel="alternate" hreflang="en" href="https://bangladesh-tourism.netlify.app/?spot=sundarbans&amp;lang=en"/>
-    <changefreq>weekly</changefreq>
-    <priority>0.85</priority>
-  </url>
-  <url>
-    <loc>https://bangladesh-tourism.netlify.app/#spot-coxs_bazar_beach</loc>
-    <xhtml:link rel="alternate" hreflang="bn" href="https://bangladesh-tourism.netlify.app/?spot=coxs_bazar_beach&amp;lang=bn"/>
-    <xhtml:link rel="alternate" hreflang="en" href="https://bangladesh-tourism.netlify.app/?spot=coxs_bazar_beach&amp;lang=en"/>
-    <changefreq>weekly</changefreq>
-    <priority>0.85</priority>
-  </url>
-  <url>
-    <loc>https://bangladesh-tourism.netlify.app/#spot-sajek_valley</loc>
-    <xhtml:link rel="alternate" hreflang="bn" href="https://bangladesh-tourism.netlify.app/?spot=sajek_valley&amp;lang=bn"/>
-    <xhtml:link rel="alternate" hreflang="en" href="https://bangladesh-tourism.netlify.app/?spot=sajek_valley&amp;lang=en"/>
-    <changefreq>weekly</changefreq>
-    <priority>0.85</priority>
-  </url>
-  <url>
-    <loc>https://bangladesh-tourism.netlify.app/#spot-srimangal_tea_gardens</loc>
-    <xhtml:link rel="alternate" hreflang="bn" href="https://bangladesh-tourism.netlify.app/?spot=srimangal_tea_gardens&amp;lang=bn"/>
-    <xhtml:link rel="alternate" hreflang="en" href="https://bangladesh-tourism.netlify.app/?spot=srimangal_tea_gardens&amp;lang=en"/>
-    <changefreq>weekly</changefreq>
-    <priority>0.85</priority>
-  </url>
-  <url>
-    <loc>https://bangladesh-tourism.netlify.app/#spot-saint_martins_island</loc>
-    <xhtml:link rel="alternate" hreflang="bn" href="https://bangladesh-tourism.netlify.app/?spot=saint_martins_island&amp;lang=bn"/>
-    <xhtml:link rel="alternate" hreflang="en" href="https://bangladesh-tourism.netlify.app/?spot=saint_martins_island&amp;lang=en"/>
-    <changefreq>weekly</changefreq>
-    <priority>0.85</priority>
-  </url>
-
-  <!-- Categories & Travel Guides -->
   <url>
     <loc>https://bangladesh-tourism.netlify.app/categories/</loc>
     <xhtml:link rel="alternate" hreflang="bn" href="https://bangladesh-tourism.netlify.app/categories/?lang=bn"/>
@@ -149,8 +51,100 @@
     <xhtml:link rel="alternate" hreflang="bn" href="https://bangladesh-tourism.netlify.app/search/?lang=bn"/>
     <xhtml:link rel="alternate" hreflang="en" href="https://bangladesh-tourism.netlify.app/search/?lang=en"/>
     <changefreq>weekly</changefreq>
-    <priority>0.85</priority>
+    <priority>0.8</priority>
   </url>
+
+  <!-- 8 Official Administrative Divisions -->
+  <url>
+    <loc>https://bangladesh-tourism.netlify.app/divisions/dhaka/</loc>
+    <xhtml:link rel="alternate" hreflang="bn" href="https://bangladesh-tourism.netlify.app/divisions/dhaka/?lang=bn"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://bangladesh-tourism.netlify.app/divisions/dhaka/?lang=en"/>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://bangladesh-tourism.netlify.app/divisions/chattogram/</loc>
+    <xhtml:link rel="alternate" hreflang="bn" href="https://bangladesh-tourism.netlify.app/divisions/chattogram/?lang=bn"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://bangladesh-tourism.netlify.app/divisions/chattogram/?lang=en"/>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://bangladesh-tourism.netlify.app/divisions/sylhet/</loc>
+    <xhtml:link rel="alternate" hreflang="bn" href="https://bangladesh-tourism.netlify.app/divisions/sylhet/?lang=bn"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://bangladesh-tourism.netlify.app/divisions/sylhet/?lang=en"/>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://bangladesh-tourism.netlify.app/divisions/khulna/</loc>
+    <xhtml:link rel="alternate" hreflang="bn" href="https://bangladesh-tourism.netlify.app/divisions/khulna/?lang=bn"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://bangladesh-tourism.netlify.app/divisions/khulna/?lang=en"/>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://bangladesh-tourism.netlify.app/divisions/rajshahi/</loc>
+    <xhtml:link rel="alternate" hreflang="bn" href="https://bangladesh-tourism.netlify.app/divisions/rajshahi/?lang=bn"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://bangladesh-tourism.netlify.app/divisions/rajshahi/?lang=en"/>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://bangladesh-tourism.netlify.app/divisions/barishal/</loc>
+    <xhtml:link rel="alternate" hreflang="bn" href="https://bangladesh-tourism.netlify.app/divisions/barishal/?lang=bn"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://bangladesh-tourism.netlify.app/divisions/barishal/?lang=en"/>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://bangladesh-tourism.netlify.app/divisions/rangpur/</loc>
+    <xhtml:link rel="alternate" hreflang="bn" href="https://bangladesh-tourism.netlify.app/divisions/rangpur/?lang=bn"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://bangladesh-tourism.netlify.app/divisions/rangpur/?lang=en"/>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://bangladesh-tourism.netlify.app/divisions/mymensingh/</loc>
+    <xhtml:link rel="alternate" hreflang="bn" href="https://bangladesh-tourism.netlify.app/divisions/mymensingh/?lang=bn"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://bangladesh-tourism.netlify.app/divisions/mymensingh/?lang=en"/>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+
+  <!-- 12 Tourism Categories -->
+  <url><loc>https://bangladesh-tourism.netlify.app/categories/beaches/</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://bangladesh-tourism.netlify.app/categories/hills-and-mountains/</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://bangladesh-tourism.netlify.app/categories/waterfalls/</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://bangladesh-tourism.netlify.app/categories/forests/</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://bangladesh-tourism.netlify.app/categories/historical-places/</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://bangladesh-tourism.netlify.app/categories/archaeological-sites/</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://bangladesh-tourism.netlify.app/categories/religious-places/</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://bangladesh-tourism.netlify.app/categories/lakes/</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://bangladesh-tourism.netlify.app/categories/islands/</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://bangladesh-tourism.netlify.app/categories/parks/</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://bangladesh-tourism.netlify.app/categories/wildlife/</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://bangladesh-tourism.netlify.app/categories/rivers/</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
+
+  <!-- Verified Tourist Destinations -->
+  <url><loc>https://bangladesh-tourism.netlify.app/places/madhabkunda-waterfall/</loc><changefreq>weekly</changefreq><priority>0.85</priority></url>
+  <url><loc>https://bangladesh-tourism.netlify.app/places/sundarbans-mangrove-forest/</loc><changefreq>weekly</changefreq><priority>0.85</priority></url>
+  <url><loc>https://bangladesh-tourism.netlify.app/places/coxs-bazar-sea-beach/</loc><changefreq>weekly</changefreq><priority>0.85</priority></url>
+  <url><loc>https://bangladesh-tourism.netlify.app/places/sajek-valley/</loc><changefreq>weekly</changefreq><priority>0.85</priority></url>
+  <url><loc>https://bangladesh-tourism.netlify.app/places/sreemangal-tea-lawachara/</loc><changefreq>weekly</changefreq><priority>0.85</priority></url>
+  <url><loc>https://bangladesh-tourism.netlify.app/places/saint-martins-island/</loc><changefreq>weekly</changefreq><priority>0.85</priority></url>
+  <url><loc>https://bangladesh-tourism.netlify.app/places/ratargul-swamp-forest/</loc><changefreq>weekly</changefreq><priority>0.85</priority></url>
+  <url><loc>https://bangladesh-tourism.netlify.app/places/somapura-mahavihara-paharpur/</loc><changefreq>weekly</changefreq><priority>0.85</priority></url>
+  <url><loc>https://bangladesh-tourism.netlify.app/places/sixty-dome-mosque-bagerhat/</loc><changefreq>weekly</changefreq><priority>0.85</priority></url>
+  <url><loc>https://bangladesh-tourism.netlify.app/places/kuakata-sea-beach/</loc><changefreq>weekly</changefreq><priority>0.85</priority></url>
+  <url><loc>https://bangladesh-tourism.netlify.app/places/lalbagh-fort-ahsan-manzil/</loc><changefreq>weekly</changefreq><priority>0.85</priority></url>
+  <url><loc>https://bangladesh-tourism.netlify.app/places/tanguar-haor-shimul-bagan/</loc><changefreq>weekly</changefreq><priority>0.85</priority></url>
+  <url><loc>https://bangladesh-tourism.netlify.app/places/birishiri-ceramic-hills-someshwari/</loc><changefreq>weekly</changefreq><priority>0.85</priority></url>
+
+  <!-- Featured Travel Guides -->
+  <url><loc>https://bangladesh-tourism.netlify.app/travel-guides/ultimate-guide-sundarbans-safari/</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://bangladesh-tourism.netlify.app/travel-guides/7-days-bangladesh-golden-itinerary/</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://bangladesh-tourism.netlify.app/travel-guides/culinary-map-64-districts-food/</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
 
   <!-- Static Information & Legal Pages -->
   <url>

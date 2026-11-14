@@ -7,6 +7,7 @@
     <!-- SEO & Metadata -->
     <title>অপরূপ বাংলাদেশ | Beautiful Bangladesh - Official Tourism Portal</title>
     <meta name="description" content="Discover Bangladesh's 8 administrative divisions, 64 districts, natural wonders, UNESCO World Heritage sites, and curated travel itineraries in Bengali and English." />
+    <meta name="theme-color" content="#123C32" />
     <link rel="canonical" href="https://bangladesh-tourism.netlify.app/" />
     <link rel="alternate" hreflang="bn" href="https://bangladesh-tourism.netlify.app/?lang=bn" />
     <link rel="alternate" hreflang="en" href="https://bangladesh-tourism.netlify.app/?lang=en" />
@@ -14,6 +15,10 @@
 
     <!-- Open Graph / Facebook -->
     <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="অপরূপ বাংলাদেশ | Beautiful Bangladesh" />
+    <meta property="og:locale" content="bn_BD" />
+    <meta property="og:locale:alternate" content="en_US" />
+    <meta property="og:url" content="https://bangladesh-tourism.netlify.app/" />
     <meta property="og:title" content="অপরূপ বাংলাদেশ - Official Tourism Portal of Bangladesh" />
     <meta property="og:description" content="Explore all 8 divisions, 64 districts, Sundarbans, Cox's Bazar, Sajek, and authentic travel guides in Bengali & English." />
     <meta property="og:image" content="https://images.unsplash.com/photo-1596895111956-bf1cf0599ce5?auto=format&fit=crop&w=1200&q=80" />
@@ -29,8 +34,8 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="preconnect" href="https://images.unsplash.com" crossorigin>
 
-    <!-- Google Fonts: Anek Bangla & Noto Serif Bengali (Bengali) + Inter (English) -->
-    <link href="https://fonts.googleapis.com/css2?family=Anek+Bangla:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600;700;800&family=Noto+Serif+Bengali:wght@500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Google Fonts: Anek Bangla & Noto Serif Bengali (Bengali) + Plus Jakarta Sans & JetBrains Mono -->
+    <link href="https://fonts.googleapis.com/css2?family=Anek+Bangla:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&family=Noto+Serif+Bengali:wght@500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
     <!-- Bootstrap 5 CSS & Bootstrap Icons CDN -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
@@ -40,7 +45,7 @@
     <link rel="stylesheet" href="/src/styles/custom.css">
 
     <!-- Schema.org Structured Data (JSON-LD) -->
-    <script type="application/ld+json">
+    <script type="application/ld+json" id="initial-site-schema">
     {
       "@context": "https://schema.org",
       "@graph": [
@@ -54,7 +59,7 @@
           "inLanguage": ["bn", "en"],
           "potentialAction": {
             "@type": "SearchAction",
-            "target": "https://bangladesh-tourism.netlify.app/?q={search_term_string}",
+            "target": "https://bangladesh-tourism.netlify.app/search/?q={search_term_string}",
             "query-input": "required name=search_term_string"
           }
         },
@@ -95,19 +100,19 @@
               "@type": "ListItem",
               "position": 2,
               "name": "Divisions",
-              "item": "https://bangladesh-tourism.netlify.app/#divisions"
+              "item": "https://bangladesh-tourism.netlify.app/divisions/"
             },
             {
               "@type": "ListItem",
               "position": 3,
               "name": "64 Districts",
-              "item": "https://bangladesh-tourism.netlify.app/#districts"
+              "item": "https://bangladesh-tourism.netlify.app/districts/"
             },
             {
               "@type": "ListItem",
               "position": 4,
               "name": "Attractions",
-              "item": "https://bangladesh-tourism.netlify.app/#spots"
+              "item": "https://bangladesh-tourism.netlify.app/places/"
             }
           ]
         }

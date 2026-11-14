@@ -24,7 +24,7 @@ export const CORE_PAGES: PageMetadata[] = [
   { id: 'terms', titleBn: 'ব্যবহারের শর্তাবলী', titleEn: 'Terms & Conditions', slug: '/terms-and-conditions/' },
   { id: 'planner', titleBn: 'ট্যুর প্ল্যানার', titleEn: 'Trip Planner', slug: '#planner' },
   { id: 'saved', titleBn: 'পছন্দের তালিকা', titleEn: 'Saved Places', slug: '#saved' },
-  { id: 'admin', titleBn: 'সিএমএস অ্যাডমিন', titleEn: 'Admin CMS', slug: '#cms' }
+  { id: 'admin', titleBn: 'অ্যাডমিন ড্যাশবোর্ড', titleEn: 'Admin Dashboard', slug: '/admin/dashboard/' }
 ];
 
 export * from './DivisionsPage';
@@ -38,3 +38,4 @@ export * from './TravelGuidesPage';
 export * from './ArticleDetailsPage';
 export * from './SearchPage';
 export * from './StaticInfoPages';
+export * from './AdminLoginPage';

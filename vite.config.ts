@@ -21,5 +21,31 @@ export default defineConfig(() => {
       // Disable file watching when DISABLE_HMR is true to save CPU during agent edits.
       watch: process.env.DISABLE_HMR === 'true' ? null : {},
     },
+    build: {
+      rollupOptions: {
+        output: {
+          manualChunks(id) {
+            if (id.includes('node_modules/firebase/firestore') || id.includes('node_modules/@firebase/firestore')) {
+              return 'vendor-firestore';
+            }
+            if (
+              id.includes('node_modules/firebase/auth') ||
+              id.includes('node_modules/@firebase/auth') ||
+              id.includes('node_modules/firebase/storage') ||
+              id.includes('node_modules/@firebase/storage')
+            ) {
+              return 'vendor-firebase-admin';
+            }
+            if (id.includes('node_modules/firebase') || id.includes('node_modules/@firebase')) {
+              return 'vendor-firebase-core';
+            }
+            if (id.includes('/src/data/bangladeshData')) {
+              return 'bangladesh-data';
+            }
+            return undefined;
+          },
+        },
+      },
+    },
   };
 });

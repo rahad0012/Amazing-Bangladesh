@@ -28,11 +28,244 @@ const PORT = Number(process.env.PORT) || 3000;
 const HOST = '0.0.0.0';
 const RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000;
 const RATE_LIMIT_MAX_REQUESTS = 10;
+const ADMIN_VERIFY_MAX_REQUESTS = 120;
+const MAX_RATE_LIMIT_KEYS = 2000;
 
 const rateLimitMap = new Map<string, number[]>();
+const adminRateLimitMap = new Map<string, number[]>();
 const recentContactQueue: StoredContactRecord[] = [];
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+
+const GOOGLE_SECURE_TOKEN_CERTS_URL =
+  'https://www.googleapis.com/robot/v1/metadata/x509/securetoken@system.gserviceaccount.com';
+
+interface PublicFirebaseServerConfig {
+  projectId: string;
+  firestoreDatabaseId: string;
+}
+
+function loadPublicFirebaseConfig(): PublicFirebaseServerConfig {
+  let projectId = (process.env.VITE_FIREBASE_PROJECT_ID || '').trim();
+  let firestoreDatabaseId = '(default)';
+
+  try {
+    const configPath = path.resolve(process.cwd(), 'firebase-applet-config.json');
+    if (fs.existsSync(configPath)) {
+      const parsed = JSON.parse(fs.readFileSync(configPath, 'utf8')) as {
+        projectId?: string;
+        firestoreDatabaseId?: string;
+      };
+      if (parsed.projectId) projectId = parsed.projectId.trim();
+      if (parsed.firestoreDatabaseId) firestoreDatabaseId = parsed.firestoreDatabaseId.trim();
+    }
+  } catch (err) {
+    console.warn('[auth] Could not parse firebase-applet-config.json:', err instanceof Error ? err.message : err);
+  }
+
+  return { projectId, firestoreDatabaseId };
+}
+
+const PUBLIC_FIREBASE_CONFIG = loadPublicFirebaseConfig();
+
+const BOOTSTRAPPED_ADMIN_EMAILS = new Set<string>([
+  'mdrahad0529@gmail.com',
+  'bluesky90987@gmail.com',
+  ...(process.env.ADMIN_EMAILS || '')
+    .split(',')
+    .map(e => e.trim().toLowerCase())
+    .filter(Boolean)
+]);
+
+let cachedGoogleCerts: { certs: Record<string, string>; expiresAt: number } = {
+  certs: {},
+  expiresAt: 0
+};
+
+async function getGooglePublicCerts(forceRefresh: boolean = false): Promise<Record<string, string>> {
+  const now = Date.now();
+  if (!forceRefresh && Object.keys(cachedGoogleCerts.certs).length > 0 && now < cachedGoogleCerts.expiresAt) {
+    return cachedGoogleCerts.certs;
+  }
+
+  const resp = await fetch(GOOGLE_SECURE_TOKEN_CERTS_URL, {
+    method: 'GET',
+    signal: AbortSignal.timeout(8000)
+  });
+
+  if (!resp.ok) {
+    throw new Error(`Unable to fetch Google public certificates (${resp.status})`);
+  }
+
+  const certs = (await resp.json()) as Record<string, string>;
+  const cacheControl = resp.headers.get('cache-control') || '';
+  const maxAgeMatch = cacheControl.match(/max-age=(\d+)/i);
+  const maxAgeSeconds = maxAgeMatch ? Math.max(60, parseInt(maxAgeMatch[1], 10)) : 3600;
+
+  cachedGoogleCerts = {
+    certs,
+    expiresAt: now + maxAgeSeconds * 1000
+  };
+  return certs;
+}
+
+interface VerifiedFirebaseTokenPayload {
+  aud: string;
+  iss: string;
+  sub: string;
+  exp: number;
+  iat: number;
+  auth_time: number;
+  email?: string;
+  email_verified?: boolean;
+  admin?: unknown;
+  isAdmin?: unknown;
+  role?: unknown;
+  [key: string]: unknown;
+}
+
+class TokenVerificationError extends Error {
+  status: number;
+  code: string;
+  constructor(status: number, code: string, message: string) {
+    super(message);
+    this.status = status;
+    this.code = code;
+  }
+}
+
+async function verifyFirebaseIdToken(idToken: string): Promise<VerifiedFirebaseTokenPayload> {
+  if (!PUBLIC_FIREBASE_CONFIG.projectId) {
+    throw new TokenVerificationError(500, 'SERVER_MISCONFIGURED', 'Firebase project ID is not configured.');
+  }
+
+  const parts = idToken.split('.');
+  if (parts.length !== 3) {
+    throw new TokenVerificationError(401, 'INVALID_TOKEN', 'Malformed authentication token.');
+  }
+
+  const [encodedHeader, encodedPayload, encodedSignature] = parts;
+  let header: { alg?: string; kid?: string };
+  let payload: VerifiedFirebaseTokenPayload;
+
+  try {
+    header = JSON.parse(Buffer.from(encodedHeader, 'base64url').toString('utf8'));
+    payload = JSON.parse(Buffer.from(encodedPayload, 'base64url').toString('utf8'));
+  } catch {
+    throw new TokenVerificationError(401, 'INVALID_TOKEN', 'Unable to decode authentication token.');
+  }
+
+  if (header.alg !== 'RS256' || typeof header.kid !== 'string' || !header.kid) {
+    throw new TokenVerificationError(401, 'INVALID_TOKEN', 'Unsupported token algorithm or key ID.');
+  }
+
+  let certs = await getGooglePublicCerts(false);
+  let certPem = certs[header.kid];
+  if (!certPem) {
+    certs = await getGooglePublicCerts(true);
+    certPem = certs[header.kid];
+  }
+  if (!certPem) {
+    throw new TokenVerificationError(401, 'INVALID_TOKEN', 'Unrecognized token signing certificate.');
+  }
+
+  const verifier = crypto.createVerify('RSA-SHA256');
+  verifier.update(`${encodedHeader}.${encodedPayload}`);
+  verifier.end();
+
+  const signatureValid = verifier.verify(certPem, Buffer.from(encodedSignature, 'base64url'));
+  if (!signatureValid) {
+    throw new TokenVerificationError(401, 'INVALID_TOKEN', 'Invalid token signature.');
+  }
+
+  const nowSec = Math.floor(Date.now() / 1000);
+  const expectedIssuer = `https://securetoken.google.com/${PUBLIC_FIREBASE_CONFIG.projectId}`;
+
+  if (payload.aud !== PUBLIC_FIREBASE_CONFIG.projectId || payload.iss !== expectedIssuer) {
+    throw new TokenVerificationError(401, 'INVALID_TOKEN', 'Token audience or issuer mismatch.');
+  }
+
+  if (typeof payload.sub !== 'string' || !payload.sub || payload.sub.length > 128) {
+    throw new TokenVerificationError(401, 'INVALID_TOKEN', 'Token subject is invalid.');
+  }
+
+  if (typeof payload.exp !== 'number' || payload.exp <= nowSec) {
+    throw new TokenVerificationError(401, 'SESSION_EXPIRED', 'Your administrator session has expired. Please sign in again.');
+  }
+
+  if (typeof payload.iat !== 'number' || payload.iat > nowSec + 60) {
+    throw new TokenVerificationError(401, 'INVALID_TOKEN', 'Token issued-at timestamp is invalid.');
+  }
+
+  if (typeof payload.auth_time !== 'number' || payload.auth_time > nowSec + 60) {
+    throw new TokenVerificationError(401, 'INVALID_TOKEN', 'Token authentication timestamp is invalid.');
+  }
+
+  return payload;
+}
+
+async function checkFirestoreAdminDocument(uid: string, idToken: string): Promise<boolean> {
+  if (!/^[a-zA-Z0-9_-]{1,128}$/.test(uid)) return false;
+
+  const projectId = encodeURIComponent(PUBLIC_FIREBASE_CONFIG.projectId);
+  const databaseId = encodeURIComponent(PUBLIC_FIREBASE_CONFIG.firestoreDatabaseId || '(default)');
+  const docId = encodeURIComponent(uid);
+  const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/${databaseId}/documents/admins/${docId}`;
+
+  try {
+    const resp = await fetch(url, {
+      method: 'GET',
+      headers: {
+        Authorization: `Bearer ${idToken}`
+      },
+      signal: AbortSignal.timeout(6000)
+    });
+
+    if (!resp.ok) {
+      return false;
+    }
+
+    const docData = (await resp.json()) as {
+      fields?: {
+        role?: { stringValue?: string };
+      };
+    };
+
+    const role = (docData.fields?.role?.stringValue || 'admin').toLowerCase();
+    return role === 'admin' || role === 'super_admin' || role === 'editor';
+  } catch {
+    return false;
+  }
+}
+
+async function resolveAdminAuthorization(
+  idToken: string,
+  payload: VerifiedFirebaseTokenPayload
+): Promise<{ authorized: true; authSource: 'custom_claim' | 'firestore_admin_doc' | 'verified_admin_email' } | { authorized: false }> {
+  // 1. Firebase Custom Claims (cryptographically signed by Firebase Auth)
+  if (
+    payload.admin === true ||
+    payload.isAdmin === true ||
+    payload.role === 'admin' ||
+    payload.role === 'super_admin'
+  ) {
+    return { authorized: true, authSource: 'custom_claim' };
+  }
+
+  // 2. Trusted Firestore admins/{uid} lookup via Firestore REST API using caller's verified ID token
+  const hasFirestoreDoc = await checkFirestoreAdminDocument(payload.sub, idToken);
+  if (hasFirestoreDoc) {
+    return { authorized: true, authSource: 'firestore_admin_doc' };
+  }
+
+  // 3. Trusted server-side verified admin email allowlist (requires email_verified === true)
+  const email = typeof payload.email === 'string' ? payload.email.trim().toLowerCase() : '';
+  if (email && payload.email_verified === true && BOOTSTRAPPED_ADMIN_EMAILS.has(email)) {
+    return { authorized: true, authSource: 'verified_admin_email' };
+  }
+
+  return { authorized: false };
+}
 
 function getClientIp(req: Request): string {
   const forwarded = req.headers['x-forwarded-for'];
@@ -42,15 +275,38 @@ function getClientIp(req: Request): string {
   return req.socket?.remoteAddress || 'unknown';
 }
 
-function isRateLimited(ip: string): boolean {
+function pruneRateLimitStore(store: Map<string, number[]>, now: number): void {
+  for (const [key, timestamps] of store.entries()) {
+    const active = timestamps.filter(ts => now - ts < RATE_LIMIT_WINDOW_MS);
+    if (active.length === 0) {
+      store.delete(key);
+    } else if (active.length !== timestamps.length) {
+      store.set(key, active);
+    }
+  }
+  if (store.size > MAX_RATE_LIMIT_KEYS) {
+    const excess = store.size - MAX_RATE_LIMIT_KEYS;
+    let removed = 0;
+    for (const key of store.keys()) {
+      store.delete(key);
+      removed += 1;
+      if (removed >= excess) break;
+    }
+  }
+}
+
+function isRateLimited(ip: string, store: Map<string, number[]> = rateLimitMap, max: number = RATE_LIMIT_MAX_REQUESTS): boolean {
   const now = Date.now();
-  const history = (rateLimitMap.get(ip) || []).filter(ts => now - ts < RATE_LIMIT_WINDOW_MS);
-  if (history.length >= RATE_LIMIT_MAX_REQUESTS) {
-    rateLimitMap.set(ip, history);
+  if (store.size > 500) {
+    pruneRateLimitStore(store, now);
+  }
+  const history = (store.get(ip) || []).filter(ts => now - ts < RATE_LIMIT_WINDOW_MS);
+  if (history.length >= max) {
+    store.set(ip, history);
     return true;
   }
   history.push(now);
-  rateLimitMap.set(ip, history);
+  store.set(ip, history);
   return false;
 }
 
@@ -141,13 +397,128 @@ async function forwardContactSubmission(record: StoredContactRecord): Promise<'w
   return 'recorded';
 }
 
+function resolveRequestBaseUrl(req: Request): string {
+  const configured = (process.env.PUBLIC_SITE_URL || '').trim().replace(/\/+$/, '');
+  if (configured) return configured;
+  const protoHeader = req.headers['x-forwarded-proto'];
+  const proto = typeof protoHeader === 'string' && protoHeader ? protoHeader.split(',')[0].trim() : req.protocol || 'https';
+  const host = req.get('host') || `localhost:${PORT}`;
+  return `${proto}://${host}`;
+}
+
 async function createServer(): Promise<void> {
   const app = express();
   app.disable('x-powered-by');
   app.use(express.json({ limit: '64kb' }));
 
+  // Baseline security headers (preserve iframe embeddability for preview hosts)
+  app.use((req: Request, res: Response, next) => {
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+    res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+    res.setHeader('X-DNS-Prefetch-Control', 'off');
+    if (req.path.startsWith('/admin') || req.path.startsWith('/api')) {
+      res.setHeader('X-Robots-Tag', 'noindex, nofollow');
+    }
+    next();
+  });
+
+  app.get('/robots.txt', (req: Request, res: Response) => {
+    const baseUrl = resolveRequestBaseUrl(req);
+    res.type('text/plain; charset=utf-8').send(
+      `User-agent: *\nAllow: /\nDisallow: /admin/\nDisallow: /api/\n\nSitemap: ${baseUrl}/sitemap.xml\n`
+    );
+  });
+
+  app.get('/sitemap.xml', (req: Request, res: Response) => {
+    const baseUrl = resolveRequestBaseUrl(req);
+    const sitemapFile = path.resolve(process.cwd(), 'public', 'sitemap.xml');
+    if (fs.existsSync(sitemapFile)) {
+      const xml = fs
+        .readFileSync(sitemapFile, 'utf8')
+        .replaceAll('https://bangladesh-tourism.netlify.app', baseUrl);
+      res.type('application/xml; charset=utf-8').send(xml);
+      return;
+    }
+    res.status(404).send('Sitemap not found');
+  });
+
   app.get('/api/health', (_req: Request, res: Response) => {
     res.json({ ok: true, service: 'beautiful-bangladesh-portal' });
+  });
+
+  app.post('/api/admin/verify', async (req: Request, res: Response) => {
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+    res.setHeader('Pragma', 'no-cache');
+
+    const clientIp = getClientIp(req);
+    if (isRateLimited(clientIp, adminRateLimitMap, ADMIN_VERIFY_MAX_REQUESTS)) {
+      res.status(429).json({
+        authorized: false,
+        code: 'RATE_LIMITED',
+        message: 'Too many authentication verification requests. Please wait a moment and try again.'
+      });
+      return;
+    }
+
+    const authHeader = req.headers.authorization || '';
+    const tokenMatch = authHeader.match(/^Bearer\s+(.+)$/i);
+    const idToken = tokenMatch?.[1]?.trim() || '';
+
+    if (!idToken) {
+      res.status(401).json({
+        authorized: false,
+        code: 'UNAUTHENTICATED',
+        message: 'Missing administrator authentication token.'
+      });
+      return;
+    }
+
+    try {
+      const payload = await verifyFirebaseIdToken(idToken);
+      const authResult = await resolveAdminAuthorization(idToken, payload);
+
+      if (!authResult.authorized) {
+        res.status(403).json({
+          authorized: false,
+          code: 'NOT_AUTHORIZED',
+          message: 'Access denied. This account does not have administrator privileges.'
+        });
+        return;
+      }
+
+      res.status(200).json({
+        authorized: true,
+        uid: payload.sub,
+        email: typeof payload.email === 'string' ? payload.email : null,
+        emailVerified: payload.email_verified === true,
+        role: 'admin',
+        authSource: authResult.authSource,
+        expiresAt: payload.exp * 1000,
+        verifiedAt: Date.now()
+      });
+    } catch (err) {
+      if (err instanceof TokenVerificationError) {
+        res.status(err.status).json({
+          authorized: false,
+          code: err.code,
+          message: err.message
+        });
+        return;
+      }
+      console.error('[admin-verify] Unexpected verification failure:', err instanceof Error ? err.message : err);
+      res.status(503).json({
+        authorized: false,
+        code: 'VERIFICATION_UNAVAILABLE',
+        message: 'Unable to verify administrator credentials right now. Please try again.'
+      });
+    }
+  });
+
+  app.post('/api/admin/logout', (_req: Request, res: Response) => {
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+    res.setHeader('Pragma', 'no-cache');
+    res.status(200).json({ success: true });
   });
 
   app.post('/api/contact', async (req: Request, res: Response) => {

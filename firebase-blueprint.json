@@ -163,7 +163,8 @@
         "alt_bn": { "type": "string" },
         "file_size": { "type": "number" },
         "mime_type": { "type": "string" },
-        "uploaded_at": { "type": "string" }
+        "uploaded_at": { "type": "string" },
+        "updated_at": { "type": "string" }
       },
       "required": ["id", "url", "file_name"]
     },
@@ -181,15 +182,29 @@
     },
     "SiteSettings": {
       "title": "SiteSettings",
-      "description": "Global settings and editable legal documentation for the Bangladesh Tourism portal",
+      "description": "Global SEO, website configuration, and editable legal documentation for the Bangladesh Tourism portal",
       "type": "object",
       "properties": {
+        "id": { "type": "string" },
         "site_title_en": { "type": "string" },
         "site_title_bn": { "type": "string" },
         "hero_heading_en": { "type": "string" },
         "hero_heading_bn": { "type": "string" },
         "hero_subtitle_en": { "type": "string" },
         "hero_subtitle_bn": { "type": "string" },
+        "default_language": { "type": "string" },
+        "maintenance_mode": { "type": "boolean" },
+        "tourist_helpline": { "type": "string" },
+        "default_title_en": { "type": "string" },
+        "default_title_bn": { "type": "string" },
+        "title_suffix_en": { "type": "string" },
+        "title_suffix_bn": { "type": "string" },
+        "meta_description_en": { "type": "string" },
+        "meta_description_bn": { "type": "string" },
+        "canonical_base_url": { "type": "string" },
+        "og_image_url": { "type": "string" },
+        "robots_index": { "type": "string" },
+        "twitter_handle": { "type": "string" },
         "featured_spots_ids": { "type": "array" },
         "privacy_title_en": { "type": "string" },
         "privacy_title_bn": { "type": "string" },
@@ -206,8 +221,26 @@
         "terms_reviewed_by": { "type": "string" },
         "terms_reviewed_at": { "type": "string" },
         "contact_email": { "type": "string" },
-        "updated_at": { "type": "string" }
+        "updated_at": { "type": "string" },
+        "updated_by": { "type": "string" }
       }
+    },
+    "AdminAuditLog": {
+      "title": "AdminAuditLog",
+      "description": "Immutable administrative activity audit record",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "action": { "type": "string" },
+        "entity_type": { "type": "string" },
+        "entity_id": { "type": "string" },
+        "entity_title": { "type": "string" },
+        "actor_uid": { "type": "string" },
+        "actor_email": { "type": "string" },
+        "details": { "type": "string" },
+        "timestamp": { "type": "string" }
+      },
+      "required": ["id", "action", "entity_type", "entity_id", "entity_title", "actor_uid", "actor_email", "timestamp"]
     },
     "NewsletterSubscriber": {
       "title": "NewsletterSubscriber",
@@ -253,7 +286,11 @@
     },
     "/site_settings/{settingId}": {
       "schema": { "$ref": "#/entities/SiteSettings" },
-      "description": "Global website configuration"
+      "description": "Global website, SEO, and legal configuration"
+    },
+    "/admin_audit_logs/{logId}": {
+      "schema": { "$ref": "#/entities/AdminAuditLog" },
+      "description": "Immutable administrative activity log"
     },
     "/newsletter_subscribers/{subId}": {
       "schema": { "$ref": "#/entities/NewsletterSubscriber" },

@@ -36,9 +36,9 @@ export function renderEmptyState(options: {
       <div class="mb-3 text-secondary" style="font-size: 3.5rem;">
         <i class="bi ${icon}"></i>
       </div>
-      <h4 class="fw-bold text-primary-bd mb-2">
+      <h3 class="h4 fw-bold text-primary-bd mb-2">
         ${escapeHtml(isBn ? options.titleBn : options.titleEn)}
-      </h4>
+      </h3>
       <p class="text-muted mx-auto mb-4" style="max-width: 480px;">
         ${escapeHtml(isBn ? options.descBn : options.descEn)}
       </p>
@@ -66,7 +66,7 @@ export function renderErrorState(options: {
       <div class="d-flex align-items-center gap-3">
         <i class="bi bi-exclamation-triangle-fill fs-3"></i>
         <div class="flex-grow-1">
-          <h5 class="fw-bold mb-1">${escapeHtml(options.title || defaultTitle)}</h5>
+          <h3 class="h5 fw-bold mb-1">${escapeHtml(options.title || defaultTitle)}</h3>
           <p class="small mb-0 text-dark">${escapeHtml(options.message)}</p>
         </div>
         ${options.retryActionId ? `
@@ -101,7 +101,7 @@ export function showToastNotification(message: string, type: 'success' | 'error'
   toastEl.innerHTML = `
     <div class="d-flex p-3">
       <div class="toast-body d-flex align-items-center gap-2 font-medium">
-        <i class="bi ${iconClass} fs-5"></i>
+        <i class="bi ${iconClass} fs-5" aria-hidden="true"></i>
         <span>${escapeHtml(message)}</span>
       </div>
       <button type="button" class="btn-close ${type === 'warning' ? '' : 'btn-close-white'} me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
@@ -117,6 +117,10 @@ export function showToastNotification(message: string, type: 'success' | 'error'
   } else {
     setTimeout(() => toastEl.remove(), 4000);
   }
+}
+
+export function showToast(message: string, type: 'success' | 'error' | 'warning' = 'success'): void {
+  showToastNotification(message, type);
 }
 
 export function renderCardSkeleton(count: number = 3, colClass: string = 'col-lg-4 col-md-6 mb-4'): string {

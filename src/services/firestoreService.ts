@@ -16,8 +16,26 @@ import {
   orderBy, 
   Timestamp 
 } from 'firebase/firestore';
-import { db } from '../config/firebaseConfig';
-import { handleFirestoreError, OperationType } from '../firebase';
+import { db } from '../config/firebaseDb';
+
+enum OperationType {
+  CREATE = 'create',
+  UPDATE = 'update',
+  DELETE = 'delete',
+  LIST = 'list',
+  GET = 'get',
+  WRITE = 'write',
+}
+
+function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null): never {
+  const errInfo = {
+    error: error instanceof Error ? error.message : String(error),
+    operationType,
+    path,
+  };
+  console.error('Firestore Error: ', JSON.stringify(errInfo));
+  throw new Error(JSON.stringify(errInfo));
+}
 import { 
   CATEGORIES,
   type Division, 
@@ -97,6 +115,47 @@ export function normalizeFirestoreDivisions(items: Division[]): Division[] {
 }
 
 export class FirestoreService {
+  private static readonly CACHE_TTL_MS = 120_000;
+  private static readonly readCache = new Map<string, { value: unknown; expiresAt: number }>();
+  private static readonly inFlight = new Map<string, Promise<unknown>>();
+
+  static invalidateCache(keyPrefix?: string): void {
+    if (!keyPrefix) {
+      FirestoreService.readCache.clear();
+      return;
+    }
+    for (const key of FirestoreService.readCache.keys()) {
+      if (key.startsWith(keyPrefix)) {
+        FirestoreService.readCache.delete(key);
+      }
+    }
+  }
+
+  private static async cachedFetch<R>(cacheKey: string, fetcher: () => Promise<R>): Promise<R> {
+    const now = Date.now();
+    const hit = FirestoreService.readCache.get(cacheKey);
+    if (hit && hit.expiresAt > now) {
+      return hit.value as R;
+    }
+    const existingFlight = FirestoreService.inFlight.get(cacheKey);
+    if (existingFlight) {
+      return existingFlight as Promise<R>;
+    }
+    const task = fetcher()
+      .then(result => {
+        FirestoreService.readCache.set(cacheKey, {
+          value: result,
+          expiresAt: Date.now() + FirestoreService.CACHE_TTL_MS
+        });
+        return result;
+      })
+      .finally(() => {
+        FirestoreService.inFlight.delete(cacheKey);
+      });
+    FirestoreService.inFlight.set(cacheKey, task);
+    return task;
+  }
+
   /**
    * Fetch all documents from a collection with optional published filter
    */
@@ -104,28 +163,31 @@ export class FirestoreService {
     collectionName: string, 
     publishedOnly: boolean = false
   ): Promise<T[]> {
-    try {
-      const colRef = collection(db, collectionName);
-      let q = query(colRef);
-      if (publishedOnly) {
-        q = query(colRef, where('is_published', '==', true));
+    const cacheKey = `col:${collectionName}:${publishedOnly ? 'pub' : 'all'}`;
+    return FirestoreService.cachedFetch<T[]>(cacheKey, async () => {
+      try {
+        const colRef = collection(db, collectionName);
+        let q = query(colRef);
+        if (publishedOnly) {
+          q = query(colRef, where('is_published', '==', true));
+        }
+        const snapshot = await getDocs(q);
+        const items: T[] = [];
+        snapshot.forEach(docSnap => {
+          items.push({ id: docSnap.id, ...docSnap.data() } as T);
+        });
+        return items;
+      } catch (error: any) {
+        if (
+          error?.code === 'permission-denied' ||
+          (error instanceof Error && error.message.includes('Missing or insufficient permissions'))
+        ) {
+          handleFirestoreError(error, OperationType.LIST, collectionName);
+        }
+        console.warn(`Firestore read failed for ${collectionName}:`, error?.message || error);
+        throw error;
       }
-      const snapshot = await getDocs(q);
-      const items: T[] = [];
-      snapshot.forEach(docSnap => {
-        items.push({ id: docSnap.id, ...docSnap.data() } as T);
-      });
-      return items;
-    } catch (error: any) {
-      if (
-        error?.code === 'permission-denied' ||
-        (error instanceof Error && error.message.includes('Missing or insufficient permissions'))
-      ) {
-        handleFirestoreError(error, OperationType.LIST, collectionName);
-      }
-      console.warn(`Firestore read failed for ${collectionName}:`, error?.message || error);
-      throw error;
-    }
+    });
   }
 
   /**
@@ -157,6 +219,7 @@ export class FirestoreService {
         updated_at: new Date().toISOString()
       };
       await setDoc(docRef, payload, { merge: true });
+      FirestoreService.invalidateCache();
       return { success: true };
     } catch (error: any) {
       console.error(`Error saving document to ${collectionName}:`, error);
@@ -179,6 +242,7 @@ export class FirestoreService {
     try {
       const docRef = doc(db, collectionName, id);
       await deleteDoc(docRef);
+      FirestoreService.invalidateCache();
       return { success: true };
     } catch (error: any) {
       console.error(`Error deleting document from ${collectionName}:`, error);
@@ -830,23 +894,25 @@ export class FirestoreService {
    * Fetch editable legal pages configuration from site_settings/legal_pages
    */
   static async getLegalPagesSettings(): Promise<LegalPagesConfig | null> {
-    try {
-      const docRef = doc(db, COLLECTIONS.SITE_SETTINGS, 'legal_pages');
-      const docSnap = await getDoc(docRef);
-      if (!docSnap.exists()) {
+    return FirestoreService.cachedFetch<LegalPagesConfig | null>('doc:site_settings:legal_pages', async () => {
+      try {
+        const docRef = doc(db, COLLECTIONS.SITE_SETTINGS, 'legal_pages');
+        const docSnap = await getDoc(docRef);
+        if (!docSnap.exists()) {
+          return null;
+        }
+        return normalizeLegalPagesConfig(docSnap.data() as Partial<LegalPagesConfig>);
+      } catch (error: any) {
+        if (
+          error?.code === 'permission-denied' ||
+          (error instanceof Error && error.message.includes('Missing or insufficient permissions'))
+        ) {
+          handleFirestoreError(error, OperationType.GET, `${COLLECTIONS.SITE_SETTINGS}/legal_pages`);
+        }
+        console.warn('Could not load legal pages config from Firestore:', error?.message || error);
         return null;
       }
-      return normalizeLegalPagesConfig(docSnap.data() as Partial<LegalPagesConfig>);
-    } catch (error: any) {
-      if (
-        error?.code === 'permission-denied' ||
-        (error instanceof Error && error.message.includes('Missing or insufficient permissions'))
-      ) {
-        handleFirestoreError(error, OperationType.GET, `${COLLECTIONS.SITE_SETTINGS}/legal_pages`);
-      }
-      console.warn('Could not load legal pages config from Firestore:', error?.message || error);
-      return null;
-    }
+    });
   }
 
   /**
@@ -862,6 +928,7 @@ export class FirestoreService {
     try {
       const docRef = doc(db, COLLECTIONS.SITE_SETTINGS, 'legal_pages');
       await setDoc(docRef, normalized, { merge: true });
+      FirestoreService.invalidateCache('doc:site_settings:legal_pages');
       return { success: true };
     } catch (error: any) {
       console.warn('Firestore legal pages save note:', error?.message || error);

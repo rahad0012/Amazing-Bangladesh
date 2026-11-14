@@ -13,40 +13,7 @@ import {
   type MediaItem 
 } from './data/bangladeshData';
 
-import { 
-  cmsStore, 
-  saveDivision, 
-  deleteDivision, 
-  saveDistrict, 
-  deleteDistrict, 
-  saveCategory, 
-  deleteCategory, 
-  saveTouristSpot, 
-  deleteTouristSpot, 
-  saveArticle, 
-  deleteArticle, 
-  saveMediaItem, 
-  deleteMediaItem, 
-  canWriteAdmin,
-  type CmsTab 
-} from './cms/cmsState';
-
-import { 
-  renderCmsDashboard, 
-  showToast, 
-  showConfirmModal 
-} from './cms/cmsViews';
-
-import { 
-  openDivisionFormModal, 
-  openDistrictFormModal, 
-  openCategoryFormModal, 
-  openSpotFormModal, 
-  openArticleFormModal, 
-  openMediaUploadModal,
-  openImagePreviewModal,
-  openLegalPagesModal
-} from './cms/cmsModals';
+import { cmsStore, type CmsTab } from './cms/cmsStore';
 
 import { 
   type Language, 
@@ -65,48 +32,63 @@ import {
   renderNewsletter
 } from './components';
 
+import { renderAllDivisionsPage } from './pages/DivisionsPage';
+import { renderDivisionDetailPage } from './pages/DivisionDetailsPage';
 import {
-  renderAllDivisionsPage,
-  renderDivisionDetailPage,
   renderAllDistrictsPage,
-  renderDistrictDetailPage,
+  getFilteredDistricts,
+  DISTRICTS_PER_PAGE
+} from './pages/DistrictsDirectoryPage';
+import { renderDistrictDetailPage } from './pages/DistrictDetailsPage';
+import {
   renderAllPlacesPage,
   renderPlacesResultsRegion,
+  getFilteredSpots,
+  PLACES_PER_PAGE
+} from './pages/PlacesDirectoryPage';
+import {
   renderSpotDetailPage,
+  getSpotGalleryImages
+} from './pages/SpotDetailsPage';
+import {
   renderAllCategoriesPage,
   renderCategoryDetailPage,
+  getFilteredCategorySpots,
+  CATEGORY_SPOTS_PER_PAGE
+} from './pages/CategoriesPage';
+import {
   renderTravelGuidesPage,
   renderTravelGuidesResultsRegion,
-  renderArticleDetailPage,
+  getFilteredPublishedArticles,
+  GUIDES_PER_PAGE
+} from './pages/TravelGuidesPage';
+import { renderArticleDetailPage } from './pages/ArticleDetailsPage';
+import {
   renderSearchPage,
   renderSearchResultsRegion,
   renderSearchSuggestionsDropdown,
+  SEARCH_RESULTS_PER_PAGE
+} from './pages/SearchPage';
+import {
   renderAboutPage,
   renderContactPage,
   renderPrivacyPolicyPage,
   renderTermsAndConditionsPage,
-  type ContactFormState,
-  SEARCH_RESULTS_PER_PAGE,
-  getFilteredPublishedArticles,
-  GUIDES_PER_PAGE,
-  getFilteredCategorySpots,
-  CATEGORY_SPOTS_PER_PAGE,
-  getSpotGalleryImages,
-  getFilteredDistricts,
-  getFilteredSpots,
-  DISTRICTS_PER_PAGE,
-  PLACES_PER_PAGE
-} from './pages';
+  type ContactFormState
+} from './pages/StaticInfoPages';
+import type { AdminLoginFeedback } from './pages/AdminLoginPage';
 
 import {
   FirestoreService,
   COLLECTIONS,
   CANONICAL_DIVISION_ORDER,
   normalizeFirestoreDivisions
-} from './services';
+} from './services/firestoreService';
+import type { VerifiedAdminSession } from './services/adminAuthService';
 
 import {
   parseCurrentRoute,
+  getAdminRouteForTab,
   buildSearchRouteUrl,
   navigateToPath,
   updateCanonicalAndSeo,
@@ -121,30 +103,17 @@ import {
   type SearchTypeFilter
 } from './utils/searchUtils';
 
-import { 
-  auth, 
-  db, 
-  loginWithGoogle, 
-  logoutUser, 
-  testConnection, 
-  handleFirestoreError, 
-  OperationType,
-  uploadImageFile 
-} from './firebase';
+import { escapeHtml, optimizeImageUrl } from './utils/formatUtils';
+import { showToast } from './utils/stateFeedback';
 
-import { 
-  collection, 
-  doc, 
-  setDoc, 
-  getDocs 
-} from 'firebase/firestore';
+import { type User } from 'firebase/auth';
 
-import { onAuthStateChanged, type User } from 'firebase/auth';
+export { escapeHtml, optimizeImageUrl };
 
 // Application State Interface
 interface AppState {
   lang: Language;
-  activeView: 'home' | 'divisions' | 'division-detail' | 'districts' | 'district-detail' | 'categories' | 'category-detail' | 'spots' | 'spot-detail' | 'guides' | 'guide-detail' | 'search' | 'about' | 'contact' | 'privacy-policy' | 'terms' | 'planner' | 'saved' | 'cms';
+  activeView: 'home' | 'divisions' | 'division-detail' | 'districts' | 'district-detail' | 'categories' | 'category-detail' | 'spots' | 'spot-detail' | 'guides' | 'guide-detail' | 'search' | 'about' | 'contact' | 'privacy-policy' | 'terms' | 'planner' | 'saved' | 'cms' | 'admin-login';
   divisionFilter: string;
   categoryFilter: string;
   searchQuery: string;
@@ -218,6 +187,13 @@ interface AppState {
   guideDetailArticle: Article | null;
   contactForm: ContactFormState;
   heroSlideIndex: number;
+  adminAuthStatus: 'checking' | 'authenticated' | 'unauthenticated' | 'unauthorized' | 'expired';
+  adminSession: VerifiedAdminSession | null;
+  adminLoginEmail: string;
+  adminLoginRememberSession: boolean;
+  adminLoginShowPassword: boolean;
+  adminLoginSubmitting: boolean;
+  adminLoginFeedback: AdminLoginFeedback | null;
 }
 
 interface HeroSlide {
@@ -353,7 +329,14 @@ const state: AppState = {
     errorMessage: null,
     fieldErrors: {}
   },
-  heroSlideIndex: 0
+  heroSlideIndex: 0,
+  adminAuthStatus: 'checking',
+  adminSession: null,
+  adminLoginEmail: '',
+  adminLoginRememberSession: false,
+  adminLoginShowPassword: false,
+  adminLoginSubmitting: false,
+  adminLoginFeedback: null
 };
 
 // Bootstrap modal helpers
@@ -367,33 +350,36 @@ function getBootstrapModal(id: string): any {
   return null;
 }
 
-// Escape HTML to prevent XSS in dynamic renders
-export function escapeHtml(str: string): string {
-  if (!str) return '';
-  return str
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#039;');
-}
+// Lazy-loaded Admin/CMS Runtime (keeps Firebase Auth, Storage & CRUD UI out of initial public bundle)
+type AdminRuntimeModule = typeof import('./admin/adminRuntime');
+let adminRuntime: AdminRuntimeModule | null = null;
+let adminRuntimePromise: Promise<AdminRuntimeModule> | null = null;
+let adminLifecycleSubscribed = false;
 
-// Convert image URLs to optimized WebP format with responsive parameters
-export function optimizeImageUrl(url: string, width: number = 800): string {
-  if (!url) return '';
-  if (url.includes('images.unsplash.com')) {
-    try {
-      const u = new URL(url);
-      u.searchParams.set('auto', 'format');
-      u.searchParams.set('fit', 'crop');
-      u.searchParams.set('w', String(width));
-      u.searchParams.set('q', '80');
-      return u.toString();
-    } catch {
-      return url;
-    }
+async function ensureAdminRuntime(): Promise<AdminRuntimeModule> {
+  if (adminRuntime) return adminRuntime;
+  if (!adminRuntimePromise) {
+    adminRuntimePromise = import('./admin/adminRuntime').then((mod) => {
+      adminRuntime = mod;
+      if (!adminLifecycleSubscribed) {
+        adminLifecycleSubscribed = true;
+        mod.subscribeAdminAuthLifecycle({
+          onTokenRefreshedOrSignedOut: (user) => {
+            state.currentUser = user;
+            if (!user) {
+              state.adminSession = null;
+              state.adminAuthStatus = 'unauthenticated';
+              if (state.activeView === 'cms') {
+                navigateToAdminLogin('expired', true);
+              }
+            }
+          }
+        });
+      }
+      return mod;
+    });
   }
-  return url;
+  return adminRuntimePromise;
 }
 
 // Synchronize SEO meta tags, title, canonical URLs, and structured data dynamically
@@ -409,6 +395,8 @@ export function updateDynamicSeo(pageTitle?: string, metaDesc?: string, routePat
   let resolvedTitle = pageTitle ? `${pageTitle} | ${isBn ? 'অপরূপ বাংলাদেশ' : 'Beautiful Bangladesh'}` : defaultTitle;
   let resolvedDesc = metaDesc || defaultDesc;
   let resolvedPath = routePath;
+  let resolvedOgType: 'website' | 'article' = 'website';
+  let resolvedImage: string | undefined;
 
   if (!pageTitle && state.activeView === 'divisions') {
     resolvedTitle = isBn
@@ -457,6 +445,7 @@ export function updateDynamicSeo(pageTitle?: string, metaDesc?: string, routePat
         : `${divName} Division (${div.name_bn}) - Districts & Attractions | Beautiful Bangladesh`;
       resolvedDesc = isBn ? div.description_bn : div.description_en;
       resolvedPath = `/divisions/${div.slug || div.id}/`;
+      resolvedImage = div.image_url || undefined;
 
       updateStructuredData({
         '@context': 'https://schema.org',
@@ -465,6 +454,7 @@ export function updateDynamicSeo(pageTitle?: string, metaDesc?: string, routePat
             '@type': 'TouristDestination',
             name: `${div.name_en} Division (${div.name_bn})`,
             description: resolvedDesc,
+            image: div.image_url || undefined,
             url: `${window.location.origin}/divisions/${div.slug || div.id}/`
           },
           {
@@ -539,6 +529,7 @@ export function updateDynamicSeo(pageTitle?: string, metaDesc?: string, routePat
         ? (dist.seo_description_bn || dist.description_bn)
         : (dist.seo_description_en || dist.description_en);
       resolvedPath = `/districts/${distSlug}/`;
+      resolvedImage = dist.image_url || undefined;
 
       updateStructuredData({
         '@context': 'https://schema.org',
@@ -547,6 +538,15 @@ export function updateDynamicSeo(pageTitle?: string, metaDesc?: string, routePat
             '@type': 'TouristDestination',
             name: `${dist.name_en} District (${dist.name_bn})`,
             description: resolvedDesc,
+            image: dist.image_url || undefined,
+            geo:
+              typeof dist.latitude === 'number' && typeof dist.longitude === 'number'
+                ? {
+                    '@type': 'GeoCoordinates',
+                    latitude: dist.latitude,
+                    longitude: dist.longitude
+                  }
+                : undefined,
             url: `${window.location.origin}/districts/${distSlug}/`
           },
           {
@@ -664,12 +664,7 @@ export function updateDynamicSeo(pageTitle?: string, metaDesc?: string, routePat
         item: canonicalSpotUrl
       });
 
-      const ogImage = document.querySelector('meta[property="og:image"]');
-      const twitterImage = document.querySelector('meta[name="twitter:image"]');
-      if (spot.image_url) {
-        if (ogImage) ogImage.setAttribute('content', spot.image_url);
-        if (twitterImage) twitterImage.setAttribute('content', spot.image_url);
-      }
+      resolvedImage = spot.image_url || undefined;
 
       updateStructuredData({
         '@context': 'https://schema.org',
@@ -757,12 +752,7 @@ export function updateDynamicSeo(pageTitle?: string, metaDesc?: string, routePat
       resolvedPath = `/categories/${catSlug}/`;
 
       const canonicalCatUrl = `${window.location.origin}/categories/${catSlug}/`;
-      const ogImage = document.querySelector('meta[property="og:image"]');
-      const twitterImage = document.querySelector('meta[name="twitter:image"]');
-      if (cat.image_url) {
-        if (ogImage) ogImage.setAttribute('content', cat.image_url);
-        if (twitterImage) twitterImage.setAttribute('content', cat.image_url);
-      }
+      resolvedImage = cat.image_url || undefined;
 
       updateStructuredData({
         '@context': 'https://schema.org',
@@ -831,7 +821,7 @@ export function updateDynamicSeo(pageTitle?: string, metaDesc?: string, routePat
             '@type': 'ListItem',
             position: idx + 1,
             name: isBn ? `${art.title_bn} (${art.title_en})` : `${art.title_en} (${art.title_bn})`,
-            url: `${window.location.origin}/travel-guides/`
+            url: `${window.location.origin}/travel-guides/${encodeURIComponent((art.slug || art.id).toLowerCase())}/`
           }))
         },
         {
@@ -859,15 +849,8 @@ export function updateDynamicSeo(pageTitle?: string, metaDesc?: string, routePat
         ? (art.seo_description_bn || artExcerpt)
         : (art.seo_description_en || artExcerpt);
       resolvedPath = `/travel-guides/${encodeURIComponent(artSlug)}/`;
-
-      const ogType = document.querySelector('meta[property="og:type"]');
-      if (ogType) ogType.setAttribute('content', 'article');
-      const ogImage = document.querySelector('meta[property="og:image"]');
-      const twitterImage = document.querySelector('meta[name="twitter:image"]');
-      if (art.image_url) {
-        if (ogImage) ogImage.setAttribute('content', art.image_url);
-        if (twitterImage) twitterImage.setAttribute('content', art.image_url);
-      }
+      resolvedOgType = 'article';
+      resolvedImage = art.image_url || undefined;
 
       const relDist = art.related_district_id
         ? cmsStore.districts.find(d => d.id.toLowerCase() === art.related_district_id.toLowerCase())
@@ -943,9 +926,6 @@ export function updateDynamicSeo(pageTitle?: string, metaDesc?: string, routePat
       page: state.searchPageCurrentPage
     });
 
-    const ogType = document.querySelector('meta[property="og:type"]');
-    if (ogType) ogType.setAttribute('content', 'website');
-
     updateStructuredData({
       '@context': 'https://schema.org',
       '@graph': [
@@ -973,9 +953,6 @@ export function updateDynamicSeo(pageTitle?: string, metaDesc?: string, routePat
       ? 'অপরূপ বাংলাদেশ পোর্টালের লক্ষ্য, দৃষ্টিভঙ্গি এবং বাংলাদেশের ৮ বিভাগ ও ৬৪ জেলার নির্ভুল দ্বিভাষিক পর্যটন তথ্য প্রদানের অঙ্গীকার সম্পর্কে জানুন।'
       : 'Learn about Beautiful Bangladesh—our mission, vision, bilingual coverage of all 8 divisions and 64 districts, and commitment to verified travel facts.';
     resolvedPath = '/about/';
-
-    const ogType = document.querySelector('meta[property="og:type"]');
-    if (ogType) ogType.setAttribute('content', 'website');
 
     updateStructuredData({
       '@context': 'https://schema.org',
@@ -1005,9 +982,6 @@ export function updateDynamicSeo(pageTitle?: string, metaDesc?: string, routePat
       : 'Contact the Beautiful Bangladesh team with travel questions, destination updates, or feedback through our secure contact form.';
     resolvedPath = '/contact/';
 
-    const ogType = document.querySelector('meta[property="og:type"]');
-    if (ogType) ogType.setAttribute('content', 'website');
-
     updateStructuredData({
       '@context': 'https://schema.org',
       '@graph': [
@@ -1034,9 +1008,6 @@ export function updateDynamicSeo(pageTitle?: string, metaDesc?: string, routePat
       ? 'অপরূপ বাংলাদেশ পোর্টালের তথ্য সংগ্রহ, লোকাল স্টোরেজ, নিউজলেটার, তৃতীয় পক্ষের সেবা ও ডাটা সুরক্ষা সম্পর্কিত গোপনীয়তা নীতি।'
       : 'Privacy Policy detailing information collection, local storage, newsletter subscriptions, third-party services, and data protection on Beautiful Bangladesh.';
     resolvedPath = '/privacy-policy/';
-
-    const ogType = document.querySelector('meta[property="og:type"]');
-    if (ogType) ogType.setAttribute('content', 'website');
 
     updateStructuredData({
       '@context': 'https://schema.org',
@@ -1065,9 +1036,6 @@ export function updateDynamicSeo(pageTitle?: string, metaDesc?: string, routePat
       : 'Terms and Conditions governing website usage, content and travel information disclaimers, copyright, external links, and limitation of liability.';
     resolvedPath = '/terms-and-conditions/';
 
-    const ogType = document.querySelector('meta[property="og:type"]');
-    if (ogType) ogType.setAttribute('content', 'website');
-
     updateStructuredData({
       '@context': 'https://schema.org',
       '@graph': [
@@ -1087,13 +1055,87 @@ export function updateDynamicSeo(pageTitle?: string, metaDesc?: string, routePat
         }
       ]
     });
-  } else if (!pageTitle) {
-    const ogType = document.querySelector('meta[property="og:type"]');
-    if (ogType) ogType.setAttribute('content', 'website');
+  } else if (!pageTitle && state.activeView === 'admin-login') {
+    resolvedTitle = isBn
+      ? 'নিরাপদ অ্যাডমিন লগইন | অপরূপ বাংলাদেশ'
+      : 'Secure Admin Login | Beautiful Bangladesh';
+    resolvedDesc = isBn
+      ? 'বাংলাদেশ পর্যটন সিএমএস অ্যাডমিন পোর্টালের নিরাপদ প্রবেশদ্বার।'
+      : 'Secure administrator authentication portal for Beautiful Bangladesh CMS.';
+    resolvedPath = '/admin/login/';
     updateStructuredData(null);
+  } else if (!pageTitle && state.activeView === 'cms') {
+    const tabTitleMap: Record<CmsTab, { en: string; bn: string }> = {
+      overview: { en: 'Admin Dashboard Overview', bn: 'অ্যাডমিন ড্যাশবোর্ড ওভারভিউ' },
+      divisions: { en: 'Divisions Management', bn: 'বিভাগ ব্যবস্থাপনা' },
+      districts: { en: 'Districts Management', bn: 'জেলা ব্যবস্থাপনা' },
+      categories: { en: 'Categories Management', bn: 'ক্যাটাগরি ব্যবস্থাপনা' },
+      spots: { en: 'Tourist Spots Management', bn: 'দর্শনীয় স্থান ব্যবস্থাপনা' },
+      articles: { en: 'Travel Guides Management', bn: 'ভ্রমণ গাইড ব্যবস্থাপনা' },
+      media: { en: 'Image Manager', bn: 'ইমেজ ম্যানেজার' },
+      'seo-settings': { en: 'SEO Settings', bn: 'এসইও সেটিংস' },
+      'website-settings': { en: 'Website Settings', bn: 'ওয়েবসাইট সেটিংস' }
+    };
+    const activeLabels = tabTitleMap[cmsStore.activeTab] || tabTitleMap.overview;
+    resolvedTitle = isBn
+      ? `${activeLabels.bn} | অপরূপ বাংলাদেশ`
+      : `${activeLabels.en} | Beautiful Bangladesh`;
+    resolvedDesc = isBn
+      ? 'বাংলাদেশ পর্যটন কন্টেন্ট ম্যানেজমেন্ট সিস্টেম ড্যাশবোর্ড।'
+      : 'Administrative Content Management System for Beautiful Bangladesh.';
+    resolvedPath = getAdminRouteForTab(cmsStore.activeTab);
+    updateStructuredData(null);
+  } else if (!pageTitle) {
+    resolvedPath = resolvedPath || '/';
+    updateStructuredData({
+      '@context': 'https://schema.org',
+      '@graph': [
+        {
+          '@type': 'WebSite',
+          name: isBn ? 'অপরূপ বাংলাদেশ' : 'Beautiful Bangladesh',
+          alternateName: isBn ? 'Beautiful Bangladesh' : 'অপরূপ বাংলাদেশ',
+          url: `${window.location.origin}/`,
+          inLanguage: ['bn', 'en'],
+          potentialAction: {
+            '@type': 'SearchAction',
+            target: `${window.location.origin}/search/?q={search_term_string}`,
+            'query-input': 'required name=search_term_string'
+          }
+        },
+        {
+          '@type': 'TouristDestination',
+          name: isBn ? 'বাংলাদেশ' : 'Bangladesh',
+          description: resolvedDesc,
+          url: `${window.location.origin}/`,
+          touristType: ['Nature Lovers', 'Cultural Travelers', 'Heritage Explorers', 'Beach Travelers']
+        },
+        {
+          '@type': 'BreadcrumbList',
+          itemListElement: [
+            { '@type': 'ListItem', position: 1, name: isBn ? 'মূলপাতা' : 'Home', item: `${window.location.origin}/` }
+          ]
+        }
+      ]
+    });
   }
 
-  updateCanonicalAndSeo(resolvedTitle, resolvedDesc, resolvedPath);
+  let robotsMeta = document.querySelector('meta[name="robots"]') as HTMLMetaElement | null;
+  if (state.activeView === 'admin-login' || state.activeView === 'cms') {
+    if (!robotsMeta) {
+      robotsMeta = document.createElement('meta');
+      robotsMeta.name = 'robots';
+      document.head.appendChild(robotsMeta);
+    }
+    robotsMeta.content = 'noindex, nofollow';
+  } else if (robotsMeta) {
+    robotsMeta.remove();
+  }
+
+  updateCanonicalAndSeo(resolvedTitle, resolvedDesc, resolvedPath, {
+    ogType: resolvedOgType,
+    imageUrl: resolvedImage,
+    lang: state.lang
+  });
 }
 
 // Helper to find division by id, slug, or english name
@@ -1163,7 +1205,9 @@ async function loadPortalDataFromFirestore(force: boolean = false): Promise<void
 
   state.firestoreLoading = true;
   state.firestoreError = null;
-  renderApp();
+  if (state.activeView !== 'admin-login' && state.activeView !== 'cms') {
+    renderApp();
+  }
 
   try {
     const [fsDivisions, fsDistricts, fsSpots, fsCategories, fsArticles, fsLegalPages] = await Promise.all([
@@ -1213,7 +1257,9 @@ async function loadPortalDataFromFirestore(force: boolean = false): Promise<void
   } finally {
     state.firestoreLoading = false;
     updateDynamicSeo();
-    renderApp();
+    if (state.activeView !== 'admin-login' && state.activeView !== 'cms') {
+      renderApp();
+    }
   }
 }
 
@@ -1822,6 +1868,14 @@ function updateSavedBadgeCount(): void {
 
 function renderLayoutShell(): void {
   const navbarRoot = document.getElementById('navbar-root');
+  const footerRoot = document.getElementById('footer-root');
+
+  if (state.activeView === 'admin-login' || state.activeView === 'cms') {
+    if (navbarRoot) navbarRoot.innerHTML = '';
+    if (footerRoot) footerRoot.innerHTML = '';
+    return;
+  }
+
   if (navbarRoot) {
     navbarRoot.innerHTML = renderNavbar({
       lang: state.lang,
@@ -1831,7 +1885,6 @@ function renderLayoutShell(): void {
     initializeNavbarEventListeners();
   }
 
-  const footerRoot = document.getElementById('footer-root');
   if (footerRoot) {
     footerRoot.innerHTML = renderFooter(state.lang);
   }
@@ -2226,14 +2279,64 @@ function renderApp(): void {
   stopHeroCarousel();
   const isBn = state.lang === 'bn';
 
-  // 1. Render CMS Dashboard if activeView is 'cms'
+  // 0. Render Dedicated Secure Admin Login Page (/admin/login/)
+  if (state.activeView === 'admin-login') {
+    if (!adminRuntime) {
+      root.innerHTML = `
+        <div class="admin-login-shell d-flex align-items-center justify-content-center min-vh-100" role="status" aria-live="polite">
+          <div class="text-center text-white">
+            <div class="spinner-border text-light mb-3" style="width: 2.5rem; height: 2.5rem;" aria-hidden="true"></div>
+            <p class="mb-0">${isBn ? 'অ্যাডমিন পোর্টাল লোড হচ্ছে...' : 'Loading Admin Portal...'}</p>
+          </div>
+        </div>
+      `;
+      void ensureAdminRuntime().then(() => renderApp());
+      return;
+    }
+    root.innerHTML = adminRuntime.renderAdminLoginPage({
+      lang: state.lang,
+      email: state.adminLoginEmail,
+      rememberSession: state.adminLoginRememberSession,
+      isSubmitting: state.adminLoginSubmitting,
+      showPassword: state.adminLoginShowPassword,
+      feedback: state.adminLoginFeedback
+    });
+    attachAdminLoginEventListeners();
+    return;
+  }
+
+  // 1. Render Protected CMS Dashboard (/admin/) ONLY after verified admin session succeeds
   if (state.activeView === 'cms') {
-    root.innerHTML = renderCmsDashboard(
+    if (!adminRuntime) {
+      root.innerHTML = `
+        <div class="admin-login-shell d-flex align-items-center justify-content-center min-vh-100" role="status" aria-live="polite">
+          <div class="text-center text-white">
+            <div class="spinner-border text-light mb-3" style="width: 2.5rem; height: 2.5rem;" aria-hidden="true"></div>
+            <p class="mb-0">${isBn ? 'সেশন যাচাই করা হচ্ছে...' : 'Verifying administrator session...'}</p>
+          </div>
+        </div>
+      `;
+      void ensureAdminRuntime().then(() => renderApp());
+      return;
+    }
+
+    if (state.adminAuthStatus === 'checking') {
+      root.innerHTML = adminRuntime.renderAdminVerifyingGate(state.lang);
+      return;
+    }
+
+    if (!adminRuntime.isVerifiedAdminActive() || !state.adminSession) {
+      navigateToAdminLogin('unauthorized', true);
+      return;
+    }
+
+    root.innerHTML = adminRuntime.renderCmsDashboard(
       state.lang, 
       () => {
         state.activeView = 'home';
         navigateToPath('/');
         renderLayoutShell();
+        updateDynamicSeo();
         renderApp();
       },
       () => renderApp()
@@ -2541,6 +2644,7 @@ function renderApp(): void {
               alt="${escapeHtml(isBn ? slide.labelBn : slide.labelEn)}"
               class="hero-bg-img"
               loading="${idx === 0 || idx === state.heroSlideIndex ? 'eager' : 'lazy'}"
+              fetchpriority="${idx === 0 ? 'high' : 'auto'}"
               decoding="async"
               onerror="this.onerror=null;this.src='https://images.unsplash.com/photo-1596895111956-bf1cf0599ce5?auto=format&fit=crop&w=1600&q=80';"
             >
@@ -2621,6 +2725,7 @@ function renderApp(): void {
                   class="form-control" 
                   id="global-search-input" 
                   placeholder="${t('search_placeholder')}" 
+                  aria-label="${escapeHtml(t('search_placeholder'))}"
                   value="${escapeHtml(state.searchQuery)}"
                 >
               </div>
@@ -2630,12 +2735,12 @@ function renderApp(): void {
                 class="btn btn-primary-bd px-3 fw-semibold"
                 title="${isBn ? 'গ্লোবাল সার্চ পাতায় যান' : 'Open Global Search Page'}"
               >
-                <i class="bi bi-arrow-right-circle me-1 d-none d-sm-inline"></i>${isBn ? 'সব খুঁজুন' : 'Search All'}
+                <i class="bi bi-arrow-right-circle me-1 d-none d-sm-inline" aria-hidden="true"></i>${isBn ? 'সব খুঁজুন' : 'Search All'}
               </button>
             </div>
           </div>
           <div class="col-sm-6 col-lg-3">
-            <select class="form-select" id="filter-division-select" style="padding: 0.75rem 1rem; border-radius: 10px;">
+            <select class="form-select" id="filter-division-select" aria-label="${escapeHtml(t('filter_all_divisions'))}" style="padding: 0.75rem 1rem; border-radius: 10px;">
               <option value="all">${t('filter_all_divisions')}</option>
               ${publishedDivisions.map(d => `
                 <option value="${d.id}" ${state.divisionFilter === d.id ? 'selected' : ''}>
@@ -2645,7 +2750,7 @@ function renderApp(): void {
             </select>
           </div>
           <div class="col-sm-6 col-lg-3">
-            <select class="form-select" id="filter-category-select" style="padding: 0.75rem 1rem; border-radius: 10px;">
+            <select class="form-select" id="filter-category-select" aria-label="${escapeHtml(t('filter_all_categories'))}" style="padding: 0.75rem 1rem; border-radius: 10px;">
               <option value="all">${t('filter_all_categories')}</option>
               ${publishedCategories.map(c => `
                 <option value="${c.id}" ${state.categoryFilter === c.id ? 'selected' : ''}>
@@ -2742,8 +2847,8 @@ function renderApp(): void {
 
       ${filteredSpots.length === 0 ? `
         <div class="text-center py-5 bg-white rounded-4 border p-4 my-3">
-          <i class="bi bi-compass text-muted" style="font-size: 3.5rem;"></i>
-          <h4 class="fw-bold text-primary-bd mt-3">${t('no_results_title')}</h4>
+          <i class="bi bi-compass text-muted" style="font-size: 3.5rem;" aria-hidden="true"></i>
+          <h3 class="h4 fw-bold text-primary-bd mt-3">${t('no_results_title')}</h3>
           <p class="text-muted max-w-md mx-auto">${t('no_results_desc')}</p>
           <button class="btn btn-outline-bd btn-sm px-4" id="reset-filters-btn">
             ${t('clear_search')}
@@ -2830,7 +2935,7 @@ function renderApp(): void {
 
             <form id="trip-planner-form">
               <div class="mb-3">
-                <label class="form-label fw-bold text-primary-bd small">${t('planner_days')}</label>
+                <label for="planner-days-select" class="form-label fw-bold text-primary-bd small">${t('planner_days')}</label>
                 <select class="form-select" id="planner-days-select">
                   <option value="3">${isBn ? '৩ দিন (সাপ্তাহিক ছুটি)' : '3 Days (Weekend Short Trip)'}</option>
                   <option value="7" selected>${isBn ? '৭ দিন (গোল্ডেন রুট)' : '7 Days (Golden Route)'}</option>
@@ -2839,7 +2944,7 @@ function renderApp(): void {
               </div>
 
               <div class="mb-4">
-                <label class="form-label fw-bold text-primary-bd small">${t('planner_vibe')}</label>
+                <label for="planner-vibe-select" class="form-label fw-bold text-primary-bd small">${t('planner_vibe')}</label>
                 <select class="form-select" id="planner-vibe-select">
                   <option value="beach">${t('vibe_beach')}</option>
                   <option value="hills">${t('vibe_hills')}</option>
@@ -2849,17 +2954,17 @@ function renderApp(): void {
               </div>
 
               <button type="submit" class="btn btn-primary-bd w-100 py-2">
-                <i class="bi bi-lightning-charge-fill me-1"></i>${t('generate_plan')}
+                <i class="bi bi-lightning-charge-fill me-1" aria-hidden="true"></i>${t('generate_plan')}
               </button>
             </form>
           </div>
 
           <div class="col-lg-7">
             <div class="p-4 rounded-3 bg-light border h-100 d-flex flex-column justify-content-center">
-              <h5 class="fw-bold text-primary-bd mb-3">
-                <i class="bi bi-journal-bookmark-fill text-warning me-2"></i>
+              <h3 class="h5 fw-bold text-primary-bd mb-3">
+                <i class="bi bi-journal-bookmark-fill text-warning me-2" aria-hidden="true"></i>
                 ${isBn ? 'প্রস্তাবিত ভ্রমণ পথ ও রুটিন' : 'Recommended Route & Plan'}
-              </h5>
+              </h3>
               <div id="planner-output-box" class="p-3 rounded bg-white border">
                 ${state.itineraryResult || generateTripPlan(7, 'nature')}
               </div>
@@ -2880,31 +2985,31 @@ function renderApp(): void {
           <p class="text-muted mb-0">${t('section_guides_desc')}</p>
         </div>
         <a href="/travel-guides/" class="btn btn-outline-bd rounded-pill px-4 fw-semibold">
-          <i class="bi bi-journal-richtext me-1"></i>${isBn ? 'সকল ভ্রমণ গাইড দেখুন' : 'View All Travel Guides'}
+          <i class="bi bi-journal-richtext me-1" aria-hidden="true"></i>${isBn ? 'সকল ভ্রমণ গাইড দেখুন' : 'View All Travel Guides'}
         </a>
       </div>
 
       <div class="row g-4">
         ${publishedArticles.map(art => `
           <div class="col-lg-4 col-md-6">
-            <div class="card-travel">
+            <article class="card-travel">
               <div class="card-travel-img-box" style="height: 180px;">
                 <img src="${optimizeImageUrl(art.image_url, 600)}" alt="${escapeHtml(isBn ? art.title_bn : art.title_en)}" class="card-travel-img" loading="lazy" decoding="async">
                 <span class="card-badge-rating">
-                  <i class="bi bi-clock me-1"></i>${escapeHtml(isBn ? art.read_time_bn : art.read_time_en)}
+                  <i class="bi bi-clock me-1" aria-hidden="true"></i>${escapeHtml(isBn ? art.read_time_bn : art.read_time_en)}
                 </span>
               </div>
               <div class="card-travel-body">
                 <div class="small text-muted mb-2">
-                  <i class="bi bi-person me-1"></i>${escapeHtml(isBn ? art.author_bn : art.author_en)}
+                  <i class="bi bi-person me-1" aria-hidden="true"></i>${escapeHtml(isBn ? art.author_bn : art.author_en)}
                 </div>
-                <h5 class="card-travel-title" style="font-size: 1.1rem;">
+                <h3 class="h5 card-travel-title" style="font-size: 1.1rem;">
                   <a
                     href="/travel-guides/${encodeURIComponent((art.slug || art.id).toLowerCase())}/"
                     class="text-decoration-none text-primary-bd article-detail-link"
                     data-article-slug="${escapeHtml((art.slug || art.id).toLowerCase())}"
                   >${escapeHtml(isBn ? art.title_bn : art.title_en)}</a>
-                </h5>
+                </h3>
                 <p class="card-travel-desc small">${escapeHtml(isBn ? art.excerpt_bn : art.excerpt_en)}</p>
                 <div class="d-flex justify-content-between align-items-center gap-2 mt-auto pt-2 border-top">
                   <div class="d-flex flex-wrap gap-1">
@@ -2915,11 +3020,11 @@ function renderApp(): void {
                     class="btn btn-sm btn-link text-primary-bd fw-bold text-decoration-none p-0 flex-shrink-0 article-detail-link"
                     data-article-slug="${escapeHtml((art.slug || art.id).toLowerCase())}"
                   >
-                    ${isBn ? 'পড়ুন' : 'Read More'} <i class="bi bi-arrow-right"></i>
+                    ${isBn ? 'পড়ুন' : 'Read More'} <i class="bi bi-arrow-right" aria-hidden="true"></i>
                   </a>
                 </div>
               </div>
-            </div>
+            </article>
           </div>
         `).join('')}
       </div>
@@ -2940,6 +3045,8 @@ function attachPublicPortalEventListeners(): void {
     startHeroCarousel();
     heroCarousel.addEventListener('mouseenter', () => { heroCarouselPaused = true; });
     heroCarousel.addEventListener('mouseleave', () => { heroCarouselPaused = false; });
+    heroCarousel.addEventListener('focusin', () => { heroCarouselPaused = true; });
+    heroCarousel.addEventListener('focusout', () => { heroCarouselPaused = false; });
 
     document.getElementById('hero-prev-btn')?.addEventListener('click', () => {
       setHeroSlide(state.heroSlideIndex - 1);
@@ -2995,9 +3102,7 @@ function attachPublicPortalEventListeners(): void {
 
   // Hero CMS button
   document.getElementById('hero-btn-cms')?.addEventListener('click', () => {
-    state.activeView = 'cms';
-    renderApp();
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    void openProtectedAdminRoute(true);
   });
 
   // Division select filter
@@ -3120,40 +3225,649 @@ function attachPublicPortalEventListeners(): void {
 }
 
 // ============================================================================
+// ADMIN AUTHENTICATION CONTROLLERS & ROUTE GUARDS (/admin/login/ & /admin/)
+// ============================================================================
+function getAdminFeedbackForReason(
+  reason: 'unauthorized' | 'expired' | 'signed_out' | 'error',
+  customMessage?: string
+): AdminLoginFeedback {
+  const isBn = state.lang === 'bn';
+  switch (reason) {
+    case 'expired':
+      return {
+        type: 'warning',
+        message:
+          customMessage ||
+          (isBn
+            ? 'আপনার অ্যাডমিন সেশনের মেয়াদ শেষ হয়েছে। অনুগ্রহ করে পুনরায় সাইন-ইন করুন।'
+            : 'Your administrator session has expired. Please sign in again.')
+      };
+    case 'unauthorized':
+      return {
+        type: 'error',
+        message:
+          customMessage ||
+          (isBn
+            ? 'প্রবেশাধিকার সংরক্ষিত। অ্যাডমিন ড্যাশবোর্ড দেখতে অনুমোদিত অ্যাডমিন অ্যাকাউন্ট দিয়ে সাইন-ইন করুন।'
+            : 'Administrator authorization is required to access the management dashboard.')
+      };
+    case 'signed_out':
+      return {
+        type: 'success',
+        message:
+          customMessage ||
+          (isBn
+            ? 'আপনি নিরাপদে অ্যাডমিন পোর্টাল থেকে সাইন-আউট হয়েছেন।'
+            : 'You have been securely signed out of the administrator portal.')
+      };
+    case 'error':
+      return {
+        type: 'error',
+        message:
+          customMessage ||
+          (isBn
+            ? 'সেশন যাচাই করতে সমস্যা হয়েছে। অনুগ্রহ করে পুনরায় লগইন করুন।'
+            : 'Unable to verify administrator session. Please sign in again.')
+      };
+  }
+}
+
+function dismissOpenAdminModals(): void {
+  ['cmsCrudModal', 'cmsConfirmModal', 'cmsImagePreviewModal'].forEach(modalId => {
+    const modalEl = document.getElementById(modalId);
+    if (modalEl && modalEl.classList.contains('show')) {
+      const bsModal = (window as any).bootstrap?.Modal?.getInstance(modalEl);
+      if (bsModal) bsModal.hide();
+    }
+  });
+}
+
+function navigateToAdminLogin(
+  reason?: 'unauthorized' | 'expired' | 'signed_out' | 'error',
+  replaceUrl: boolean = false,
+  customMessage?: string
+): void {
+  dismissOpenAdminModals();
+  state.activeView = 'admin-login';
+  state.adminLoginSubmitting = false;
+  state.adminLoginFeedback = reason ? getAdminFeedbackForReason(reason, customMessage) : null;
+  navigateToPath('/admin/login/', replaceUrl);
+  renderLayoutShell();
+  updateDynamicSeo();
+  renderApp();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function closeAdminSidebarDrawer(): void {
+  const sidebar = document.getElementById('admin-sidebar');
+  const backdrop = document.getElementById('admin-sidebar-backdrop');
+  const toggleBtn = document.getElementById('admin-sidebar-toggle-btn');
+  sidebar?.classList.remove('open');
+  backdrop?.classList.remove('open');
+  toggleBtn?.setAttribute('aria-expanded', 'false');
+}
+
+function openAdminSidebarDrawer(): void {
+  const sidebar = document.getElementById('admin-sidebar');
+  const backdrop = document.getElementById('admin-sidebar-backdrop');
+  const toggleBtn = document.getElementById('admin-sidebar-toggle-btn');
+  sidebar?.classList.add('open');
+  backdrop?.classList.add('open');
+  toggleBtn?.setAttribute('aria-expanded', 'true');
+}
+
+let adminDashboardLoadPromise: Promise<void> | null = null;
+
+async function loadAdminDashboardData(force: boolean = false, silent: boolean = false): Promise<void> {
+  const rt = await ensureAdminRuntime();
+  if (!rt.isVerifiedAdminActive()) return;
+  if (adminDashboardLoadPromise && !force) {
+    return adminDashboardLoadPromise;
+  }
+  if (rt.adminDashboardState.status === 'loaded' && !force) {
+    return;
+  }
+
+  if (!silent || rt.adminDashboardState.status !== 'loaded') {
+    rt.adminDashboardState.status = 'loading';
+    rt.adminDashboardState.errorMessage = null;
+    if (state.activeView === 'cms') {
+      renderApp();
+    }
+  }
+
+  const task = (async () => {
+    try {
+      const snapshot = await rt.fetchAdminDashboardSnapshot();
+      snapshot.districts = FirestoreService.normalizeDistrictAdministrativeDivision(snapshot.districts);
+      rt.syncCmsStoreFromAdminSnapshot(snapshot);
+      state.firestoreHydrated = true;
+    } catch (err: any) {
+      if (err?.message === 'ADMIN_UNAUTHORIZED') {
+        void handleAdminSessionExpired();
+        return;
+      }
+      if (!silent || rt.adminDashboardState.status !== 'loaded') {
+        rt.adminDashboardState.status = 'error';
+        rt.adminDashboardState.errorMessage =
+          err instanceof Error
+            ? err.message
+            : state.lang === 'bn'
+              ? 'ফায়ারস্টোর থেকে ড্যাশবোর্ডের পরিসংখ্যান আনা যায়নি।'
+              : 'Failed to retrieve live statistics from Cloud Firestore.';
+      }
+    } finally {
+      adminDashboardLoadPromise = null;
+      if (state.activeView === 'cms') {
+        renderApp();
+      }
+    }
+  })();
+
+  adminDashboardLoadPromise = task;
+  await task;
+}
+
+async function handleAdminSessionExpired(): Promise<void> {
+  const rt = await ensureAdminRuntime();
+  rt.resetAdminDashboardState();
+  await rt.secureAdminSignOut();
+  state.adminSession = null;
+  state.adminAuthStatus = 'expired';
+  state.currentUser = null;
+  if (state.activeView === 'cms') {
+    navigateToAdminLogin('expired', true);
+  }
+}
+
+async function openAdminLoginPage(pushUrl: boolean = true): Promise<void> {
+  if (pushUrl) {
+    navigateToPath('/admin/login/');
+  }
+  state.activeView = 'admin-login';
+  state.adminLoginSubmitting = false;
+  renderLayoutShell();
+  updateDynamicSeo();
+  renderApp();
+
+  const rt = await ensureAdminRuntime();
+  if (state.activeView !== 'admin-login') return;
+
+  // If already signed in as a verified admin, redirect straight to Admin Dashboard
+  const outcome = await rt.verifyCurrentAdminSession(false, () => {
+    void handleAdminSessionExpired();
+  });
+
+  if (state.activeView !== 'admin-login') return;
+
+  if (outcome.status === 'authenticated') {
+    state.adminSession = outcome.session;
+    state.adminAuthStatus = 'authenticated';
+    state.currentUser = rt.auth.currentUser;
+    state.adminLoginFeedback = null;
+    state.activeView = 'cms';
+    navigateToPath(getAdminRouteForTab(cmsStore.activeTab), true);
+    renderLayoutShell();
+    updateDynamicSeo();
+    renderApp();
+    void loadAdminDashboardData(false);
+  } else if (outcome.status === 'expired') {
+    state.adminSession = null;
+    state.adminAuthStatus = 'expired';
+    state.adminLoginFeedback = getAdminFeedbackForReason('expired');
+    renderApp();
+  } else if (outcome.status === 'unauthorized') {
+    state.adminSession = null;
+    state.adminAuthStatus = 'unauthorized';
+    state.adminLoginFeedback = getAdminFeedbackForReason('unauthorized', rt.mapAdminAuthError({ code: 'NOT_AUTHORIZED' }, state.lang));
+    renderApp();
+  } else {
+    state.adminSession = null;
+    state.adminAuthStatus = 'unauthenticated';
+    renderApp();
+  }
+}
+
+async function openProtectedAdminRoute(pushUrl: boolean = true, initialTab?: CmsTab): Promise<void> {
+  if (initialTab) {
+    cmsStore.activeTab = initialTab;
+  }
+  state.activeView = 'cms';
+  state.adminAuthStatus = 'checking';
+  const targetAdminPath = getAdminRouteForTab(cmsStore.activeTab);
+  if (pushUrl) {
+    navigateToPath(targetAdminPath);
+  }
+  renderLayoutShell();
+  updateDynamicSeo();
+  renderApp();
+
+  const rt = await ensureAdminRuntime();
+  if (state.activeView !== 'cms') return;
+
+  const outcome = await rt.verifyCurrentAdminSession(false, () => {
+    void handleAdminSessionExpired();
+  });
+
+  if (state.activeView !== 'cms') return;
+
+  if (outcome.status === 'authenticated') {
+    state.adminSession = outcome.session;
+    state.adminAuthStatus = 'authenticated';
+    state.currentUser = rt.auth.currentUser;
+    state.adminLoginFeedback = null;
+    navigateToPath(getAdminRouteForTab(cmsStore.activeTab), true);
+    renderLayoutShell();
+    updateDynamicSeo();
+    renderApp();
+    void loadAdminDashboardData(false);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    return;
+  }
+
+  state.adminSession = null;
+  state.currentUser = rt.auth.currentUser;
+  if (outcome.status === 'expired') {
+    state.adminAuthStatus = 'expired';
+    navigateToAdminLogin('expired', true);
+  } else if (outcome.status === 'unauthorized') {
+    state.adminAuthStatus = 'unauthorized';
+    navigateToAdminLogin('unauthorized', true, rt.mapAdminAuthError({ code: 'NOT_AUTHORIZED' }, state.lang));
+  } else if (outcome.status === 'error') {
+    state.adminAuthStatus = 'unauthenticated';
+    navigateToAdminLogin('error', true, outcome.message);
+  } else {
+    state.adminAuthStatus = 'unauthenticated';
+    navigateToAdminLogin(undefined, true);
+  }
+}
+
+function attachAdminLoginEventListeners(): void {
+  const rt = adminRuntime;
+  if (!rt) return;
+
+  const emailInput = document.getElementById('admin-login-email') as HTMLInputElement | null;
+  const passwordInput = document.getElementById('admin-login-password') as HTMLInputElement | null;
+  const togglePwdBtn = document.getElementById('admin-toggle-password') as HTMLButtonElement | null;
+  const rememberCheckbox = document.getElementById('admin-remember-session') as HTMLInputElement | null;
+  const loginForm = document.getElementById('admin-login-form') as HTMLFormElement | null;
+  const langBtn = document.getElementById('admin-login-lang-btn');
+  const backLink = document.getElementById('admin-login-back-link');
+
+  emailInput?.addEventListener('input', () => {
+    state.adminLoginEmail = emailInput.value;
+  });
+
+  rememberCheckbox?.addEventListener('change', () => {
+    state.adminLoginRememberSession = rememberCheckbox.checked;
+  });
+
+  togglePwdBtn?.addEventListener('click', () => {
+    if (!passwordInput) return;
+    state.adminLoginShowPassword = !state.adminLoginShowPassword;
+    passwordInput.type = state.adminLoginShowPassword ? 'text' : 'password';
+    const isBn = state.lang === 'bn';
+    const label = state.adminLoginShowPassword
+      ? (isBn ? 'পাসওয়ার্ড লুকান' : 'Hide password')
+      : (isBn ? 'পাসওয়ার্ড দেখুন' : 'Show password');
+    togglePwdBtn.setAttribute('aria-label', label);
+    togglePwdBtn.setAttribute('aria-pressed', state.adminLoginShowPassword ? 'true' : 'false');
+    togglePwdBtn.setAttribute('title', label);
+    const icon = togglePwdBtn.querySelector('i');
+    if (icon) {
+      icon.className = `bi ${state.adminLoginShowPassword ? 'bi-eye-slash' : 'bi-eye'}`;
+    }
+  });
+
+  langBtn?.addEventListener('click', () => {
+    const typedPassword = passwordInput?.value || '';
+    switchLanguage();
+    const restoredPwd = document.getElementById('admin-login-password') as HTMLInputElement | null;
+    if (restoredPwd && typedPassword) {
+      restoredPwd.value = typedPassword;
+    }
+  });
+
+  backLink?.addEventListener('click', (e) => {
+    e.preventDefault();
+    state.activeView = 'home';
+    state.adminLoginFeedback = null;
+    navigateToPath('/');
+    renderLayoutShell();
+    updateDynamicSeo();
+    renderApp();
+    if (!state.firestoreHydrated) {
+      void loadPortalDataFromFirestore();
+    }
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  });
+
+  loginForm?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (state.adminLoginSubmitting) return;
+
+    const rawEmail = (emailInput?.value || '').trim();
+    const rawPassword = passwordInput?.value || '';
+    const remember = Boolean(rememberCheckbox?.checked);
+
+    state.adminLoginEmail = rawEmail;
+    state.adminLoginRememberSession = remember;
+
+    if (!rawEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(rawEmail)) {
+      state.adminLoginFeedback = {
+        type: 'error',
+        message: rt.mapAdminAuthError({ code: 'auth/invalid-email' }, state.lang)
+      };
+      renderApp();
+      document.getElementById('admin-login-email')?.focus();
+      return;
+    }
+
+    if (!rawPassword) {
+      state.adminLoginFeedback = {
+        type: 'error',
+        message: rt.mapAdminAuthError({ code: 'auth/missing-password' }, state.lang)
+      };
+      renderApp();
+      document.getElementById('admin-login-password')?.focus();
+      return;
+    }
+
+    state.adminLoginSubmitting = true;
+    state.adminLoginFeedback = null;
+    renderApp();
+
+    try {
+      const session = await rt.signInAdminWithEmailPassword(rawEmail, rawPassword, remember, () => {
+        void handleAdminSessionExpired();
+      });
+
+      state.adminLoginSubmitting = false;
+      state.adminLoginShowPassword = false;
+      state.adminSession = session;
+      state.adminAuthStatus = 'authenticated';
+      state.currentUser = rt.auth.currentUser;
+      state.adminLoginFeedback = null;
+      state.activeView = 'cms';
+      cmsStore.activeTab = 'overview';
+
+      navigateToPath('/admin/dashboard/');
+      renderLayoutShell();
+      updateDynamicSeo();
+      renderApp();
+      void rt.recordAdminAuditLog({
+        action: 'login',
+        entityType: 'auth',
+        entityId: session.uid,
+        entityTitle: session.email || 'Administrator',
+        details: 'Verified Firebase Admin Session'
+      });
+      void loadAdminDashboardData(true);
+      showToast(
+        state.lang === 'bn'
+          ? 'অ্যাডমিন পোর্টালে সফলভাবে লগইন সম্পন্ন হয়েছে।'
+          : 'Signed in to Administrator Dashboard.',
+        'success'
+      );
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } catch (err) {
+      state.adminLoginSubmitting = false;
+      state.adminSession = null;
+      state.adminAuthStatus = 'unauthenticated';
+      state.currentUser = null;
+      state.adminLoginFeedback = {
+        type: 'error',
+        message: rt.mapAdminAuthError(err, state.lang)
+      };
+      renderApp();
+    }
+  });
+}
+
+// ============================================================================
 // ATTACH CMS DASHBOARD & CRUD EVENT LISTENERS (MODULES 1 TO 6)
 // ============================================================================
 function attachCmsEventListeners(): void {
-  // Exit CMS button
+  const rt = adminRuntime;
+  if (!rt) return;
+
+  const ensureSession = (): boolean => {
+    if (!rt.isVerifiedAdminActive()) {
+      void handleAdminSessionExpired();
+      return false;
+    }
+    return true;
+  };
+
+  // Responsive Sidebar Drawer Controls
+  document.getElementById('admin-sidebar-toggle-btn')?.addEventListener('click', () => {
+    const sidebar = document.getElementById('admin-sidebar');
+    if (sidebar?.classList.contains('open')) {
+      closeAdminSidebarDrawer();
+    } else {
+      openAdminSidebarDrawer();
+    }
+  });
+  document.getElementById('admin-sidebar-close-btn')?.addEventListener('click', closeAdminSidebarDrawer);
+  document.getElementById('admin-sidebar-backdrop')?.addEventListener('click', closeAdminSidebarDrawer);
+
+  // Dashboard Refresh & Retry triggers
+  document.getElementById('admin-refresh-dashboard-btn')?.addEventListener('click', () => {
+    if (!ensureSession()) return;
+    void loadAdminDashboardData(true);
+  });
+  document.getElementById('admin-dashboard-retry-btn')?.addEventListener('click', () => {
+    if (!ensureSession()) return;
+    void loadAdminDashboardData(true);
+  });
+
+  // Language switcher inside Admin Topbar
+  document.getElementById('admin-lang-toggle-btn')?.addEventListener('click', () => {
+    switchLanguage();
+  });
+
+  // Exit CMS button (return to public portal while keeping session active)
   document.getElementById('cms-exit-btn')?.addEventListener('click', () => {
+    closeAdminSidebarDrawer();
     state.activeView = 'home';
+    navigateToPath('/');
+    renderLayoutShell();
+    updateDynamicSeo();
     renderApp();
     window.scrollTo({ top: 0, behavior: 'smooth' });
   });
 
-  // Tab switching
+  // Secure Sign Out button
+  document.getElementById('cms-signout-btn')?.addEventListener('click', async () => {
+    closeAdminSidebarDrawer();
+    await rt.recordAdminAuditLog({
+      action: 'logout',
+      entityType: 'auth',
+      entityId: state.adminSession?.uid || 'admin',
+      entityTitle: state.adminSession?.email || 'Administrator'
+    }).catch(() => undefined);
+    rt.resetAdminDashboardState();
+    await rt.secureAdminSignOut();
+    state.adminSession = null;
+    state.adminAuthStatus = 'unauthenticated';
+    state.currentUser = null;
+    navigateToAdminLogin('signed_out');
+  });
+
+  // Tab switching (sidebar links, KPI cards, overview shortcuts)
   document.querySelectorAll('[data-cms-tab]').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const tab = btn.getAttribute('data-cms-tab') as CmsTab;
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      if (!ensureSession()) return;
+      const tab = (btn.getAttribute('data-cms-tab') as CmsTab) || 'overview';
+      closeAdminSidebarDrawer();
       cmsStore.activeTab = tab;
       cmsStore.searchQuery = '';
       cmsStore.currentPage = 1;
       cmsStore.filterDivision = 'all';
       cmsStore.filterCategory = 'all';
+      cmsStore.filterStatus = 'all';
+      navigateToPath(getAdminRouteForTab(tab));
+      updateDynamicSeo();
       renderApp();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      if (rt.adminDashboardState.status === 'idle') {
+        void loadAdminDashboardData(false);
+      }
     });
   });
 
-  // Quick Action triggers in Overview
+  const onCmsMutationSaved = (): void => {
+    renderApp();
+    void loadAdminDashboardData(true, true);
+  };
+
+  // Quick Action triggers in Overview & Settings
   document.querySelectorAll('[data-quick-action]').forEach(btn => {
     btn.addEventListener('click', () => {
+      if (!ensureSession()) return;
       const act = btn.getAttribute('data-quick-action');
-      if (act === 'add-division') openDivisionFormModal(undefined, state.lang, renderApp);
-      if (act === 'add-district') openDistrictFormModal(undefined, state.lang, renderApp);
-      if (act === 'add-spot') openSpotFormModal(undefined, state.lang, renderApp);
-      if (act === 'add-article') openArticleFormModal(undefined, state.lang, renderApp);
-      if (act === 'add-media') openMediaUploadModal(state.lang, renderApp);
-      if (act === 'edit-legal') openLegalPagesModal('privacy', state.lang, renderApp);
+      if (act === 'add-division') rt.openDivisionFormModal(undefined, state.lang, onCmsMutationSaved);
+      if (act === 'add-district') rt.openDistrictFormModal(undefined, state.lang, onCmsMutationSaved);
+      if (act === 'add-spot') rt.openSpotFormModal(undefined, state.lang, onCmsMutationSaved);
+      if (act === 'add-article') rt.openArticleFormModal(undefined, state.lang, onCmsMutationSaved);
+      if (act === 'add-media') rt.openMediaUploadModal(state.lang, onCmsMutationSaved);
+      if (act === 'edit-legal') rt.openLegalPagesModal('privacy', state.lang, onCmsMutationSaved);
     });
+  });
+
+  // Overview "Recently Added Tourist Spots" quick edit links
+  document.querySelectorAll('[data-overview-edit-spot]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      if (!ensureSession()) return;
+      const id = btn.getAttribute('data-overview-edit-spot');
+      const spot = cmsStore.spots.find(s => s.id === id);
+      if (spot) rt.openSpotFormModal(spot, state.lang, onCmsMutationSaved);
+    });
+  });
+
+  // SEO Settings Form Handler
+  document.getElementById('form-admin-seo-settings')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (!ensureSession() || rt.adminDashboardState.savingSeo) return;
+
+    const defaultTitleEn = (document.getElementById('seo-default-title-en') as HTMLInputElement)?.value.trim() || '';
+    const defaultTitleBn = (document.getElementById('seo-default-title-bn') as HTMLInputElement)?.value.trim() || '';
+    const titleSuffixEn = (document.getElementById('seo-suffix-en') as HTMLInputElement)?.value.trim() || '';
+    const titleSuffixBn = (document.getElementById('seo-suffix-bn') as HTMLInputElement)?.value.trim() || '';
+    const metaDescEn = (document.getElementById('seo-meta-desc-en') as HTMLTextAreaElement)?.value.trim() || '';
+    const metaDescBn = (document.getElementById('seo-meta-desc-bn') as HTMLTextAreaElement)?.value.trim() || '';
+    const canonicalBaseUrl = (document.getElementById('seo-canonical-url') as HTMLInputElement)?.value.trim() || '';
+    const ogImageUrl = (document.getElementById('seo-og-image') as HTMLInputElement)?.value.trim() || '';
+    const robotsIndex = ((document.getElementById('seo-robots-index') as HTMLSelectElement)?.value === 'noindex, nofollow'
+      ? 'noindex, nofollow'
+      : 'index, follow') as 'index, follow' | 'noindex, nofollow';
+    const twitterHandle = (document.getElementById('seo-twitter-handle') as HTMLInputElement)?.value.trim() || '';
+
+    if (!defaultTitleEn || !defaultTitleBn || !metaDescEn || !metaDescBn || !canonicalBaseUrl) {
+      showToast(
+        state.lang === 'bn'
+          ? 'অনুগ্রহ করে সকল বাধ্যতামূলক এসইও তথ্য পূরণ করুন।'
+          : 'Please complete all required SEO fields.',
+        'error'
+      );
+      return;
+    }
+
+    rt.adminDashboardState.savingSeo = true;
+    renderApp();
+
+    try {
+      await rt.saveSeoSettings({
+        default_title_en: defaultTitleEn,
+        default_title_bn: defaultTitleBn,
+        title_suffix_en: titleSuffixEn,
+        title_suffix_bn: titleSuffixBn,
+        meta_description_en: metaDescEn,
+        meta_description_bn: metaDescBn,
+        canonical_base_url: canonicalBaseUrl,
+        og_image_url: ogImageUrl,
+        robots_index: robotsIndex,
+        twitter_handle: twitterHandle
+      });
+      showToast(
+        state.lang === 'bn'
+          ? 'এসইও সেটিংস ফায়ারস্টোরে সংরক্ষিত হয়েছে।'
+          : 'SEO settings saved to Cloud Firestore.',
+        'success'
+      );
+    } catch (err: any) {
+      if (err?.message === 'ADMIN_UNAUTHORIZED') {
+        void handleAdminSessionExpired();
+        return;
+      }
+      showToast(err?.message || 'Failed to save SEO settings.', 'error');
+    } finally {
+      rt.adminDashboardState.savingSeo = false;
+      renderApp();
+    }
+  });
+
+  // Website Settings Form Handler
+  document.getElementById('form-admin-website-settings')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (!ensureSession() || rt.adminDashboardState.savingWebsite) return;
+
+    const siteTitleEn = (document.getElementById('site-title-en') as HTMLInputElement)?.value.trim() || '';
+    const siteTitleBn = (document.getElementById('site-title-bn') as HTMLInputElement)?.value.trim() || '';
+    const heroHeadingEn = (document.getElementById('site-hero-heading-en') as HTMLInputElement)?.value.trim() || '';
+    const heroHeadingBn = (document.getElementById('site-hero-heading-bn') as HTMLInputElement)?.value.trim() || '';
+    const heroSubtitleEn = (document.getElementById('site-hero-subtitle-en') as HTMLTextAreaElement)?.value.trim() || '';
+    const heroSubtitleBn = (document.getElementById('site-hero-subtitle-bn') as HTMLTextAreaElement)?.value.trim() || '';
+    const contactEmail = (document.getElementById('site-contact-email') as HTMLInputElement)?.value.trim() || '';
+    const touristHelpline = (document.getElementById('site-helpline') as HTMLInputElement)?.value.trim() || '';
+    const defaultLang = ((document.getElementById('site-default-lang') as HTMLSelectElement)?.value === 'en'
+      ? 'en'
+      : 'bn') as 'bn' | 'en';
+    const maintenanceMode = Boolean((document.getElementById('site-maintenance-mode') as HTMLInputElement)?.checked);
+
+    if (!siteTitleEn || !siteTitleBn || !contactEmail) {
+      showToast(
+        state.lang === 'bn'
+          ? 'পোর্টালের নাম ও যোগাযোগের ইমেইল আবশ্যক।'
+          : 'Portal name and contact email are required.',
+        'error'
+      );
+      return;
+    }
+
+    rt.adminDashboardState.savingWebsite = true;
+    renderApp();
+
+    try {
+      await rt.saveWebsiteSettings({
+        site_title_en: siteTitleEn,
+        site_title_bn: siteTitleBn,
+        hero_heading_en: heroHeadingEn,
+        hero_heading_bn: heroHeadingBn,
+        hero_subtitle_en: heroSubtitleEn,
+        hero_subtitle_bn: heroSubtitleBn,
+        contact_email: contactEmail,
+        tourist_helpline: touristHelpline,
+        default_language: defaultLang,
+        maintenance_mode: maintenanceMode
+      });
+      showToast(
+        state.lang === 'bn'
+          ? 'ওয়েবসাইট সেটিংস ফায়ারস্টোরে সংরক্ষিত হয়েছে।'
+          : 'Website settings saved to Cloud Firestore.',
+        'success'
+      );
+    } catch (err: any) {
+      if (err?.message === 'ADMIN_UNAUTHORIZED') {
+        void handleAdminSessionExpired();
+        return;
+      }
+      showToast(err?.message || 'Failed to save website settings.', 'error');
+    } finally {
+      rt.adminDashboardState.savingWebsite = false;
+      renderApp();
+    }
   });
 
   // Search input in table
@@ -3184,6 +3898,13 @@ function attachCmsEventListeners(): void {
     renderApp();
   });
 
+  const statusFilter = document.getElementById('cms-filter-status') as HTMLSelectElement;
+  statusFilter?.addEventListener('change', () => {
+    cmsStore.filterStatus = statusFilter.value;
+    cmsStore.currentPage = 1;
+    renderApp();
+  });
+
   // Pagination Prev/Next
   document.getElementById('cms-btn-prev')?.addEventListener('click', () => {
     if (cmsStore.currentPage > 1) {
@@ -3197,36 +3918,54 @@ function attachCmsEventListeners(): void {
     renderApp();
   });
 
+  const runProtectedMutation = async (action: () => Promise<void>): Promise<void> => {
+    if (!ensureSession()) return;
+    try {
+      await action();
+    } catch (err: any) {
+      if (err?.message === 'ADMIN_UNAUTHORIZED') {
+        void handleAdminSessionExpired();
+        return;
+      }
+      showToast(err?.message || 'Unable to complete administrative action.', 'error');
+    }
+  };
+
   // --------------------------------------------------------------------------
   // Module 1: Division CRUD Handlers
   // --------------------------------------------------------------------------
   document.getElementById('cms-btn-add-division')?.addEventListener('click', () => {
-    openDivisionFormModal(undefined, state.lang, renderApp);
+    if (!ensureSession()) return;
+    rt.openDivisionFormModal(undefined, state.lang, onCmsMutationSaved);
   });
 
   document.querySelectorAll('[data-edit-division]').forEach(btn => {
     btn.addEventListener('click', () => {
+      if (!ensureSession()) return;
       const id = btn.getAttribute('data-edit-division');
       const div = cmsStore.divisions.find(d => d.id === id);
-      if (div) openDivisionFormModal(div, state.lang, renderApp);
+      if (div) rt.openDivisionFormModal(div, state.lang, onCmsMutationSaved);
     });
   });
 
   document.querySelectorAll('[data-toggle-division]').forEach(btn => {
-    btn.addEventListener('click', async () => {
-      const id = btn.getAttribute('data-toggle-division');
-      const div = cmsStore.divisions.find(d => d.id === id);
-      if (div) {
-        div.is_published = !div.is_published;
-        await saveDivision(div);
-        showToast(`Division "${div.name_en}" is now ${div.is_published ? 'Published' : 'Draft'}.`, 'success');
-        renderApp();
-      }
+    btn.addEventListener('click', () => {
+      void runProtectedMutation(async () => {
+        const id = btn.getAttribute('data-toggle-division');
+        const div = cmsStore.divisions.find(d => d.id === id);
+        if (div) {
+          const nextPublished = !div.is_published;
+          await rt.saveDivision({ ...div, is_published: nextPublished });
+          showToast(`Division "${div.name_en}" is now ${nextPublished ? 'Published' : 'Draft'}.`, 'success');
+          onCmsMutationSaved();
+        }
+      });
     });
   });
 
   document.querySelectorAll('[data-delete-division]').forEach(btn => {
     btn.addEventListener('click', () => {
+      if (!ensureSession()) return;
       const id = btn.getAttribute('data-delete-division');
       const div = cmsStore.divisions.find(d => d.id === id);
       if (!div) return;
@@ -3236,25 +3975,27 @@ function attachCmsEventListeners(): void {
       if (childDistricts.length > 0) {
         const names = childDistricts.map(d => d.name_en).slice(0, 4).join(', ');
         const extra = childDistricts.length > 4 ? ` and ${childDistricts.length - 4} more` : '';
-        showConfirmModal({
+        rt.showConfirmModal({
           title: 'Deletion Blocked: Relational Dependency',
           message: `Cannot delete division "${div.name_en}" because ${childDistricts.length} official districts depend on it (${names}${extra}). Please reassign or delete these districts first to prevent orphaned records.`,
           isBlocked: true,
           lang: state.lang
         });
       } else {
-        showConfirmModal({
+        rt.showConfirmModal({
           title: 'Delete Division',
           message: `Are you sure you want to permanently delete division "${div.name_en}" (${div.name_bn})? This action cannot be undone.`,
           lang: state.lang,
           onConfirm: async () => {
-            const res = await deleteDivision(div.id);
-            if (res.success) {
-              showToast(`Division "${div.name_en}" deleted successfully.`, 'success');
-              renderApp();
-            } else {
-              showToast(res.message || 'Could not delete division', 'error');
-            }
+            await runProtectedMutation(async () => {
+              const res = await rt.deleteDivision(div.id);
+              if (res.success) {
+                showToast(`Division "${div.name_en}" deleted successfully.`, 'success');
+                onCmsMutationSaved();
+              } else {
+                showToast(res.message || 'Could not delete division', 'error');
+              }
+            });
           }
         });
       }
@@ -3265,32 +4006,37 @@ function attachCmsEventListeners(): void {
   // Module 2: District CRUD Handlers
   // --------------------------------------------------------------------------
   document.getElementById('cms-btn-add-district')?.addEventListener('click', () => {
-    openDistrictFormModal(undefined, state.lang, renderApp);
+    if (!ensureSession()) return;
+    rt.openDistrictFormModal(undefined, state.lang, onCmsMutationSaved);
   });
 
   document.querySelectorAll('[data-edit-district]').forEach(btn => {
     btn.addEventListener('click', () => {
+      if (!ensureSession()) return;
       const id = btn.getAttribute('data-edit-district');
       const dist = cmsStore.districts.find(d => d.id === id);
-      if (dist) openDistrictFormModal(dist, state.lang, renderApp);
+      if (dist) rt.openDistrictFormModal(dist, state.lang, onCmsMutationSaved);
     });
   });
 
   document.querySelectorAll('[data-toggle-district]').forEach(btn => {
-    btn.addEventListener('click', async () => {
-      const id = btn.getAttribute('data-toggle-district');
-      const dist = cmsStore.districts.find(d => d.id === id);
-      if (dist) {
-        dist.is_published = !dist.is_published;
-        await saveDistrict(dist);
-        showToast(`District "${dist.name_en}" is now ${dist.is_published ? 'Published' : 'Draft'}.`, 'success');
-        renderApp();
-      }
+    btn.addEventListener('click', () => {
+      void runProtectedMutation(async () => {
+        const id = btn.getAttribute('data-toggle-district');
+        const dist = cmsStore.districts.find(d => d.id === id);
+        if (dist) {
+          const nextPublished = !dist.is_published;
+          await rt.saveDistrict({ ...dist, is_published: nextPublished });
+          showToast(`District "${dist.name_en}" is now ${nextPublished ? 'Published' : 'Draft'}.`, 'success');
+          onCmsMutationSaved();
+        }
+      });
     });
   });
 
   document.querySelectorAll('[data-delete-district]').forEach(btn => {
     btn.addEventListener('click', () => {
+      if (!ensureSession()) return;
       const id = btn.getAttribute('data-delete-district');
       const dist = cmsStore.districts.find(d => d.id === id);
       if (!dist) return;
@@ -3298,25 +4044,27 @@ function attachCmsEventListeners(): void {
       const childSpots = cmsStore.spots.filter(s => s.district_id === dist.id);
       if (childSpots.length > 0) {
         const names = childSpots.map(s => s.name_en).slice(0, 3).join(', ');
-        showConfirmModal({
+        rt.showConfirmModal({
           title: 'Deletion Blocked: Relational Dependency',
           message: `Cannot delete district "${dist.name_en}" because ${childSpots.length} tourist spot(s) are located in it (${names}). Please delete or reassign these tourist destinations first.`,
           isBlocked: true,
           lang: state.lang
         });
       } else {
-        showConfirmModal({
+        rt.showConfirmModal({
           title: 'Delete District',
           message: `Are you sure you want to permanently delete district "${dist.name_en}"?`,
           lang: state.lang,
           onConfirm: async () => {
-            const res = await deleteDistrict(dist.id);
-            if (res.success) {
-              showToast(`District "${dist.name_en}" deleted.`, 'success');
-              renderApp();
-            } else {
-              showToast(res.message || 'Error deleting district', 'error');
-            }
+            await runProtectedMutation(async () => {
+              const res = await rt.deleteDistrict(dist.id);
+              if (res.success) {
+                showToast(`District "${dist.name_en}" deleted.`, 'success');
+                onCmsMutationSaved();
+              } else {
+                showToast(res.message || 'Error deleting district', 'error');
+              }
+            });
           }
         });
       }
@@ -3327,53 +4075,60 @@ function attachCmsEventListeners(): void {
   // Module 3: Category CRUD Handlers
   // --------------------------------------------------------------------------
   document.getElementById('cms-btn-add-category')?.addEventListener('click', () => {
-    openCategoryFormModal(undefined, state.lang, renderApp);
+    if (!ensureSession()) return;
+    rt.openCategoryFormModal(undefined, state.lang, onCmsMutationSaved);
   });
 
   document.querySelectorAll('[data-edit-category]').forEach(btn => {
     btn.addEventListener('click', () => {
+      if (!ensureSession()) return;
       const id = btn.getAttribute('data-edit-category');
       const cat = cmsStore.categories.find(c => c.id === id);
-      if (cat) openCategoryFormModal(cat, state.lang, renderApp);
+      if (cat) rt.openCategoryFormModal(cat, state.lang, onCmsMutationSaved);
     });
   });
 
   document.querySelectorAll('[data-toggle-category]').forEach(btn => {
-    btn.addEventListener('click', async () => {
-      const id = btn.getAttribute('data-toggle-category');
-      const cat = cmsStore.categories.find(c => c.id === id);
-      if (cat) {
-        cat.is_published = !cat.is_published;
-        await saveCategory(cat);
-        showToast(`Category "${cat.name_en}" status updated.`, 'success');
-        renderApp();
-      }
+    btn.addEventListener('click', () => {
+      void runProtectedMutation(async () => {
+        const id = btn.getAttribute('data-toggle-category');
+        const cat = cmsStore.categories.find(c => c.id === id);
+        if (cat) {
+          const nextPublished = !cat.is_published;
+          await rt.saveCategory({ ...cat, is_published: nextPublished });
+          showToast(`Category "${cat.name_en}" status updated.`, 'success');
+          onCmsMutationSaved();
+        }
+      });
     });
   });
 
   document.querySelectorAll('[data-delete-category]').forEach(btn => {
     btn.addEventListener('click', () => {
+      if (!ensureSession()) return;
       const id = btn.getAttribute('data-delete-category');
       const cat = cmsStore.categories.find(c => c.id === id);
       if (!cat) return;
 
       const linkedSpots = cmsStore.spots.filter(s => s.category_ids && s.category_ids.includes(cat.id));
       if (linkedSpots.length > 0) {
-        showConfirmModal({
+        rt.showConfirmModal({
           title: 'Deletion Blocked: Active Reference',
           message: `Cannot delete category "${cat.name_en}" because ${linkedSpots.length} tourist spot(s) are assigned to it. Please remove this category assignment from the spots first.`,
           isBlocked: true,
           lang: state.lang
         });
       } else {
-        showConfirmModal({
+        rt.showConfirmModal({
           title: 'Delete Category',
           message: `Are you sure you want to delete category "${cat.name_en}"?`,
           lang: state.lang,
           onConfirm: async () => {
-            await deleteCategory(cat.id);
-            showToast(`Category "${cat.name_en}" deleted.`, 'success');
-            renderApp();
+            await runProtectedMutation(async () => {
+              await rt.deleteCategory(cat.id);
+              showToast(`Category "${cat.name_en}" deleted.`, 'success');
+              onCmsMutationSaved();
+            });
           }
         });
       }
@@ -3384,44 +4139,51 @@ function attachCmsEventListeners(): void {
   // Module 4: Tourist Spot CRUD Handlers
   // --------------------------------------------------------------------------
   document.getElementById('cms-btn-add-spot')?.addEventListener('click', () => {
-    openSpotFormModal(undefined, state.lang, renderApp);
+    if (!ensureSession()) return;
+    rt.openSpotFormModal(undefined, state.lang, onCmsMutationSaved);
   });
 
   document.querySelectorAll('[data-edit-spot]').forEach(btn => {
     btn.addEventListener('click', () => {
+      if (!ensureSession()) return;
       const id = btn.getAttribute('data-edit-spot');
       const spot = cmsStore.spots.find(s => s.id === id);
-      if (spot) openSpotFormModal(spot, state.lang, renderApp);
+      if (spot) rt.openSpotFormModal(spot, state.lang, onCmsMutationSaved);
     });
   });
 
   document.querySelectorAll('[data-toggle-spot]').forEach(btn => {
-    btn.addEventListener('click', async () => {
-      const id = btn.getAttribute('data-toggle-spot');
-      const spot = cmsStore.spots.find(s => s.id === id);
-      if (spot) {
-        spot.is_published = !spot.is_published;
-        await saveTouristSpot(spot);
-        showToast(`Tourist Spot "${spot.name_en}" is now ${spot.is_published ? 'Published' : 'Draft'}.`, 'success');
-        renderApp();
-      }
+    btn.addEventListener('click', () => {
+      void runProtectedMutation(async () => {
+        const id = btn.getAttribute('data-toggle-spot');
+        const spot = cmsStore.spots.find(s => s.id === id);
+        if (spot) {
+          const nextPublished = !spot.is_published;
+          await rt.saveTouristSpot({ ...spot, is_published: nextPublished });
+          showToast(`Tourist Spot "${spot.name_en}" is now ${nextPublished ? 'Published' : 'Draft'}.`, 'success');
+          onCmsMutationSaved();
+        }
+      });
     });
   });
 
   document.querySelectorAll('[data-delete-spot]').forEach(btn => {
     btn.addEventListener('click', () => {
+      if (!ensureSession()) return;
       const id = btn.getAttribute('data-delete-spot');
       const spot = cmsStore.spots.find(s => s.id === id);
       if (!spot) return;
 
-      showConfirmModal({
+      rt.showConfirmModal({
         title: 'Delete Tourist Spot',
         message: `Are you sure you want to permanently delete destination "${spot.name_en}"?`,
         lang: state.lang,
         onConfirm: async () => {
-          await deleteTouristSpot(spot.id);
-          showToast(`Tourist Spot "${spot.name_en}" deleted.`, 'success');
-          renderApp();
+          await runProtectedMutation(async () => {
+            await rt.deleteTouristSpot(spot.id);
+            showToast(`Tourist Spot "${spot.name_en}" deleted.`, 'success');
+            onCmsMutationSaved();
+          });
         }
       });
     });
@@ -3431,45 +4193,56 @@ function attachCmsEventListeners(): void {
   // Module 5: Travel Guide / Article CRUD Handlers
   // --------------------------------------------------------------------------
   document.getElementById('cms-btn-add-article')?.addEventListener('click', () => {
-    openArticleFormModal(undefined, state.lang, renderApp);
+    if (!ensureSession()) return;
+    rt.openArticleFormModal(undefined, state.lang, onCmsMutationSaved);
   });
 
   document.querySelectorAll('[data-edit-article]').forEach(btn => {
     btn.addEventListener('click', () => {
+      if (!ensureSession()) return;
       const id = btn.getAttribute('data-edit-article');
       const art = cmsStore.articles.find(a => a.id === id);
-      if (art) openArticleFormModal(art, state.lang, renderApp);
+      if (art) rt.openArticleFormModal(art, state.lang, onCmsMutationSaved);
     });
   });
 
   document.querySelectorAll('[data-toggle-article]').forEach(btn => {
-    btn.addEventListener('click', async () => {
-      const id = btn.getAttribute('data-toggle-article');
-      const art = cmsStore.articles.find(a => a.id === id);
-      if (art) {
-        art.is_published = !art.is_published;
-        art.status = art.is_published ? 'published' : 'draft';
-        await saveArticle(art);
-        showToast(`Article "${art.title_en}" is now ${art.is_published ? 'Published' : 'Draft'}.`, 'success');
-        renderApp();
-      }
+    btn.addEventListener('click', () => {
+      void runProtectedMutation(async () => {
+        const id = btn.getAttribute('data-toggle-article');
+        const art = cmsStore.articles.find(a => a.id === id);
+        if (art) {
+          const nextPublished = !art.is_published;
+          await rt.saveArticle({
+            ...art,
+            is_published: nextPublished,
+            status: nextPublished ? 'published' : 'draft',
+            published_at: nextPublished ? (art.published_at || new Date().toISOString()) : art.published_at
+          });
+          showToast(`Article "${art.title_en}" is now ${nextPublished ? 'Published' : 'Draft'}.`, 'success');
+          onCmsMutationSaved();
+        }
+      });
     });
   });
 
   document.querySelectorAll('[data-delete-article]').forEach(btn => {
     btn.addEventListener('click', () => {
+      if (!ensureSession()) return;
       const id = btn.getAttribute('data-delete-article');
       const art = cmsStore.articles.find(a => a.id === id);
       if (!art) return;
 
-      showConfirmModal({
+      rt.showConfirmModal({
         title: 'Delete Travel Guide',
         message: `Are you sure you want to delete guide "${art.title_en}"?`,
         lang: state.lang,
         onConfirm: async () => {
-          await deleteArticle(art.id);
-          showToast(`Article "${art.title_en}" deleted.`, 'success');
-          renderApp();
+          await runProtectedMutation(async () => {
+            await rt.deleteArticle(art.id);
+            showToast(`Article "${art.title_en}" deleted.`, 'success');
+            onCmsMutationSaved();
+          });
         }
       });
     });
@@ -3478,13 +4251,25 @@ function attachCmsEventListeners(): void {
   // --------------------------------------------------------------------------
   // Module 6: Image Manager Handlers
   // --------------------------------------------------------------------------
+  document.getElementById('cms-btn-add-media')?.addEventListener('click', () => {
+    if (!ensureSession()) return;
+    rt.openMediaUploadModal(state.lang, onCmsMutationSaved);
+  });
+
   const dropzone = document.getElementById('cms-media-dropzone');
   const fileInput = document.getElementById('cms-media-file-input') as HTMLInputElement;
   const browseBtn = document.getElementById('cms-media-browse-btn');
 
-  browseBtn?.addEventListener('click', () => fileInput?.click());
+  browseBtn?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (!ensureSession()) return;
+    fileInput?.click();
+  });
   dropzone?.addEventListener('click', (e) => {
-    if (e.target !== browseBtn) fileInput?.click();
+    if (e.target !== browseBtn) {
+      if (!ensureSession()) return;
+      fileInput?.click();
+    }
   });
 
   dropzone?.addEventListener('dragover', (e) => {
@@ -3496,37 +4281,35 @@ function attachCmsEventListeners(): void {
     dropzone.classList.remove('dragover');
   });
 
-  dropzone?.addEventListener('drop', async (e) => {
+  dropzone?.addEventListener('drop', (e) => {
     e.preventDefault();
     dropzone.classList.remove('dragover');
     if (e.dataTransfer && e.dataTransfer.files.length > 0) {
-      handleFileUpload(e.dataTransfer.files[0]);
+      void handleFileUpload(e.dataTransfer.files[0]);
     }
   });
 
   fileInput?.addEventListener('change', () => {
     if (fileInput.files && fileInput.files.length > 0) {
-      handleFileUpload(fileInput.files[0]);
+      void handleFileUpload(fileInput.files[0]);
     }
   });
 
-  async function handleFileUpload(file: File) {
-    // Validate format
-    const validTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/svg+xml'];
-    if (!validTypes.includes(file.type)) {
-      showToast('Invalid file format. Please upload JPEG, PNG, WEBP, GIF, or SVG.', 'error');
-      return;
-    }
-
-    // Validate size (5MB max)
-    if (file.size > 5 * 1024 * 1024) {
-      showToast('File size exceeds 5MB limit. Please compress the image.', 'error');
+  const handleFileUpload = async (file: File): Promise<void> => {
+    if (!ensureSession()) return;
+    const activeRt = adminRuntime;
+    if (!activeRt) return;
+    const validation = activeRt.validateImageFile(file);
+    if (!validation.valid) {
+      showToast(validation.error || 'Invalid image file.', 'error');
+      if (fileInput) fileInput.value = '';
       return;
     }
 
     showToast('Uploading image to Firebase Storage...', 'warning');
     try {
-      const url = await uploadImageFile(file, 'media_library');
+      const url = await activeRt.uploadImageFile(file, 'media_library');
+      const now = new Date().toISOString();
       const newItem: MediaItem = {
         id: 'media_' + Date.now(),
         url: url,
@@ -3535,15 +4318,33 @@ function attachCmsEventListeners(): void {
         alt_bn: 'বাংলাদেশের পর্যটন ছবি',
         file_size: file.size,
         mime_type: file.type,
-        uploaded_at: new Date().toISOString()
+        uploaded_at: now,
+        updated_at: now
       };
-      await saveMediaItem(newItem);
+      await activeRt.saveMediaItem(newItem);
       showToast('Image uploaded and registered successfully!', 'success');
-      renderApp();
+      onCmsMutationSaved();
     } catch (err: any) {
+      if (err?.message === 'ADMIN_UNAUTHORIZED') {
+        void handleAdminSessionExpired();
+        return;
+      }
       showToast(err.message || 'Image upload error', 'error');
+    } finally {
+      if (fileInput) fileInput.value = '';
     }
   }
+
+  // Edit Media Alt Text button
+  document.querySelectorAll('[data-edit-media]').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (!ensureSession()) return;
+      const id = btn.getAttribute('data-edit-media');
+      const item = cmsStore.media.find(m => m.id === id);
+      if (item) rt.openMediaEditModal(item, state.lang, onCmsMutationSaved);
+    });
+  });
 
   // Copy Image URL button
   document.querySelectorAll('[data-copy-url]').forEach(btn => {
@@ -3561,27 +4362,65 @@ function attachCmsEventListeners(): void {
   document.querySelectorAll('[data-preview-img]').forEach(img => {
     img.addEventListener('click', () => {
       const url = img.getAttribute('data-preview-img');
-      if (url) openImagePreviewModal(url);
+      const mediaId = img.getAttribute('data-preview-media-id');
+      const item = mediaId
+        ? cmsStore.media.find(m => m.id === mediaId)
+        : cmsStore.media.find(m => m.url === url);
+      if (url) rt.openImagePreviewModal(url, item);
     });
   });
 
-  // Delete media item
+  // Safe Unused-Only Delete Media Item
   document.querySelectorAll('[data-delete-media]').forEach(btn => {
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
+      if (!ensureSession()) return;
       const id = btn.getAttribute('data-delete-media');
       const item = cmsStore.media.find(m => m.id === id);
       if (!item) return;
 
-      showConfirmModal({
-        title: 'Delete Image Asset',
-        message: `Are you sure you want to delete image "${item.file_name}"? If any destination cards reference this image URL, they may show missing media.`,
+      const refs = rt.getMediaReferences(item.url);
+      if (refs.length > 0) {
+        const refSummary = refs
+          .map(r => `${r.entityType}: ${r.title}`)
+          .slice(0, 4)
+          .join(', ');
+        const extra = refs.length > 4 ? ` and ${refs.length - 4} more` : '';
+        rt.showConfirmModal({
+          title: state.lang === 'bn' ? 'মুছে ফেলা সম্ভব নয়: ছবিটি ব্যবহৃত হচ্ছে' : 'Deletion Blocked: Image In Use',
+          message:
+            state.lang === 'bn'
+              ? `"${item.file_name}" ছবিটি বর্তমানে ${refs.length}টি কনটেন্টে ব্যবহৃত হচ্ছে (${refSummary}${extra})। নিরাপদে মুছে ফেলতে আগে সেগুলো থেকে ছবির লিংক পরিবর্তন করুন।`
+              : `Cannot delete "${item.file_name}" because it is currently referenced by ${refs.length} record(s) (${refSummary}${extra}). Replace or remove those image references first.`,
+          isBlocked: true,
+          lang: state.lang
+        });
+        return;
+      }
+
+      rt.showConfirmModal({
+        title: state.lang === 'bn' ? 'অব্যবহৃত ছবি মুছুন' : 'Delete Unused Image Asset',
+        message:
+          state.lang === 'bn'
+            ? `আপনি কি নিশ্চিতভাবে অব্যবহৃত ছবি "${item.file_name}" স্থায়ীভাবে মুছে ফেলতে চান?`
+            : `Are you sure you want to permanently delete unused image "${item.file_name}"?`,
         lang: state.lang,
         onConfirm: async () => {
-          const res = await deleteMediaItem(item.id);
-          showToast('Image asset deleted.', 'success');
-          if (res.warning) showToast(res.warning, 'warning');
-          renderApp();
+          await runProtectedMutation(async () => {
+            const res = await rt.deleteMediaItem(item.id);
+            if (!res.success) {
+              rt.showConfirmModal({
+                title: state.lang === 'bn' ? 'মুছে ফেলা সম্ভব নয়' : 'Deletion Blocked',
+                message: res.message || 'This image is still referenced in active content.',
+                isBlocked: true,
+                lang: state.lang
+              });
+              return;
+            }
+            showToast('Unused image asset deleted safely.', 'success');
+            if (res.message) showToast(res.message, 'warning');
+            onCmsMutationSaved();
+          });
         }
       });
     });
@@ -4053,9 +4892,10 @@ function attachContactPageEventListeners(): void {
 
 function attachLegalPageEventListeners(): void {
   document.querySelectorAll('.legal-edit-trigger').forEach(btn => {
-    btn.addEventListener('click', () => {
+    btn.addEventListener('click', async () => {
       const docType = btn.getAttribute('data-legal-doc') === 'terms' ? 'terms' : 'privacy';
-      openLegalPagesModal(docType, state.lang, () => {
+      const rt = await ensureAdminRuntime();
+      rt.openLegalPagesModal(docType, state.lang, () => {
         updateDynamicSeo();
         renderApp();
       });
@@ -4646,9 +5486,12 @@ function attachSpotDetailPageEventListeners(): void {
       }
     });
 
-    document.getElementById('spot-gallery-zoom-btn')?.addEventListener('click', () => {
+    document.getElementById('spot-gallery-zoom-btn')?.addEventListener('click', async () => {
       const url = document.getElementById('spot-gallery-zoom-btn')?.getAttribute('data-zoom-url') || galleryImages[state.spotDetailGalleryIndex];
-      if (url) openImagePreviewModal(url);
+      if (url) {
+        const rt = await ensureAdminRuntime();
+        rt.openImagePreviewModal(url);
+      }
     });
 
     document.getElementById('spot-detail-bookmark-btn')?.addEventListener('click', () => {
@@ -5615,16 +6458,14 @@ function handleHashRoute(): void {
     return;
   }
 
+  if (parsed.type === 'admin-login') {
+    void openAdminLoginPage(false);
+    return;
+  }
+
   if (parsed.type === 'cms') {
-    state.activeView = 'cms';
-    renderLayoutShell();
-    renderApp();
-    updateDynamicSeo(
-      state.lang === 'bn' ? 'সিএমএস অ্যাডমিন পোর্টাল' : 'CMS Admin Dashboard',
-      'Administrative Content Management System for Bangladesh Tourism Portal',
-      'cms'
-    );
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    const requestedTab = (parsed.id as CmsTab) || 'overview';
+    void openProtectedAdminRoute(false, requestedTab);
     return;
   }
 
@@ -5709,20 +6550,20 @@ function initializeNavbarEventListeners(): void {
     if (spotsSection) spotsSection.scrollIntoView({ behavior: 'smooth' });
   });
 
-  // Admin Portal / CMS Toggle Trigger
+  // Admin Portal / CMS Toggle Trigger (Protected)
   document.getElementById('btn-admin-portal')?.addEventListener('click', (e) => {
     e.preventDefault();
     closeMobileNavbar();
-    state.activeView = state.activeView === 'cms' ? 'home' : 'cms';
     if (state.activeView === 'cms') {
-      navigateToPath('/#cms');
-    } else {
+      state.activeView = 'home';
       navigateToPath('/');
+      renderLayoutShell();
       updateDynamicSeo();
+      renderApp();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
     }
-    renderLayoutShell();
-    renderApp();
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    void openProtectedAdminRoute(true);
   });
 
   // Navbar link triggers
@@ -6016,10 +6857,11 @@ function initializeGlobalEventListeners(): void {
     }
   });
 
-  // Accessibility: Keyboard Escape key closes any active modal or open mobile navbar
+  // Accessibility: Keyboard Escape key closes any active modal, mobile navbar, or admin drawer
   window.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
       closeMobileNavbar();
+      closeAdminSidebarDrawer();
       const openModals = document.querySelectorAll('.modal.show');
       openModals.forEach(modalEl => {
         const bsModal = (window as any).bootstrap?.Modal?.getInstance(modalEl);
@@ -6050,20 +6892,25 @@ async function initializeApp(): Promise<void> {
   document.body.className = state.lang === 'en' ? 'lang-en' : 'lang-bn';
   document.documentElement.lang = state.lang;
 
-  // Test Firebase connection
-  testConnection();
-
-  // Listen to Auth State
-  onAuthStateChanged(auth, (user) => {
-    state.currentUser = user;
-    if (user) {
-      console.info('Authenticated user:', user.email);
+  // Re-verify active admin session when browser tab regains focus
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible' && state.activeView === 'cms' && adminRuntime) {
+      void adminRuntime.verifyCurrentAdminSession(false, () => {
+        void handleAdminSessionExpired();
+      }).then(outcome => {
+        if (state.activeView === 'cms' && outcome.status !== 'authenticated') {
+          void handleAdminSessionExpired();
+        }
+      });
     }
   });
 
-  // Resolve initial route (/divisions/, /divisions/:slug/, /districts/, /districts/:slug/, or /)
+  // Resolve initial route (/admin/login/, /admin/, /divisions/, /districts/, or /)
   const initialRoute = parseCurrentRoute();
-  if (initialRoute.type === 'divisions') {
+  if (initialRoute.type === 'admin-login') {
+    state.activeView = 'admin-login';
+    state.adminAuthStatus = 'checking';
+  } else if (initialRoute.type === 'divisions') {
     state.activeView = 'divisions';
   } else if (initialRoute.type === 'division' && initialRoute.id) {
     state.activeView = 'division-detail';
@@ -6102,6 +6949,8 @@ async function initializeApp(): Promise<void> {
     state.activeView = 'terms';
   } else if (initialRoute.type === 'cms') {
     state.activeView = 'cms';
+    state.adminAuthStatus = 'checking';
+    cmsStore.activeTab = (initialRoute.id as CmsTab) || 'overview';
   }
 
   renderLayoutShell();
@@ -6112,7 +6961,11 @@ async function initializeApp(): Promise<void> {
   // Bind global UI triggers & Accessibility hooks
   initializeGlobalEventListeners();
 
-  if (initialRoute.type === 'division' && initialRoute.id) {
+  if (initialRoute.type === 'admin-login') {
+    await openAdminLoginPage(false);
+  } else if (initialRoute.type === 'cms') {
+    await openProtectedAdminRoute(false, (initialRoute.id as CmsTab) || 'overview');
+  } else if (initialRoute.type === 'division' && initialRoute.id) {
     await loadDivisionDetailFromFirestore(initialRoute.id, true);
   } else if (initialRoute.type === 'district' && initialRoute.id) {
     await loadDistrictDetailFromFirestore(initialRoute.id, true);
@@ -6137,6 +6990,8 @@ async function initializeApp(): Promise<void> {
 
   // Handle any post-hydration deep-link anchors/modals
   if (
+    initialRoute.type !== 'admin-login' &&
+    initialRoute.type !== 'cms' &&
     initialRoute.type !== 'divisions' &&
     initialRoute.type !== 'division' &&
     initialRoute.type !== 'districts' &&

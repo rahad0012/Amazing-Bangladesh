@@ -24,13 +24,73 @@ export interface ParsedRoute {
     | 'terms'
     | 'planner'
     | 'saved'
-    | 'cms';
+    | 'cms'
+    | 'admin-login';
   id?: string;
+}
+
+export function getAdminRouteForTab(tab: string): string {
+  switch (tab) {
+    case 'divisions':
+      return '/admin/divisions/';
+    case 'districts':
+      return '/admin/districts/';
+    case 'categories':
+      return '/admin/categories/';
+    case 'spots':
+      return '/admin/spots/';
+    case 'articles':
+      return '/admin/travel-guides/';
+    case 'media':
+      return '/admin/media/';
+    case 'seo-settings':
+      return '/admin/seo-settings/';
+    case 'website-settings':
+      return '/admin/website-settings/';
+    case 'overview':
+    default:
+      return '/admin/dashboard/';
+  }
 }
 
 export function parseCurrentRoute(): ParsedRoute {
   const pathname = window.location.pathname.replace(/\/+$/, '') || '/';
   const hash = window.location.hash.trim().replace(/^#/, '');
+
+  // Protected Admin Routes
+  if (pathname === '/admin/login') {
+    return { type: 'admin-login' };
+  }
+  if (pathname === '/admin' || pathname === '/admin/dashboard') {
+    return { type: 'cms', id: 'overview' };
+  }
+  if (pathname === '/admin/divisions') {
+    return { type: 'cms', id: 'divisions' };
+  }
+  if (pathname === '/admin/districts') {
+    return { type: 'cms', id: 'districts' };
+  }
+  if (pathname === '/admin/categories') {
+    return { type: 'cms', id: 'categories' };
+  }
+  if (pathname === '/admin/spots') {
+    return { type: 'cms', id: 'spots' };
+  }
+  if (pathname === '/admin/travel-guides') {
+    return { type: 'cms', id: 'articles' };
+  }
+  if (pathname === '/admin/media') {
+    return { type: 'cms', id: 'media' };
+  }
+  if (pathname === '/admin/seo-settings') {
+    return { type: 'cms', id: 'seo-settings' };
+  }
+  if (pathname === '/admin/website-settings') {
+    return { type: 'cms', id: 'website-settings' };
+  }
+  if (pathname.startsWith('/admin/')) {
+    return { type: 'cms', id: 'overview' };
+  }
 
   // Clean URL path routing
   if (pathname === '/about') {
@@ -178,45 +238,92 @@ export function setRouteHash(hash: string, replace: boolean = true): void {
   }
 }
 
+export const DEFAULT_PORTAL_OG_IMAGE =
+  'https://images.unsplash.com/photo-1596895111956-bf1cf0599ce5?auto=format&fit=crop&w=1200&q=80';
+
+function upsertMetaProperty(attrName: 'property' | 'name', attrVal: string, content: string): void {
+  let el = document.querySelector(`meta[${attrName}="${attrVal}"]`);
+  if (!el) {
+    el = document.createElement('meta');
+    el.setAttribute(attrName, attrVal);
+    document.head.appendChild(el);
+  }
+  el.setAttribute('content', content);
+}
+
+function upsertHreflangLink(hreflang: string, href: string): void {
+  let el = document.querySelector(`link[rel="alternate"][hreflang="${hreflang}"]`);
+  if (!el) {
+    el = document.createElement('link');
+    el.setAttribute('rel', 'alternate');
+    el.setAttribute('hreflang', hreflang);
+    document.head.appendChild(el);
+  }
+  el.setAttribute('href', href);
+}
+
+function buildLangVariantUrl(fullUrl: string, lang?: 'bn' | 'en'): string {
+  try {
+    const parsed = new URL(fullUrl);
+    if (lang) {
+      parsed.searchParams.set('lang', lang);
+    } else {
+      parsed.searchParams.delete('lang');
+    }
+    return parsed.toString();
+  } catch {
+    return fullUrl;
+  }
+}
+
+export interface SeoUpdateOptions {
+  ogType?: 'website' | 'article';
+  imageUrl?: string;
+  lang?: 'bn' | 'en';
+}
+
 export function updateCanonicalAndSeo(
   title: string,
   description: string,
-  routePath?: string
+  routePath?: string,
+  options?: SeoUpdateOptions
 ): void {
   document.title = title;
 
   const descMeta = document.querySelector('meta[name="description"]');
   if (descMeta) descMeta.setAttribute('content', description);
 
-  const ogTitle = document.querySelector('meta[property="og:title"]');
-  if (ogTitle) ogTitle.setAttribute('content', title);
-
-  const ogDesc = document.querySelector('meta[property="og:description"]');
-  if (ogDesc) ogDesc.setAttribute('content', description);
-
-  const twitterTitle = document.querySelector('meta[name="twitter:title"]');
-  if (twitterTitle) twitterTitle.setAttribute('content', title);
-
-  const twitterDesc = document.querySelector('meta[name="twitter:description"]');
-  if (twitterDesc) twitterDesc.setAttribute('content', description);
+  upsertMetaProperty('property', 'og:title', title);
+  upsertMetaProperty('property', 'og:description', description);
+  upsertMetaProperty('name', 'twitter:title', title);
+  upsertMetaProperty('name', 'twitter:description', description);
 
   const normalizedRoute = routePath
-    ? (routePath.startsWith('/') || routePath.startsWith('#') ? routePath : `/#${routePath}`)
+    ? (routePath.startsWith('/') || routePath.startsWith('#') ? routePath : `/${routePath}`)
     : '/';
   const fullUrl = `${window.location.origin}${normalizedRoute}`;
 
-  const canonical = document.querySelector('link[rel="canonical"]');
-  if (canonical) {
-    canonical.setAttribute('href', fullUrl);
+  let canonical = document.querySelector('link[rel="canonical"]');
+  if (!canonical) {
+    canonical = document.createElement('link');
+    canonical.setAttribute('rel', 'canonical');
+    document.head.appendChild(canonical);
   }
+  canonical.setAttribute('href', fullUrl);
 
-  let ogUrl = document.querySelector('meta[property="og:url"]');
-  if (!ogUrl) {
-    ogUrl = document.createElement('meta');
-    ogUrl.setAttribute('property', 'og:url');
-    document.head.appendChild(ogUrl);
-  }
-  ogUrl.setAttribute('content', fullUrl);
+  upsertMetaProperty('property', 'og:url', fullUrl);
+  upsertMetaProperty('property', 'og:type', options?.ogType || 'website');
+
+  const resolvedImage = (options?.imageUrl || '').trim() || DEFAULT_PORTAL_OG_IMAGE;
+  upsertMetaProperty('property', 'og:image', resolvedImage);
+  upsertMetaProperty('name', 'twitter:image', resolvedImage);
+
+  const activeLang = options?.lang || (document.documentElement.lang === 'en' ? 'en' : 'bn');
+  upsertMetaProperty('property', 'og:locale', activeLang === 'bn' ? 'bn_BD' : 'en_US');
+
+  upsertHreflangLink('bn', buildLangVariantUrl(fullUrl, 'bn'));
+  upsertHreflangLink('en', buildLangVariantUrl(fullUrl, 'en'));
+  upsertHreflangLink('x-default', buildLangVariantUrl(fullUrl));
 }
 
 export function updateStructuredData(schemaPayload: Record<string, unknown> | null): void {
