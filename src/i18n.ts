@@ -36,6 +36,10 @@ export const I18N: Translations = {
     bn: "৬৪ জেলা গাইড",
     en: "64 Districts"
   },
+  nav_categories: {
+    bn: "ক্যাটাগরি",
+    en: "Categories"
+  },
   nav_spots: {
     bn: "দর্শনীয় স্থান",
     en: "Attractions"

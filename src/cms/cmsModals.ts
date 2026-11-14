@@ -10,10 +10,14 @@ import {
   saveCategory, 
   saveTouristSpot, 
   saveArticle, 
-  saveMediaItem 
+  saveMediaItem,
+  saveLegalPages
 } from './cmsState';
+import { DEFAULT_LEGAL_PAGES, type LegalPagesConfig } from '../services/legalPagesDefaults';
+import { escapeHtml } from '../utils/formatUtils';
 
 import { 
+  ARTICLE_CATEGORIES,
   type Division, 
   type District, 
   type Category, 
@@ -714,6 +718,34 @@ export function openSpotFormModal(spot?: TouristSpot, lang: Language = 'bn', onS
             <input type="url" class="form-control" id="spot-maps-url" value="${spot?.google_maps_url || ''}" placeholder="https://maps.google.com/?q=...">
           </div>
 
+          <!-- Verified Practical Details (Optional) -->
+          <div class="col-md-6">
+            <label class="form-label fw-bold small text-primary-bd">Estimated Travel Cost (English, if verified)</label>
+            <input type="text" class="form-control" id="spot-cost-en" value="${spot?.estimated_cost_en || ''}" placeholder="Leave blank if unverified">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-bold small text-primary-bd">সম্ভাব্য ভ্রমণ ব্যয় (বাংলা, যাচাইকৃত হলে)</label>
+            <input type="text" class="form-control" id="spot-cost-bn" value="${spot?.estimated_cost_bn || ''}" placeholder="যাচাইকৃত না হলে ফাঁকা রাখুন">
+          </div>
+
+          <div class="col-md-6">
+            <label class="form-label fw-bold small text-primary-bd">Entry Fee (English, if verified)</label>
+            <input type="text" class="form-control" id="spot-fee-en" value="${spot?.entry_fee_en || ''}" placeholder="Leave blank if unverified">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-bold small text-primary-bd">প্রবেশ ফি (বাংলা, যাচাইকৃত হলে)</label>
+            <input type="text" class="form-control" id="spot-fee-bn" value="${spot?.entry_fee_bn || ''}" placeholder="যাচাইকৃত না হলে ফাঁকা রাখুন">
+          </div>
+
+          <div class="col-md-6">
+            <label class="form-label fw-bold small text-primary-bd">Opening Hours (English, if verified)</label>
+            <input type="text" class="form-control" id="spot-hours-en" value="${spot?.opening_hours_en || ''}" placeholder="Leave blank if unverified">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-bold small text-primary-bd">পরিদর্শন সময়সূচি (বাংলা, যাচাইকৃত হলে)</label>
+            <input type="text" class="form-control" id="spot-hours-bn" value="${spot?.opening_hours_bn || ''}" placeholder="যাচাইকৃত না হলে ফাঁকা রাখুন">
+          </div>
+
           <!-- Featured & Published Flags -->
           <div class="col-md-6">
             <div class="form-check form-switch mt-2">
@@ -828,6 +860,12 @@ export function openSpotFormModal(spot?: TouristSpot, lang: Language = 'bn', onS
       image_url: imgUrlInput.value.trim(),
       gallery_urls: galleryUrls,
       google_maps_url: (document.getElementById('spot-maps-url') as HTMLInputElement).value.trim(),
+      estimated_cost_en: (document.getElementById('spot-cost-en') as HTMLInputElement).value.trim(),
+      estimated_cost_bn: (document.getElementById('spot-cost-bn') as HTMLInputElement).value.trim(),
+      entry_fee_en: (document.getElementById('spot-fee-en') as HTMLInputElement).value.trim(),
+      entry_fee_bn: (document.getElementById('spot-fee-bn') as HTMLInputElement).value.trim(),
+      opening_hours_en: (document.getElementById('spot-hours-en') as HTMLInputElement).value.trim(),
+      opening_hours_bn: (document.getElementById('spot-hours-bn') as HTMLInputElement).value.trim(),
       is_featured: (document.getElementById('spot-featured') as HTMLInputElement).checked,
       is_published: (document.getElementById('spot-published') as HTMLInputElement).checked,
       created_at: spot?.created_at || new Date().toISOString()
@@ -891,7 +929,18 @@ export function openArticleFormModal(article?: Article, lang: Language = 'bn', o
             </div>
           </div>
 
-          <div class="col-md-6">
+          <div class="col-md-4">
+            <label class="form-label fw-bold small text-primary-bd">${isBn ? 'নিবন্ধের ক্যাটাগরি' : 'Article Category'}</label>
+            <select class="form-select" id="art-category-id">
+              <option value="">${isBn ? 'স্বয়ংক্রিয় / সাধারণ গাইড' : 'Auto / General Guide'}</option>
+              ${ARTICLE_CATEGORIES.map(cat => `
+                <option value="${cat.id}" ${article?.category_id === cat.id ? 'selected' : ''}>
+                  ${isBn ? `${cat.name_bn} (${cat.name_en})` : `${cat.name_en} (${cat.name_bn})`}
+                </option>
+              `).join('')}
+            </select>
+          </div>
+          <div class="col-md-4">
             <label class="form-label fw-bold small text-primary-bd">Related District Destination</label>
             <select class="form-select" id="art-district-id">
               <option value="">${isBn ? 'সমগ্র বাংলাদেশ (কোনো নির্দিষ্ট জেলা নয়)' : 'All Bangladesh (General Guide)'}</option>
@@ -902,7 +951,7 @@ export function openArticleFormModal(article?: Article, lang: Language = 'bn', o
               `).join('')}
             </select>
           </div>
-          <div class="col-md-6">
+          <div class="col-md-4">
             <label class="form-label fw-bold small text-primary-bd">Tags (Comma-separated)</label>
             <input type="text" class="form-control" id="art-tags" value="${(article?.tags || []).join(', ')}" placeholder="Sundarbans, Wildlife, Tips">
           </div>
@@ -1037,19 +1086,23 @@ export function openArticleFormModal(article?: Article, lang: Language = 'bn', o
       .map(t => t.trim())
       .filter(Boolean);
 
+    const categoryId = (document.getElementById('art-category-id') as HTMLSelectElement)?.value || '';
+    const authorEn = (document.getElementById('art-author-en') as HTMLInputElement).value.trim();
+
     const newArt: Article = {
       id: article?.id || 'art_' + slug,
       title_en: nameInput.value.trim(),
       title_bn: (document.getElementById('art-title-bn') as HTMLInputElement).value.trim(),
       slug: slug,
-      author_en: (document.getElementById('art-author-en') as HTMLInputElement).value.trim(),
-      author_bn: isBn ? 'বাংলাদেশ ভ্রমণ ডেস্ক' : 'Tourism Board Travel Desk',
+      author_en: authorEn,
+      author_bn: article?.author_bn || authorEn,
       read_time_en: (document.getElementById('art-read-en') as HTMLInputElement).value.trim(),
-      read_time_bn: isBn ? '৫ মিনিট পঠন' : '5 min read',
+      read_time_bn: article?.read_time_bn || (isBn ? '৫ মিনিট পঠন' : '5 min read'),
       excerpt_en: (document.getElementById('art-excerpt-en') as HTMLTextAreaElement).value.trim(),
       excerpt_bn: (document.getElementById('art-excerpt-bn') as HTMLTextAreaElement).value.trim(),
       content_en: (document.getElementById('art-content-en') as HTMLTextAreaElement).value.trim(),
       content_bn: (document.getElementById('art-content-bn') as HTMLTextAreaElement).value.trim(),
+      category_id: categoryId || undefined,
       related_district_id: (document.getElementById('art-district-id') as HTMLSelectElement).value,
       image_url: imgUrlInput.value.trim(),
       tags: tagsArr,
@@ -1212,5 +1265,231 @@ export function openImagePreviewModal(imageUrl: string): void {
   `;
 
   const modal = getBsModal('cmsImagePreviewModal');
+  if (modal) modal.show();
+}
+
+// ----------------------------------------------------------------------------
+// 8. Editable Legal Pages Modal (Privacy Policy & Terms and Conditions)
+// ----------------------------------------------------------------------------
+export function openLegalPagesModal(
+  initialSection: 'privacy' | 'terms' = 'privacy',
+  lang: Language = 'bn',
+  onSaved?: () => void
+): void {
+  const container = document.getElementById('cmsCrudModalContent');
+  if (!container) return;
+
+  const isBn = lang === 'bn';
+  const current = cmsStore.legalPages;
+
+  container.innerHTML = `
+    <div class="modal-travel-header d-flex justify-content-between align-items-center">
+      <h5 class="modal-title fw-bold text-white mb-0">
+        <i class="bi bi-file-earmark-lock2 me-2 text-warning"></i>
+        ${isBn ? 'আইনি নীতিমালা সম্পাদনা ও পর্যালোচনা' : 'Edit & Review Legal Pages'}
+      </h5>
+      <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+    </div>
+
+    <form id="form-cms-legal-pages">
+      <div class="modal-body p-4">
+        <div class="alert alert-warning d-flex align-items-start gap-2 small mb-3">
+          <i class="bi bi-exclamation-triangle-fill mt-1"></i>
+          <div>
+            ${isBn
+              ? 'প্রকাশের পূর্বে একজন অনুমোদিত কর্মকর্তা বা আইন বিশেষজ্ঞের মাধ্যমে উভয় ভাষার (বাংলা ও ইংরেজি) বিষয়বস্তু পর্যালোচনা করে অনুমোদন টিক চিহ্ন দিন।'
+              : 'Review both Bengali and English Markdown content before formal publication. Check the review boxes below once verified.'}
+          </div>
+        </div>
+
+        <ul class="nav nav-pills mb-3 gap-2" role="tablist">
+          <li class="nav-item" role="presentation">
+            <button
+              class="nav-link ${initialSection === 'privacy' ? 'active' : ''}"
+              id="legal-tab-privacy"
+              data-bs-toggle="pill"
+              data-bs-target="#legal-pane-privacy"
+              type="button"
+              role="tab"
+            >
+              <i class="bi bi-shield-check me-1"></i>${isBn ? 'গোপনীয়তা নীতি (Privacy)' : 'Privacy Policy'}
+            </button>
+          </li>
+          <li class="nav-item" role="presentation">
+            <button
+              class="nav-link ${initialSection === 'terms' ? 'active' : ''}"
+              id="legal-tab-terms"
+              data-bs-toggle="pill"
+              data-bs-target="#legal-pane-terms"
+              type="button"
+              role="tab"
+            >
+              <i class="bi bi-journal-check me-1"></i>${isBn ? 'ব্যবহারের শর্তাবলী (Terms)' : 'Terms & Conditions'}
+            </button>
+          </li>
+        </ul>
+
+        <div class="tab-content">
+          <!-- Privacy Policy Tab -->
+          <div class="tab-pane fade ${initialSection === 'privacy' ? 'show active' : ''}" id="legal-pane-privacy" role="tabpanel">
+            <div class="row g-3">
+              <div class="col-md-6">
+                <label class="form-label fw-bold small text-primary-bd">Title (English)</label>
+                <input type="text" class="form-control" id="legal-privacy-title-en" value="${escapeHtml(current.privacy_title_en)}" required>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label fw-bold small text-primary-bd">শিরোনাম (বাংলা)</label>
+                <input type="text" class="form-control" id="legal-privacy-title-bn" value="${escapeHtml(current.privacy_title_bn)}" required>
+              </div>
+              <div class="col-12">
+                <label class="form-label fw-bold small text-primary-bd">
+                  Content (English Markdown)
+                  <span class="bilingual-badge-en">English</span>
+                </label>
+                <textarea class="form-control font-monospace small" id="legal-privacy-content-en" rows="8" required>${escapeHtml(current.privacy_content_en)}</textarea>
+              </div>
+              <div class="col-12">
+                <label class="form-label fw-bold small text-primary-bd">
+                  বিষয়বস্তু (বাংলা মার্কডাউন)
+                  <span class="bilingual-badge-bn">বাংলা</span>
+                </label>
+                <textarea class="form-control font-monospace small" id="legal-privacy-content-bn" rows="8" required>${escapeHtml(current.privacy_content_bn)}</textarea>
+              </div>
+              <div class="col-md-7">
+                <div class="form-check form-switch mt-2">
+                  <input class="form-check-input" type="checkbox" id="legal-privacy-reviewed" ${current.privacy_reviewed ? 'checked' : ''}>
+                  <label class="form-check-label fw-bold text-primary-bd" for="legal-privacy-reviewed">
+                    ${isBn ? 'গোপনীয়তা নীতি প্রকাশের পূর্বে পর্যালোচিত ও অনুমোদিত' : 'Privacy Policy reviewed & approved for publication'}
+                  </label>
+                </div>
+              </div>
+              <div class="col-md-5">
+                <input type="text" class="form-control form-control-sm" id="legal-privacy-reviewer" value="${escapeHtml(current.privacy_reviewed_by || '')}" placeholder="${isBn ? 'পর্যালোচকের নাম / পদবি' : 'Reviewer name / title'}">
+              </div>
+            </div>
+          </div>
+
+          <!-- Terms & Conditions Tab -->
+          <div class="tab-pane fade ${initialSection === 'terms' ? 'show active' : ''}" id="legal-pane-terms" role="tabpanel">
+            <div class="row g-3">
+              <div class="col-md-6">
+                <label class="form-label fw-bold small text-primary-bd">Title (English)</label>
+                <input type="text" class="form-control" id="legal-terms-title-en" value="${escapeHtml(current.terms_title_en)}" required>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label fw-bold small text-primary-bd">শিরোনাম (বাংলা)</label>
+                <input type="text" class="form-control" id="legal-terms-title-bn" value="${escapeHtml(current.terms_title_bn)}" required>
+              </div>
+              <div class="col-12">
+                <label class="form-label fw-bold small text-primary-bd">
+                  Content (English Markdown)
+                  <span class="bilingual-badge-en">English</span>
+                </label>
+                <textarea class="form-control font-monospace small" id="legal-terms-content-en" rows="8" required>${escapeHtml(current.terms_content_en)}</textarea>
+              </div>
+              <div class="col-12">
+                <label class="form-label fw-bold small text-primary-bd">
+                  বিষয়বস্তু (বাংলা মার্কডাউন)
+                  <span class="bilingual-badge-bn">বাংলা</span>
+                </label>
+                <textarea class="form-control font-monospace small" id="legal-terms-content-bn" rows="8" required>${escapeHtml(current.terms_content_bn)}</textarea>
+              </div>
+              <div class="col-md-7">
+                <div class="form-check form-switch mt-2">
+                  <input class="form-check-input" type="checkbox" id="legal-terms-reviewed" ${current.terms_reviewed ? 'checked' : ''}>
+                  <label class="form-check-label fw-bold text-primary-bd" for="legal-terms-reviewed">
+                    ${isBn ? 'ব্যবহারের শর্তাবলী প্রকাশের পূর্বে পর্যালোচিত ও অনুমোদিত' : 'Terms & Conditions reviewed & approved for publication'}
+                  </label>
+                </div>
+              </div>
+              <div class="col-md-5">
+                <input type="text" class="form-control form-control-sm" id="legal-terms-reviewer" value="${escapeHtml(current.terms_reviewed_by || '')}" placeholder="${isBn ? 'পর্যালোচকের নাম / পদবি' : 'Reviewer name / title'}">
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <hr class="my-3">
+        <div class="row g-2 align-items-center">
+          <div class="col-md-6">
+            <label class="form-label fw-bold small text-primary-bd mb-1">
+              ${isBn ? 'অফিসিয়াল যোগাযোগ ইমেইল' : 'Official Contact Email'}
+            </label>
+            <input type="email" class="form-control form-control-sm" id="legal-contact-email" value="${escapeHtml(current.contact_email)}" required>
+          </div>
+          <div class="col-md-6 text-md-end pt-md-4">
+            <button type="button" class="btn btn-outline-secondary btn-sm" id="legal-reset-defaults-btn">
+              <i class="bi bi-arrow-counterclockwise me-1"></i>${isBn ? 'ডিফল্ট টেমপ্লেট ফিরিয়ে আনুন' : 'Restore Default Templates'}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer bg-light">
+        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">${isBn ? 'বাতিল' : 'Cancel'}</button>
+        <button type="submit" class="btn btn-accent btn-sm px-4" id="legal-submit-btn">
+          <i class="bi bi-save me-1"></i>${isBn ? 'আইনি তথ্য সংরক্ষণ করুন' : 'Save Legal Pages'}
+        </button>
+      </div>
+    </form>
+  `;
+
+  document.getElementById('legal-reset-defaults-btn')?.addEventListener('click', () => {
+    (document.getElementById('legal-privacy-title-en') as HTMLInputElement).value = DEFAULT_LEGAL_PAGES.privacy_title_en;
+    (document.getElementById('legal-privacy-title-bn') as HTMLInputElement).value = DEFAULT_LEGAL_PAGES.privacy_title_bn;
+    (document.getElementById('legal-privacy-content-en') as HTMLTextAreaElement).value = DEFAULT_LEGAL_PAGES.privacy_content_en;
+    (document.getElementById('legal-privacy-content-bn') as HTMLTextAreaElement).value = DEFAULT_LEGAL_PAGES.privacy_content_bn;
+    (document.getElementById('legal-terms-title-en') as HTMLInputElement).value = DEFAULT_LEGAL_PAGES.terms_title_en;
+    (document.getElementById('legal-terms-title-bn') as HTMLInputElement).value = DEFAULT_LEGAL_PAGES.terms_title_bn;
+    (document.getElementById('legal-terms-content-en') as HTMLTextAreaElement).value = DEFAULT_LEGAL_PAGES.terms_content_en;
+    (document.getElementById('legal-terms-content-bn') as HTMLTextAreaElement).value = DEFAULT_LEGAL_PAGES.terms_content_bn;
+    (document.getElementById('legal-contact-email') as HTMLInputElement).value = DEFAULT_LEGAL_PAGES.contact_email;
+    showToast(isBn ? 'ডিফল্ট টেমপ্লেট লোড করা হয়েছে। সংরক্ষণ করতে Save চাপুন।' : 'Default templates loaded. Click Save to apply.', 'warning');
+  });
+
+  document.getElementById('form-cms-legal-pages')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const privacyReviewed = (document.getElementById('legal-privacy-reviewed') as HTMLInputElement).checked;
+    const termsReviewed = (document.getElementById('legal-terms-reviewed') as HTMLInputElement).checked;
+    const nowIso = new Date().toISOString();
+
+    const updated: LegalPagesConfig = {
+      id: 'legal_pages',
+      privacy_title_en: (document.getElementById('legal-privacy-title-en') as HTMLInputElement).value.trim(),
+      privacy_title_bn: (document.getElementById('legal-privacy-title-bn') as HTMLInputElement).value.trim(),
+      privacy_content_en: (document.getElementById('legal-privacy-content-en') as HTMLTextAreaElement).value.trim(),
+      privacy_content_bn: (document.getElementById('legal-privacy-content-bn') as HTMLTextAreaElement).value.trim(),
+      privacy_reviewed: privacyReviewed,
+      privacy_reviewed_by: (document.getElementById('legal-privacy-reviewer') as HTMLInputElement).value.trim(),
+      privacy_reviewed_at: privacyReviewed ? (current.privacy_reviewed_at || nowIso) : '',
+      terms_title_en: (document.getElementById('legal-terms-title-en') as HTMLInputElement).value.trim(),
+      terms_title_bn: (document.getElementById('legal-terms-title-bn') as HTMLInputElement).value.trim(),
+      terms_content_en: (document.getElementById('legal-terms-content-en') as HTMLTextAreaElement).value.trim(),
+      terms_content_bn: (document.getElementById('legal-terms-content-bn') as HTMLTextAreaElement).value.trim(),
+      terms_reviewed: termsReviewed,
+      terms_reviewed_by: (document.getElementById('legal-terms-reviewer') as HTMLInputElement).value.trim(),
+      terms_reviewed_at: termsReviewed ? (current.terms_reviewed_at || nowIso) : '',
+      contact_email: (document.getElementById('legal-contact-email') as HTMLInputElement).value.trim(),
+      updated_at: nowIso
+    };
+
+    const submitBtn = document.getElementById('legal-submit-btn') as HTMLButtonElement | null;
+    if (submitBtn) {
+      submitBtn.disabled = true;
+    }
+
+    const res = await saveLegalPages(updated);
+    if (res.syncedToFirestore) {
+      showToast(isBn ? 'আইনি পাতাগুলো সফলভাবে ফায়ারস্টোরে সংরক্ষিত হয়েছে।' : 'Legal pages saved and synced to Firestore.', 'success');
+    } else {
+      showToast(isBn ? 'লোকাল স্টোরেজে সংরক্ষিত হয়েছে (ফায়ারস্টোর সিঙ্কের জন্য অ্যাডমিন লগইন প্রয়োজন)।' : 'Saved locally (sign in as Firestore admin to sync to cloud).', 'warning');
+    }
+
+    const modal = getBsModal('cmsCrudModal');
+    if (modal) modal.hide();
+    if (onSaved) onSaved();
+  });
+
+  const modal = getBsModal('cmsCrudModal');
   if (modal) modal.show();
 }

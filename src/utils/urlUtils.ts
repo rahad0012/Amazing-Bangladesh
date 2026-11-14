@@ -4,7 +4,27 @@
  */
 
 export interface ParsedRoute {
-  type: 'home' | 'spot' | 'division' | 'district' | 'districts' | 'divisions' | 'spots' | 'guides' | 'planner' | 'saved' | 'cms';
+  type:
+    | 'home'
+    | 'spot'
+    | 'spot-detail'
+    | 'division'
+    | 'district'
+    | 'districts'
+    | 'divisions'
+    | 'spots'
+    | 'categories'
+    | 'category-detail'
+    | 'guides'
+    | 'guide-detail'
+    | 'search'
+    | 'about'
+    | 'contact'
+    | 'privacy-policy'
+    | 'terms'
+    | 'planner'
+    | 'saved'
+    | 'cms';
   id?: string;
 }
 
@@ -13,6 +33,21 @@ export function parseCurrentRoute(): ParsedRoute {
   const hash = window.location.hash.trim().replace(/^#/, '');
 
   // Clean URL path routing
+  if (pathname === '/about') {
+    return { type: 'about' };
+  }
+  if (pathname === '/contact') {
+    return { type: 'contact' };
+  }
+  if (pathname === '/privacy-policy') {
+    return { type: 'privacy-policy' };
+  }
+  if (pathname === '/terms-and-conditions') {
+    return { type: 'terms' };
+  }
+  if (pathname === '/search') {
+    return { type: 'search' };
+  }
   if (pathname === '/divisions') {
     return { type: 'divisions' };
   }
@@ -33,16 +68,49 @@ export function parseCurrentRoute(): ParsedRoute {
     }
     return { type: 'districts' };
   }
-  if (pathname === '/places' || pathname.startsWith('/places/')) {
+  if (pathname === '/categories') {
+    return { type: 'categories' };
+  }
+  if (pathname.startsWith('/categories/')) {
+    const slug = pathname.replace('/categories/', '').split('/')[0];
+    if (slug) {
+      return { type: 'category-detail', id: decodeURIComponent(slug).toLowerCase() };
+    }
+    return { type: 'categories' };
+  }
+  if (pathname === '/places') {
     return { type: 'spots' };
+  }
+  if (pathname.startsWith('/places/')) {
+    const slug = pathname.replace('/places/', '').split('/')[0];
+    if (slug) {
+      return { type: 'spot-detail', id: decodeURIComponent(slug).toLowerCase() };
+    }
+    return { type: 'spots' };
+  }
+  if (pathname === '/travel-guides') {
+    return { type: 'guides' };
+  }
+  if (pathname.startsWith('/travel-guides/')) {
+    const slug = pathname.replace('/travel-guides/', '').split('/')[0];
+    if (slug) {
+      return { type: 'guide-detail', id: decodeURIComponent(slug).toLowerCase() };
+    }
+    return { type: 'guides' };
   }
 
   // Hash routing fallback
   if (!hash) return { type: 'home' };
 
   if (hash === 'cms') return { type: 'cms' };
+  if (hash === 'about') return { type: 'about' };
+  if (hash === 'contact') return { type: 'contact' };
+  if (hash === 'privacy-policy') return { type: 'privacy-policy' };
+  if (hash === 'terms-and-conditions' || hash === 'terms') return { type: 'terms' };
+  if (hash === 'search') return { type: 'search' };
   if (hash === 'districts') return { type: 'districts' };
   if (hash === 'divisions') return { type: 'divisions' };
+  if (hash === 'categories') return { type: 'categories' };
   if (hash === 'spots') return { type: 'spots' };
   if (hash === 'guides') return { type: 'guides' };
   if (hash === 'planner') return { type: 'planner' };
@@ -60,11 +128,40 @@ export function parseCurrentRoute(): ParsedRoute {
     return { type: 'district', id: hash.replace('district-', '') };
   }
 
+  if (hash.startsWith('article-')) {
+    return { type: 'guide-detail', id: decodeURIComponent(hash.replace('article-', '')).toLowerCase() };
+  }
+
+  if (hash.startsWith('guide-')) {
+    return { type: 'guide-detail', id: decodeURIComponent(hash.replace('guide-', '')).toLowerCase() };
+  }
+
   return { type: 'home' };
 }
 
+export interface SearchUrlState {
+  q?: string;
+  type?: string;
+  division?: string;
+  category?: string;
+  page?: number;
+}
+
+export function buildSearchRouteUrl(params: SearchUrlState): string {
+  const searchParams = new URLSearchParams();
+  const cleanQ = (params.q || '').trim();
+  if (cleanQ) searchParams.set('q', cleanQ);
+  if (params.type && params.type !== 'all') searchParams.set('type', params.type);
+  if (params.division && params.division !== 'all') searchParams.set('division', params.division);
+  if (params.category && params.category !== 'all') searchParams.set('category', params.category);
+  if (params.page && params.page > 1) searchParams.set('page', String(params.page));
+
+  const qs = searchParams.toString();
+  return qs ? `/search/?${qs}` : '/search/';
+}
+
 export function navigateToPath(path: string, replace: boolean = false): void {
-  if (window.location.pathname + window.location.hash === path) return;
+  if (window.location.pathname + window.location.search + window.location.hash === path) return;
   if (replace) {
     history.replaceState(null, '', path);
   } else {

@@ -14,10 +14,12 @@ import {
 } from '../data/bangladeshData';
 import { type Language, formatLocalizedNumber } from '../utils/langUtils';
 import { escapeHtml } from '../utils/formatUtils';
+import { matchesBilingualQuery } from '../utils/searchUtils';
 import {
   renderBreadcrumbs,
   renderDestinationCard
 } from '../components';
+import { FirestoreService } from '../services';
 import {
   renderCardSkeleton,
   renderEmptyState,
@@ -45,16 +47,23 @@ export interface PlacesDirectoryPageProps {
 const HERO_BG_IMAGE =
   'https://images.unsplash.com/photo-1596895111956-bf1cf0599ce5?auto=format&fit=crop&w=1600&q=80';
 
+function normalizeKey(value: string): string {
+  return (value || '').trim().toLowerCase().replace(/[\s-]+/g, '_');
+}
+
 function findMatchedDivision(
   spotOrDistDivisionId: string,
   divisions: Division[]
 ): Division | undefined {
   const target = (spotOrDistDivisionId || '').trim().toLowerCase();
+  const normalizedTarget = normalizeKey(target);
   if (!target) return undefined;
   return divisions.find(
     d =>
       d.id.toLowerCase() === target ||
-      (!!d.slug && d.slug.toLowerCase() === target)
+      (!!d.slug && d.slug.toLowerCase() === target) ||
+      normalizeKey(d.id) === normalizedTarget ||
+      (!!d.slug && normalizeKey(d.slug) === normalizedTarget)
   );
 }
 
@@ -63,11 +72,14 @@ function findMatchedDistrict(
   districts: District[]
 ): District | undefined {
   const target = (spotDistrictId || '').trim().toLowerCase();
+  const normalizedTarget = normalizeKey(target);
   if (!target) return undefined;
   return districts.find(
     d =>
       d.id.toLowerCase() === target ||
-      (!!d.slug && d.slug.toLowerCase() === target)
+      (!!d.slug && d.slug.toLowerCase() === target) ||
+      normalizeKey(d.id) === normalizedTarget ||
+      (!!d.slug && normalizeKey(d.slug) === normalizedTarget)
   );
 }
 
@@ -79,12 +91,14 @@ export function matchesSpotDivision(
   if (!divisionFilter || divisionFilter === 'all') return true;
   const target = divisionFilter.trim().toLowerCase();
   const spotDiv = (spot.division_id || '').trim().toLowerCase();
-  if (spotDiv === target) return true;
+  if (spotDiv === target || normalizeKey(spotDiv) === normalizeKey(target)) return true;
   const matchedDiv = findMatchedDivision(divisionFilter, divisions);
   if (!matchedDiv) return false;
   return (
     spotDiv === matchedDiv.id.toLowerCase() ||
-    (!!matchedDiv.slug && spotDiv === matchedDiv.slug.toLowerCase())
+    (!!matchedDiv.slug && spotDiv === matchedDiv.slug.toLowerCase()) ||
+    normalizeKey(spotDiv) === normalizeKey(matchedDiv.id) ||
+    (!!matchedDiv.slug && normalizeKey(spotDiv) === normalizeKey(matchedDiv.slug))
   );
 }
 
@@ -96,12 +110,14 @@ export function matchesSpotDistrict(
   if (!districtFilter || districtFilter === 'all') return true;
   const target = districtFilter.trim().toLowerCase();
   const spotDist = (spot.district_id || '').trim().toLowerCase();
-  if (spotDist === target) return true;
+  if (spotDist === target || normalizeKey(spotDist) === normalizeKey(target)) return true;
   const matchedDist = findMatchedDistrict(districtFilter, districts);
   if (!matchedDist) return false;
   return (
     spotDist === matchedDist.id.toLowerCase() ||
-    (!!matchedDist.slug && spotDist === matchedDist.slug.toLowerCase())
+    (!!matchedDist.slug && spotDist === matchedDist.slug.toLowerCase()) ||
+    normalizeKey(spotDist) === normalizeKey(matchedDist.id) ||
+    (!!matchedDist.slug && normalizeKey(spotDist) === normalizeKey(matchedDist.slug))
   );
 }
 
@@ -112,18 +128,20 @@ export function matchesSpotCategory(
 ): boolean {
   if (!categoryFilter || categoryFilter === 'all') return true;
   const target = categoryFilter.trim().toLowerCase();
+  const normalizedTarget = normalizeKey(target);
   const spotCats = Array.isArray(spot.category_ids)
     ? spot.category_ids.map(c => c.trim().toLowerCase())
     : [];
-  if (spotCats.includes(target)) return true;
+  if (spotCats.some(c => c === target || normalizeKey(c) === normalizedTarget)) return true;
   const matchedCat = categories.find(
-    c => c.id.toLowerCase() === target || (!!c.slug && c.slug.toLowerCase() === target)
+    c =>
+      c.id.toLowerCase() === target ||
+      (!!c.slug && c.slug.toLowerCase() === target) ||
+      normalizeKey(c.id) === normalizedTarget ||
+      (!!c.slug && normalizeKey(c.slug) === normalizedTarget)
   );
   if (!matchedCat) return false;
-  return (
-    spotCats.includes(matchedCat.id.toLowerCase()) ||
-    (!!matchedCat.slug && spotCats.includes(matchedCat.slug.toLowerCase()))
-  );
+  return FirestoreService.doesSpotMatchCategory(spot, matchedCat);
 }
 
 export function getFilteredSpots(
@@ -137,7 +155,7 @@ export function getFilteredSpots(
   categoryFilter: string
 ): TouristSpot[] {
   const publishedSpots = spots.filter(s => s.is_published === true);
-  const q = searchQuery.trim().toLowerCase();
+  const hasQuery = searchQuery.trim().length > 0;
 
   return publishedSpots.filter(spot => {
     if (!matchesSpotDivision(spot, divisionFilter, divisions)) {
@@ -149,16 +167,30 @@ export function getFilteredSpots(
     if (!matchesSpotCategory(spot, categoryFilter, categories)) {
       return false;
     }
-    if (q) {
-      const matchBn = (spot.name_bn || '').toLowerCase().includes(q);
-      const matchEn = (spot.name_en || '').toLowerCase().includes(q);
-      const matchSlug = (spot.slug || '').toLowerCase().includes(q);
-      if (!matchBn && !matchEn && !matchSlug) {
+    if (hasQuery) {
+      if (!matchesBilingualQuery(searchQuery, [spot.name_bn, spot.name_en, spot.slug])) {
         return false;
       }
     }
     return true;
   });
+}
+
+function getPaginationTokens(currentPage: number, totalPages: number): Array<number | 'ellipsis'> {
+  if (totalPages <= 7) {
+    return Array.from({ length: totalPages }, (_, i) => i + 1);
+  }
+  const tokens: Array<number | 'ellipsis'> = [1];
+  const windowStart = Math.max(2, currentPage - 1);
+  const windowEnd = Math.min(totalPages - 1, currentPage + 1);
+
+  if (windowStart > 2) tokens.push('ellipsis');
+  for (let p = windowStart; p <= windowEnd; p++) {
+    tokens.push(p);
+  }
+  if (windowEnd < totalPages - 1) tokens.push('ellipsis');
+  tokens.push(totalPages);
+  return tokens;
 }
 
 function renderPaginationControls(
@@ -168,11 +200,7 @@ function renderPaginationControls(
 ): string {
   if (totalPages <= 1) return '';
   const isBn = lang === 'bn';
-
-  const pages: number[] = [];
-  for (let p = 1; p <= totalPages; p++) {
-    pages.push(p);
-  }
+  const tokens = getPaginationTokens(currentPage, totalPages);
 
   return `
     <nav aria-label="${isBn ? 'দর্শনীয় স্থান পাতা নেভিগেশন' : 'Destinations pagination'}" class="mt-4 pt-2 d-flex flex-column flex-sm-row justify-content-between align-items-center gap-3">
@@ -193,20 +221,22 @@ function renderPaginationControls(
             <i class="bi bi-chevron-left me-1"></i>${isBn ? 'পূর্ববর্তী' : 'Prev'}
           </button>
         </li>
-        ${pages
-          .map(
-            p => `
-              <li class="page-item ${p === currentPage ? 'active' : ''}">
-                <button
-                  type="button"
-                  class="page-link rounded-3 px-3 places-page-btn ${p === currentPage ? 'bg-primary-bd border-success text-white fw-bold' : ''}"
-                  data-page="${p}"
-                  aria-current="${p === currentPage ? 'page' : 'false'}"
-                >
-                  ${formatLocalizedNumber(p, lang)}
-                </button>
-              </li>
-            `
+        ${tokens
+          .map(token =>
+            token === 'ellipsis'
+              ? `<li class="page-item disabled" aria-hidden="true"><span class="page-link rounded-3 border-0 bg-transparent text-muted px-2">…</span></li>`
+              : `
+                <li class="page-item ${token === currentPage ? 'active' : ''}">
+                  <button
+                    type="button"
+                    class="page-link rounded-3 px-3 places-page-btn ${token === currentPage ? 'bg-primary-bd border-success text-white fw-bold' : ''}"
+                    data-page="${token}"
+                    aria-current="${token === currentPage ? 'page' : 'false'}"
+                  >
+                    ${formatLocalizedNumber(token, lang)}
+                  </button>
+                </li>
+              `
           )
           .join('')}
         <li class="page-item ${currentPage >= totalPages ? 'disabled' : ''}">
@@ -225,7 +255,7 @@ function renderPaginationControls(
   `;
 }
 
-export function renderAllPlacesPage(props: PlacesDirectoryPageProps): string {
+export function renderPlacesResultsRegion(props: PlacesDirectoryPageProps): string {
   const {
     lang,
     divisions,
@@ -247,25 +277,6 @@ export function renderAllPlacesPage(props: PlacesDirectoryPageProps): string {
   const publishedDistricts = districts.filter(d => d.is_published !== false);
   const publishedCategories = categories.filter(c => c.is_published !== false);
   const publishedSpots = spots.filter(s => s.is_published === true);
-
-  // Scoped districts for the district dropdown when a division is selected
-  const availableDistricts = (divisionFilter && divisionFilter !== 'all'
-    ? publishedDistricts.filter(dist => {
-        const matchedDiv = findMatchedDivision(divisionFilter, publishedDivisions);
-        const distDiv = (dist.division_id || '').toLowerCase();
-        if (distDiv === divisionFilter.toLowerCase()) return true;
-        if (!matchedDiv) return false;
-        return (
-          distDiv === matchedDiv.id.toLowerCase() ||
-          (!!matchedDiv.slug && distDiv === matchedDiv.slug.toLowerCase())
-        );
-      })
-    : publishedDistricts
-  ).slice().sort((a, b) =>
-    isBn
-      ? a.name_bn.localeCompare(b.name_bn, 'bn')
-      : a.name_en.localeCompare(b.name_en, 'en')
-  );
 
   const filteredSpots = getFilteredSpots(
     publishedSpots,
@@ -304,7 +315,8 @@ export function renderAllPlacesPage(props: PlacesDirectoryPageProps): string {
       ? publishedCategories.find(
           c =>
             c.id.toLowerCase() === categoryFilter.toLowerCase() ||
-            (!!c.slug && c.slug.toLowerCase() === categoryFilter.toLowerCase())
+            (!!c.slug && c.slug.toLowerCase() === categoryFilter.toLowerCase()) ||
+            normalizeKey(c.id) === normalizeKey(categoryFilter)
         )
       : undefined;
 
@@ -312,6 +324,156 @@ export function renderAllPlacesPage(props: PlacesDirectoryPageProps): string {
   if (selectedDivObj) activeScopeParts.push(isBn ? selectedDivObj.name_bn : selectedDivObj.name_en);
   if (selectedDistObj) activeScopeParts.push(isBn ? selectedDistObj.name_bn : selectedDistObj.name_en);
   if (selectedCatObj) activeScopeParts.push(isBn ? selectedCatObj.name_bn : selectedCatObj.name_en);
+
+  return `
+    <div class="d-flex flex-wrap justify-content-between align-items-end mb-4 gap-2">
+      <div>
+        <span class="badge bg-primary-bd text-white px-3 py-1 rounded-pill mb-2">
+          ${activeScopeParts.length > 0
+            ? escapeHtml(activeScopeParts.join(' • '))
+            : (isBn ? 'প্রকাশিত দর্শনীয় স্থান' : 'Published Destinations')}
+        </span>
+        <h2 class="fw-bold text-primary-bd mb-1">
+          ${isBn ? 'জনপ্রিয় ভ্রমণ গন্তব্যের তালিকা' : 'Explore Tourist Destinations'}
+        </h2>
+        <p class="text-muted mb-0" aria-live="polite">
+          ${isLoading
+            ? (isBn ? 'ফায়ারস্টোর থেকে দর্শনীয় স্থান লোড হচ্ছে...' : 'Loading published destinations from Firestore...')
+            : totalItems === 0
+              ? (isBn ? 'কোনো দর্শনীয় স্থান পাওয়া যায়নি' : 'No matching tourist destinations found')
+              : (isBn
+                  ? `মোট ${formatLocalizedNumber(totalItems, lang)}টি প্রকাশিত স্থানের মধ্যে ${formatLocalizedNumber(startIndex + 1, lang)}–${formatLocalizedNumber(endIndex, lang)}টি প্রদর্শিত হচ্ছে`
+                  : `Showing ${startIndex + 1}–${endIndex} of ${totalItems} published destination${totalItems === 1 ? '' : 's'}`)}
+        </p>
+      </div>
+
+      <div class="d-flex gap-2 flex-wrap">
+        <a href="/divisions/" class="btn btn-outline-bd btn-sm rounded-pill px-3">
+          <i class="bi bi-grid-fill me-1"></i>${isBn ? '৮ বিভাগ' : '8 Divisions'}
+        </a>
+        <a href="/districts/" class="btn btn-outline-bd btn-sm rounded-pill px-3">
+          <i class="bi bi-geo-alt-fill me-1"></i>${isBn ? '৬৪ জেলা' : '64 Districts'}
+        </a>
+      </div>
+    </div>
+
+    ${isLoading ? `
+      <div class="row g-4" aria-label="${isBn ? 'দর্শনীয় স্থান লোড হচ্ছে' : 'Loading tourist destinations'}">
+        ${renderCardSkeleton(6, 'col-lg-4 col-md-6 mb-4')}
+      </div>
+    ` : error ? `
+      ${renderErrorState({
+        title: isBn ? 'দর্শনীয় স্থানের তথ্য লোড করা যায়নি' : 'Could not load tourist destinations',
+        message: error,
+        retryActionId: 'places-retry-btn',
+        lang
+      })}
+    ` : paginatedSpots.length === 0 ? `
+      ${renderEmptyState({
+        titleBn: 'কোনো দর্শনীয় স্থান পাওয়া যায়নি',
+        titleEn: 'No Tourist Destinations Found',
+        descBn: hasActiveFilters
+          ? 'আপনার অনুসন্ধান বা নির্বাচিত ফিল্টারের সাথে মিলে এমন কোনো প্রকাশিত দর্শনীয় স্থান পাওয়া যায়নি। ফিল্টার রিসেট করে সকল স্থান দেখুন।'
+          : 'এই মুহূর্তে ফায়ারস্টোরে কোনো প্রকাশিত দর্শনীয় স্থান নেই।',
+        descEn: hasActiveFilters
+          ? 'No published destinations matched your current search or filter selection. Reset filters to browse all available destinations.'
+          : 'There are currently no published tourist destinations stored in Firestore.',
+        actionTextBn: hasActiveFilters ? 'সব ফিল্টার রিসেট করুন' : 'পুনরায় লোড করুন',
+        actionTextEn: hasActiveFilters ? 'Reset All Filters' : 'Reload Destinations',
+        actionId: hasActiveFilters ? 'places-empty-reset-btn' : 'places-retry-btn',
+        icon: 'bi-compass',
+        lang
+      })}
+    ` : `
+      <div class="row g-4">
+        ${paginatedSpots
+          .map(spot => {
+            const division = findMatchedDivision(spot.division_id, publishedDivisions);
+            const district = findMatchedDistrict(spot.district_id, publishedDistricts);
+            const matchedCategories = (spot.category_ids || [])
+              .map(cid =>
+                publishedCategories.find(
+                  c =>
+                    c.id.toLowerCase() === cid.toLowerCase() ||
+                    (!!c.slug && c.slug.toLowerCase() === cid.toLowerCase()) ||
+                    normalizeKey(c.id) === normalizeKey(cid)
+                )
+              )
+              .filter((c): c is Category => Boolean(c));
+
+            // Prioritize active category filter as primary badge if present on the spot
+            const orderedCategories = selectedCatObj
+              ? [
+                  ...matchedCategories.filter(c => c.id === selectedCatObj.id),
+                  ...matchedCategories.filter(c => c.id !== selectedCatObj.id)
+                ]
+              : matchedCategories;
+
+            return renderDestinationCard({
+              spot,
+              division,
+              district,
+              category: orderedCategories[0],
+              categories: orderedCategories,
+              isBookmarked: bookmarkedIds.has(spot.id),
+              lang,
+              colClass: 'col-lg-4 col-md-6 mb-4'
+            });
+          })
+          .join('')}
+      </div>
+
+      ${renderPaginationControls(safePage, totalPages, lang)}
+    `}
+  `;
+}
+
+export function renderAllPlacesPage(props: PlacesDirectoryPageProps): string {
+  const {
+    lang,
+    divisions,
+    districts,
+    categories,
+    spots,
+    searchQuery,
+    divisionFilter,
+    districtFilter,
+    categoryFilter
+  } = props;
+
+  const isBn = lang === 'bn';
+  const publishedDivisions = divisions.filter(d => d.is_published !== false);
+  const publishedDistricts = districts.filter(d => d.is_published !== false);
+  const publishedCategories = categories.filter(c => c.is_published !== false);
+  const publishedSpots = spots.filter(s => s.is_published === true);
+
+  // Scoped districts for the district dropdown when a division is selected
+  const availableDistricts = (divisionFilter && divisionFilter !== 'all'
+    ? publishedDistricts.filter(dist => {
+        const matchedDiv = findMatchedDivision(divisionFilter, publishedDivisions);
+        const distDiv = (dist.division_id || '').toLowerCase();
+        if (distDiv === divisionFilter.toLowerCase() || normalizeKey(distDiv) === normalizeKey(divisionFilter)) {
+          return true;
+        }
+        if (!matchedDiv) return false;
+        return (
+          distDiv === matchedDiv.id.toLowerCase() ||
+          (!!matchedDiv.slug && distDiv === matchedDiv.slug.toLowerCase()) ||
+          normalizeKey(distDiv) === normalizeKey(matchedDiv.id)
+        );
+      })
+    : publishedDistricts
+  ).slice().sort((a, b) =>
+    isBn
+      ? a.name_bn.localeCompare(b.name_bn, 'bn')
+      : a.name_en.localeCompare(b.name_en, 'en')
+  );
+
+  const hasActiveFilters =
+    searchQuery.trim().length > 0 ||
+    (divisionFilter !== 'all' && divisionFilter !== '') ||
+    (districtFilter !== 'all' && districtFilter !== '') ||
+    (categoryFilter !== 'all' && categoryFilter !== '');
 
   return `
     <!-- 1. Breadcrumb Navigation -->
@@ -385,17 +547,26 @@ export function renderAllPlacesPage(props: PlacesDirectoryPageProps): string {
             <label for="places-search-input" class="form-label small fw-bold text-primary-bd mb-1">
               <i class="bi bi-search me-1"></i>${isBn ? 'গন্তব্যের নাম খুঁজুন (বাংলা বা ইংরেজি)' : 'Search Destination Name (Bengali / English)'}
             </label>
-            <div class="search-input-group">
+            <div class="search-input-group position-relative">
               <i class="bi bi-search search-icon-inside"></i>
               <input
                 type="text"
-                class="form-control"
+                class="form-control pe-5"
                 id="places-search-input"
                 placeholder="${isBn ? 'যেমন: সুন্দরবন, Sajek, কক্সবাজার, Lalbagh...' : 'e.g., Sundarbans, সাজেক, Cox\'s Bazar, লালবাগ...'}"
                 value="${escapeHtml(searchQuery)}"
                 autocomplete="off"
                 aria-label="${isBn ? 'বাংলা বা ইংরেজিতে দর্শনীয় স্থান খুঁজুন' : 'Search tourist destinations in Bengali or English'}"
               >
+              <button
+                type="button"
+                id="places-clear-search-btn"
+                class="btn btn-sm border-0 position-absolute top-50 end-0 translate-middle-y me-1 text-secondary ${searchQuery.trim() ? '' : 'd-none'}"
+                aria-label="${isBn ? 'অনুসন্ধান মুছুন' : 'Clear search'}"
+                title="${isBn ? 'অনুসন্ধান মুছুন' : 'Clear search'}"
+              >
+                <i class="bi bi-x-circle-fill"></i>
+              </button>
             </div>
           </div>
 
@@ -521,92 +692,9 @@ export function renderAllPlacesPage(props: PlacesDirectoryPageProps): string {
 
     <!-- 7 & 8. Tourist Spot Grid + Pagination / Loading / Empty / Error States -->
     <section class="container py-5" id="places-directory-grid">
-      <div class="d-flex flex-wrap justify-content-between align-items-end mb-4 gap-2">
-        <div>
-          <span class="badge bg-primary-bd text-white px-3 py-1 rounded-pill mb-2">
-            ${activeScopeParts.length > 0
-              ? escapeHtml(activeScopeParts.join(' • '))
-              : (isBn ? 'প্রকাশিত দর্শনীয় স্থান' : 'Published Destinations')}
-          </span>
-          <h2 class="fw-bold text-primary-bd mb-1">
-            ${isBn ? 'জনপ্রিয় ভ্রমণ গন্তব্যের তালিকা' : 'Explore Tourist Destinations'}
-          </h2>
-          <p class="text-muted mb-0">
-            ${isLoading
-              ? (isBn ? 'ফায়ারস্টোর থেকে দর্শনীয় স্থান লোড হচ্ছে...' : 'Loading published destinations from Firestore...')
-              : totalItems === 0
-                ? (isBn ? 'কোনো দর্শনীয় স্থান পাওয়া যায়নি' : 'No matching tourist destinations found')
-                : (isBn
-                    ? `মোট ${formatLocalizedNumber(totalItems, lang)}টি প্রকাশিত স্থানের মধ্যে ${formatLocalizedNumber(startIndex + 1, lang)}–${formatLocalizedNumber(endIndex, lang)}টি প্রদর্শিত হচ্ছে`
-                    : `Showing ${startIndex + 1}–${endIndex} of ${totalItems} published destination${totalItems === 1 ? '' : 's'}`)}
-          </p>
-        </div>
-
-        <div class="d-flex gap-2 flex-wrap">
-          <a href="/divisions/" class="btn btn-outline-bd btn-sm rounded-pill px-3">
-            <i class="bi bi-grid-fill me-1"></i>${isBn ? '৮ বিভাগ' : '8 Divisions'}
-          </a>
-          <a href="/districts/" class="btn btn-outline-bd btn-sm rounded-pill px-3">
-            <i class="bi bi-geo-alt-fill me-1"></i>${isBn ? '৬৪ জেলা' : '64 Districts'}
-          </a>
-        </div>
+      <div id="places-results-region">
+        ${renderPlacesResultsRegion(props)}
       </div>
-
-      ${isLoading ? `
-        <div class="row g-4" aria-label="${isBn ? 'দর্শনীয় স্থান লোড হচ্ছে' : 'Loading tourist destinations'}">
-          ${renderCardSkeleton(6, 'col-lg-4 col-md-6 mb-4')}
-        </div>
-      ` : error ? `
-        ${renderErrorState({
-          title: isBn ? 'দর্শনীয় স্থানের তথ্য লোড করা যায়নি' : 'Could not load tourist destinations',
-          message: error,
-          retryActionId: 'places-retry-btn',
-          lang
-        })}
-      ` : paginatedSpots.length === 0 ? `
-        ${renderEmptyState({
-          titleBn: 'কোনো দর্শনীয় স্থান পাওয়া যায়নি',
-          titleEn: 'No Tourist Destinations Found',
-          descBn: hasActiveFilters
-            ? 'আপনার অনুসন্ধান বা নির্বাচিত ফিল্টারের সাথে মিলে এমন কোনো প্রকাশিত দর্শনীয় স্থান পাওয়া যায়নি। ফিল্টার রিসেট করে সকল স্থান দেখুন।'
-            : 'এই মুহূর্তে ফায়ারস্টোরে কোনো প্রকাশিত দর্শনীয় স্থান নেই।',
-          descEn: hasActiveFilters
-            ? 'No published destinations matched your current search or filter selection. Reset filters to browse all available destinations.'
-            : 'There are currently no published tourist destinations stored in Firestore.',
-          actionTextBn: hasActiveFilters ? 'সব ফিল্টার রিসেট করুন' : 'পুনরায় লোড করুন',
-          actionTextEn: hasActiveFilters ? 'Reset All Filters' : 'Reload Destinations',
-          actionId: hasActiveFilters ? 'places-empty-reset-btn' : 'places-retry-btn',
-          icon: 'bi-compass',
-          lang
-        })}
-      ` : `
-        <div class="row g-4">
-          ${paginatedSpots
-            .map(spot => {
-              const division = findMatchedDivision(spot.division_id, publishedDivisions);
-              const district = findMatchedDistrict(spot.district_id, publishedDistricts);
-              const category = publishedCategories.find(c =>
-                (spot.category_ids || []).some(
-                  cid =>
-                    cid.toLowerCase() === c.id.toLowerCase() ||
-                    (!!c.slug && cid.toLowerCase() === c.slug.toLowerCase())
-                )
-              );
-              return renderDestinationCard({
-                spot,
-                division,
-                district,
-                category,
-                isBookmarked: bookmarkedIds.has(spot.id),
-                lang,
-                colClass: 'col-lg-4 col-md-6 mb-4'
-              });
-            })
-            .join('')}
-        </div>
-
-        ${renderPaginationControls(safePage, totalPages, lang)}
-      `}
     </section>
   `;
 }

@@ -60,3 +60,11 @@ export function optimizeImageUrl(url: string, width: number = 800): string {
   }
   return url;
 }
+
+export function truncateText(str: string, maxLength: number = 140): string {
+  if (!str) return '';
+  const cleaned = str.trim().replace(/\s+/g, ' ');
+  if (cleaned.length <= maxLength) return cleaned;
+  return `${cleaned.slice(0, Math.max(0, maxLength - 1)).trimEnd()}…`;
+}
+

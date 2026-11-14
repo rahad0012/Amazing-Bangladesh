@@ -8,5 +8,6 @@ export * from './DestinationCard';
 export * from './DivisionCard';
 export * from './DistrictCard';
 export * from './CategoryCard';
+export * from './ArticleCard';
 export * from './Breadcrumb';
 export * from './Newsletter';

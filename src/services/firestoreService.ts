@@ -19,12 +19,18 @@ import {
 import { db } from '../config/firebaseConfig';
 import { handleFirestoreError, OperationType } from '../firebase';
 import { 
+  CATEGORIES,
   type Division, 
   type District, 
   type Category, 
   type TouristSpot, 
   type Article 
 } from '../data/bangladeshData';
+import {
+  DEFAULT_LEGAL_PAGES,
+  normalizeLegalPagesConfig,
+  type LegalPagesConfig
+} from './legalPagesDefaults';
 
 export const COLLECTIONS = {
   DIVISIONS: 'divisions',
@@ -46,6 +52,21 @@ export const CANONICAL_DIVISION_ORDER = [
   'sylhet',
   'rangpur',
   'mymensingh'
+] as const;
+
+export const CANONICAL_CATEGORY_ORDER = [
+  'beaches',
+  'hills',
+  'waterfalls',
+  'forests',
+  'historical',
+  'archaeological',
+  'religious',
+  'lakes',
+  'islands',
+  'parks',
+  'wildlife',
+  'rivers'
 ] as const;
 
 /**
@@ -396,10 +417,83 @@ export class FirestoreService {
   }
 
   /**
+   * Deduplicate and deterministically sort published articles chronologically
+   * without inventing fake authors or publication dates.
+   */
+  static normalizePublishedArticles(articles: Article[]): Article[] {
+    const seen = new Set<string>();
+    const published = articles.filter(a => {
+      if (a.is_published !== true || a.status === 'draft') return false;
+      const key = (a.id || a.slug || '').trim().toLowerCase();
+      if (!key || seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+
+    return published.sort((a, b) => {
+      const timeA = a.published_at ? Date.parse(a.published_at) : NaN;
+      const timeB = b.published_at ? Date.parse(b.published_at) : NaN;
+      const validA = !Number.isNaN(timeA);
+      const validB = !Number.isNaN(timeB);
+      if (validA && validB && timeB !== timeA) return timeB - timeA;
+      if (validA && !validB) return -1;
+      if (!validA && validB) return 1;
+      return (a.title_en || a.title_bn || '').localeCompare(b.title_en || b.title_bn || '');
+    });
+  }
+
+  /**
    * Fetch published travel guide articles from Firestore
    */
   static async getPublishedArticles(): Promise<Article[]> {
-    return FirestoreService.getCollectionItems<Article>(COLLECTIONS.ARTICLES, true);
+    const raw = await FirestoreService.getCollectionItems<Article>(COLLECTIONS.ARTICLES, true);
+    return FirestoreService.normalizePublishedArticles(raw);
+  }
+
+  /**
+   * Fetch a single published travel article from Firestore by URL slug (strictly is_published == true)
+   * Never calls getDoc on non-existent docs and never returns draft/unpublished articles.
+   */
+  static async getArticleBySlug(slug: string): Promise<Article | null> {
+    const normalizedSlug = slug.trim().toLowerCase();
+    if (!normalizedSlug) return null;
+
+    try {
+      const colRef = collection(db, COLLECTIONS.ARTICLES);
+      const q = query(
+        colRef,
+        where('slug', '==', normalizedSlug),
+        where('is_published', '==', true)
+      );
+      const snapshot = await getDocs(q);
+      if (!snapshot.empty) {
+        for (const docSnap of snapshot.docs) {
+          const data = { id: docSnap.id, ...docSnap.data() } as Article;
+          if (data.is_published === true && data.status !== 'draft') {
+            return data;
+          }
+        }
+      }
+
+      // Fallback: check published collection list for case-insensitive slug or ID match
+      const allPublished = await FirestoreService.getPublishedArticles();
+      return (
+        allPublished.find(
+          art =>
+            (art.slug && art.slug.trim().toLowerCase() === normalizedSlug) ||
+            art.id.trim().toLowerCase() === normalizedSlug
+        ) || null
+      );
+    } catch (error: any) {
+      if (
+        error?.code === 'permission-denied' ||
+        (error instanceof Error && error.message.includes('Missing or insufficient permissions'))
+      ) {
+        handleFirestoreError(error, OperationType.LIST, COLLECTIONS.ARTICLES);
+      }
+      console.warn(`Error fetching article by slug "${normalizedSlug}":`, error?.message || error);
+      throw error;
+    }
   }
 
   /**
@@ -426,12 +520,251 @@ export class FirestoreService {
     });
   }
 
+  static readonly SPOT_SLUG_ALIASES: Record<string, string> = {
+    'saint-martin': 'saint-martins-island',
+    'st-martin': 'saint-martins-island',
+    'lalbagh-fort': 'lalbagh-fort-ahsan-manzil',
+    'ahsan-manzil': 'lalbagh-fort-ahsan-manzil',
+    'coxs-bazar': 'coxs-bazar-sea-beach',
+    'sundarbans': 'sundarbans-mangrove-forest',
+    'kuakata': 'kuakata-sea-beach',
+    'ratargul': 'ratargul-swamp-forest',
+    'tanguar-haor': 'tanguar-haor-shimul-bagan',
+    'birishiri': 'birishiri-ceramic-hills-someshwari',
+    'sreemangal': 'sreemangal-tea-lawachara',
+    'srimangal': 'sreemangal-tea-lawachara',
+    'madhabkunda': 'madhabkunda-waterfall',
+    'paharpur': 'somapura-mahavihara-paharpur',
+    'somapura-mahavihara': 'somapura-mahavihara-paharpur',
+    'sixty-dome-mosque': 'sixty-dome-mosque-bagerhat',
+    'shat-gombuj': 'sixty-dome-mosque-bagerhat'
+  };
+
+  static readonly CATEGORY_SLUG_ALIASES: Record<string, string> = {
+    'hills': 'hills-and-mountains',
+    'hills_and_mountains': 'hills-and-mountains',
+    'historical': 'historical-places',
+    'historical_places': 'historical-places',
+    'archaeological': 'archaeological-sites',
+    'archaeological_sites': 'archaeological-sites',
+    'religious': 'religious-places',
+    'religious_places': 'religious-places'
+  };
+
+  private static normalizeCategoryToken(value: string): string {
+    return (value || '').trim().toLowerCase().replace(/[\s-]+/g, '_');
+  }
+
+  /**
+   * Deduplicate published categories from Firestore, enrich legacy seeded docs
+   * with missing cover images / SEO slugs, and merge the 4 newly defined canonical
+   * categories if Firestore still holds only the legacy <=8 seed.
+   */
+  static normalizePublishedCategories(items: Category[]): Category[] {
+    const publishedRaw = items.filter(c => c.is_published === true);
+    if (publishedRaw.length === 0) {
+      return [...CATEGORIES].filter(c => c.is_published === true);
+    }
+
+    const seenKeys = new Set<string>();
+    const unique: Category[] = [];
+
+    for (const cat of publishedRaw) {
+      const rawId = (cat.id || '').trim().toLowerCase();
+      const rawSlug = (cat.slug || '').trim().toLowerCase();
+      const canonical = CATEGORIES.find(
+        c =>
+          c.id.toLowerCase() === rawId ||
+          c.slug.toLowerCase() === rawSlug ||
+          c.slug.toLowerCase() === (FirestoreService.CATEGORY_SLUG_ALIASES[rawSlug] || '') ||
+          c.slug.toLowerCase() === (FirestoreService.CATEGORY_SLUG_ALIASES[rawId] || '')
+      );
+
+      const dedupeKey = canonical ? canonical.id : (rawId || rawSlug);
+      if (!dedupeKey || seenKeys.has(dedupeKey)) continue;
+      seenKeys.add(dedupeKey);
+
+      const merged: Category = canonical
+        ? {
+            ...cat,
+            id: cat.id || canonical.id,
+            slug:
+              !rawSlug || rawSlug === 'hills' || rawSlug === 'historical' || rawSlug === 'religious'
+                ? canonical.slug
+                : cat.slug,
+            name_en: cat.name_en === 'Hills' ? canonical.name_en : (cat.name_en || canonical.name_en),
+            name_bn: cat.name_bn === 'পাহাড় ও উপত্যকা' ? canonical.name_bn : (cat.name_bn || canonical.name_bn),
+            icon: cat.icon || canonical.icon,
+            image_url: cat.image_url || canonical.image_url,
+            description_en: cat.description_en || canonical.description_en,
+            description_bn: cat.description_bn || canonical.description_bn,
+            is_published: true
+          }
+        : {
+            ...cat,
+            slug: rawSlug || rawId,
+            icon: cat.icon || 'bi-compass',
+            is_published: true
+          };
+
+      unique.push(merged);
+    }
+
+    // If Firestore holds only the legacy <=8 category seed, complete the 12 canonical categories without duplicating existing ones
+    if (unique.length <= 8) {
+      for (const canonical of CATEGORIES) {
+        if (!seenKeys.has(canonical.id)) {
+          seenKeys.add(canonical.id);
+          unique.push(canonical);
+        }
+      }
+    }
+
+    return unique.sort((a, b) => {
+      const idxA = CANONICAL_CATEGORY_ORDER.indexOf(a.id.toLowerCase() as any);
+      const idxB = CANONICAL_CATEGORY_ORDER.indexOf(b.id.toLowerCase() as any);
+      const normA = idxA === -1 ? 99 : idxA;
+      const normB = idxB === -1 ? 99 : idxB;
+      if (normA !== normB) return normA - normB;
+      return (a.name_en || '').localeCompare(b.name_en || '');
+    });
+  }
+
+  /**
+   * Match a published tourist spot against a category by id, slug, or canonical alias
+   */
+  static doesSpotMatchCategory(spot: TouristSpot, category: Category): boolean {
+    if (spot.is_published !== true || !Array.isArray(spot.category_ids)) return false;
+
+    const candidateTokens = new Set<string>([
+      category.id.trim().toLowerCase(),
+      FirestoreService.normalizeCategoryToken(category.id),
+      (category.slug || '').trim().toLowerCase(),
+      FirestoreService.normalizeCategoryToken(category.slug || '')
+    ]);
+
+    for (const [alias, targetSlug] of Object.entries(FirestoreService.CATEGORY_SLUG_ALIASES)) {
+      if (
+        targetSlug === (category.slug || '').toLowerCase() ||
+        alias === category.id.toLowerCase()
+      ) {
+        candidateTokens.add(alias);
+        candidateTokens.add(targetSlug);
+        candidateTokens.add(FirestoreService.normalizeCategoryToken(alias));
+        candidateTokens.add(FirestoreService.normalizeCategoryToken(targetSlug));
+      }
+    }
+
+    return spot.category_ids.some(cid => {
+      const clean = (cid || '').trim().toLowerCase();
+      const norm = FirestoreService.normalizeCategoryToken(clean);
+      return candidateTokens.has(clean) || candidateTokens.has(norm);
+    });
+  }
+
+  /**
+   * Fetch all published categories from Firestore categories collection
+   */
+  static async getAllPublishedCategories(): Promise<Category[]> {
+    const raw = await FirestoreService.getCollectionItems<Category>(COLLECTIONS.CATEGORIES, true);
+    return FirestoreService.normalizePublishedCategories(raw);
+  }
+
+  /**
+   * Fetch a single published category from Firestore by URL slug or canonical alias
+   * Uses collection query where('is_published', '==', true) so Firestore rules never reject non-existent docs
+   */
+  static async getCategoryBySlug(slug: string): Promise<Category | null> {
+    const normalizedSlug = slug.trim().toLowerCase();
+    if (!normalizedSlug) return null;
+
+    try {
+      const publishedCategories = await FirestoreService.getAllPublishedCategories();
+      const aliasTarget =
+        FirestoreService.CATEGORY_SLUG_ALIASES[normalizedSlug] ||
+        FirestoreService.CATEGORY_SLUG_ALIASES[FirestoreService.normalizeCategoryToken(normalizedSlug)];
+      const normalizedToken = FirestoreService.normalizeCategoryToken(normalizedSlug);
+
+      return (
+        publishedCategories.find(cat => {
+          const catId = cat.id.trim().toLowerCase();
+          const catSlug = (cat.slug || '').trim().toLowerCase();
+          return (
+            catSlug === normalizedSlug ||
+            catId === normalizedSlug ||
+            FirestoreService.normalizeCategoryToken(catId) === normalizedToken ||
+            FirestoreService.normalizeCategoryToken(catSlug) === normalizedToken ||
+            (!!aliasTarget && (catSlug === aliasTarget || catId === aliasTarget))
+          );
+        }) || null
+      );
+    } catch (error: any) {
+      if (
+        error?.code === 'permission-denied' ||
+        (error instanceof Error && error.message.includes('Missing or insufficient permissions'))
+      ) {
+        handleFirestoreError(error, OperationType.LIST, COLLECTIONS.CATEGORIES);
+      }
+      console.warn(`Error fetching category by slug "${normalizedSlug}":`, error?.message || error);
+      throw error;
+    }
+  }
+
   /**
    * Fetch all published tourist spots from Firestore tourist_spots collection
    */
   static async getAllPublishedSpots(): Promise<TouristSpot[]> {
     const raw = await FirestoreService.getCollectionItems<TouristSpot>(COLLECTIONS.TOURIST_SPOTS, true);
     return FirestoreService.normalizePublishedSpots(raw);
+  }
+
+  /**
+   * Fetch a single published tourist spot from Firestore by URL slug (strictly is_published == true)
+   */
+  static async getSpotBySlug(slug: string): Promise<TouristSpot | null> {
+    const normalizedSlug = slug.trim().toLowerCase();
+    if (!normalizedSlug) return null;
+
+    try {
+      const colRef = collection(db, COLLECTIONS.TOURIST_SPOTS);
+      const q = query(
+        colRef,
+        where('slug', '==', normalizedSlug),
+        where('is_published', '==', true)
+      );
+      const snapshot = await getDocs(q);
+      if (!snapshot.empty) {
+        const docSnap = snapshot.docs[0];
+        const data = { id: docSnap.id, ...docSnap.data() } as TouristSpot;
+        if (data.is_published === true) return data;
+      }
+
+      const aliasSlug = FirestoreService.SPOT_SLUG_ALIASES[normalizedSlug];
+      if (aliasSlug) {
+        const aliasQuery = query(
+          colRef,
+          where('slug', '==', aliasSlug),
+          where('is_published', '==', true)
+        );
+        const aliasSnap = await getDocs(aliasQuery);
+        if (!aliasSnap.empty) {
+          const docSnap = aliasSnap.docs[0];
+          const data = { id: docSnap.id, ...docSnap.data() } as TouristSpot;
+          if (data.is_published === true) return data;
+        }
+      }
+
+      return null;
+    } catch (error: any) {
+      if (
+        error?.code === 'permission-denied' ||
+        (error instanceof Error && error.message.includes('Missing or insufficient permissions'))
+      ) {
+        handleFirestoreError(error, OperationType.GET, `${COLLECTIONS.TOURIST_SPOTS}/${normalizedSlug}`);
+      }
+      console.warn(`Error fetching tourist spot by slug "${normalizedSlug}":`, error?.message || error);
+      throw error;
+    }
   }
 
   /**
@@ -492,4 +825,55 @@ export class FirestoreService {
       }
     }
   }
+
+  /**
+   * Fetch editable legal pages configuration from site_settings/legal_pages
+   */
+  static async getLegalPagesSettings(): Promise<LegalPagesConfig | null> {
+    try {
+      const docRef = doc(db, COLLECTIONS.SITE_SETTINGS, 'legal_pages');
+      const docSnap = await getDoc(docRef);
+      if (!docSnap.exists()) {
+        return null;
+      }
+      return normalizeLegalPagesConfig(docSnap.data() as Partial<LegalPagesConfig>);
+    } catch (error: any) {
+      if (
+        error?.code === 'permission-denied' ||
+        (error instanceof Error && error.message.includes('Missing or insufficient permissions'))
+      ) {
+        handleFirestoreError(error, OperationType.GET, `${COLLECTIONS.SITE_SETTINGS}/legal_pages`);
+      }
+      console.warn('Could not load legal pages config from Firestore:', error?.message || error);
+      return null;
+    }
+  }
+
+  /**
+   * Save editable legal pages configuration to site_settings/legal_pages
+   */
+  static async saveLegalPagesSettings(
+    config: LegalPagesConfig
+  ): Promise<{ success: boolean; message?: string }> {
+    const normalized = normalizeLegalPagesConfig({
+      ...config,
+      updated_at: new Date().toISOString()
+    });
+    try {
+      const docRef = doc(db, COLLECTIONS.SITE_SETTINGS, 'legal_pages');
+      await setDoc(docRef, normalized, { merge: true });
+      return { success: true };
+    } catch (error: any) {
+      console.warn('Firestore legal pages save note:', error?.message || error);
+      return {
+        success: false,
+        message:
+          error?.code === 'permission-denied'
+            ? 'Admin authorization required to persist legal document changes to Firestore.'
+            : error?.message || 'Could not save legal document settings.'
+      };
+    }
+  }
 }
+
+export { DEFAULT_LEGAL_PAGES, normalizeLegalPagesConfig, type LegalPagesConfig };

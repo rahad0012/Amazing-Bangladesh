@@ -82,6 +82,12 @@ export interface TouristSpot {
   image_url: string;
   gallery_urls: string[];
   google_maps_url?: string;
+  estimated_cost_en?: string;
+  estimated_cost_bn?: string;
+  entry_fee_en?: string;
+  entry_fee_bn?: string;
+  opening_hours_en?: string;
+  opening_hours_bn?: string;
   seo_title_en?: string;
   seo_title_bn?: string;
   seo_description_en?: string;
@@ -122,6 +128,81 @@ export interface Article {
   created_at?: string;
   updated_at?: string;
 }
+
+export interface ArticleCategoryDefinition {
+  id:
+    | 'travel-tips'
+    | 'budget-travel'
+    | 'family-travel'
+    | 'adventure-travel'
+    | 'historical-travel'
+    | 'destination-guides'
+    | 'seasonal-travel';
+  name_en: string;
+  name_bn: string;
+  icon: string;
+  description_en: string;
+  description_bn: string;
+}
+
+export const ARTICLE_CATEGORIES: ReadonlyArray<ArticleCategoryDefinition> = [
+  {
+    id: 'travel-tips',
+    name_en: 'Travel Tips',
+    name_bn: 'ভ্রমণ টিপস',
+    icon: 'bi-lightbulb-fill',
+    description_en: 'Practical packing, permit, safety, and local etiquette advice.',
+    description_bn: 'নিরাপদ ভ্রমণ, অনুমতি, প্যাকিং ও স্থানীয় আচরণবিধি সংক্রান্ত ব্যবহারিক পরামর্শ।'
+  },
+  {
+    id: 'budget-travel',
+    name_en: 'Budget Travel',
+    name_bn: 'বাজেট ভ্রমণ',
+    icon: 'bi-wallet2',
+    description_en: 'Cost-effective transport routes, stays, and value itineraries.',
+    description_bn: 'সাশ্রয়ী যাতায়াত রুট, আবাসন ও কম খরচে ভ্রমণের কার্যকর পরিকল্পনা।'
+  },
+  {
+    id: 'family-travel',
+    name_en: 'Family Travel',
+    name_bn: 'পরিবার নিয়ে ভ্রমণ',
+    icon: 'bi-people-fill',
+    description_en: 'Comfortable, kid-friendly, and accessible trips for families.',
+    description_bn: 'পরিবার ও শিশুদের উপযোগী আরামদায়ক এবং নিরাপদ ভ্রমণ গন্তব্য ও নির্দেশিকা।'
+  },
+  {
+    id: 'adventure-travel',
+    name_en: 'Adventure Travel',
+    name_bn: 'অ্যাডভেঞ্চার ভ্রমণ',
+    icon: 'bi-compass-fill',
+    description_en: 'Hill treks, mangrove safaris, boat expeditions, and outdoor thrills.',
+    description_bn: 'পাহাড়ি ট্রেকিং, ম্যানগ্রোভ সাফারি, জলপথ অভিযান ও রোমাঞ্চকর ভ্রমণ গল্প।'
+  },
+  {
+    id: 'historical-travel',
+    name_en: 'Historical Travel',
+    name_bn: 'ঐতিহাসিক ভ্রমণ',
+    icon: 'bi-bank2',
+    description_en: 'Heritage walks, archaeological ruins, mosques, and cultural history.',
+    description_bn: 'প্রাচীন ঐতিহ্য, প্রত্নতাত্ত্বিক নিদর্শন, ঐতিহাসিক স্থাপত্য ও সাংস্কৃতিক ইতিহাস।'
+  },
+  {
+    id: 'destination-guides',
+    name_en: 'Destination Guides',
+    name_bn: 'গন্তব্য গাইড',
+    icon: 'bi-map-fill',
+    description_en: 'In-depth route plans and complete handbooks for Bangladesh regions.',
+    description_bn: 'বাংলাদেশের উল্লেখযোগ্য গন্তব্যগুলোর বিস্তারিত রুট প্ল্যান ও সম্পূর্ণ ভ্রমণ সহায়িকা।'
+  },
+  {
+    id: 'seasonal-travel',
+    name_en: 'Seasonal Travel',
+    name_bn: 'মৌসুমি ভ্রমণ',
+    icon: 'bi-cloud-sun-fill',
+    description_en: 'Monsoon haor cruises, winter hill escapes, and seasonal calendars.',
+    description_bn: 'বর্ষার হাওর, শীতের পাহাড় ও ঋতুভেদে ভ্রমণের সেরা সময়সূচি ও প্রস্তুতি।'
+  }
+];
 
 export interface MediaItem {
   id: string;
@@ -1181,7 +1262,7 @@ export const DISTRICTS: District[] = [
   }
 ];
 
-// Tourism Categories
+// Tourism Categories (All 12 Canonical Categories)
 export const CATEGORIES: Category[] = [
   {
     id: "beaches",
@@ -1189,18 +1270,20 @@ export const CATEGORIES: Category[] = [
     name_bn: "সমুদ্র সৈকত",
     slug: "beaches",
     icon: "bi-water",
-    description_en: "World's longest unbroken natural sandy beaches and dramatic sea shores.",
-    description_bn: "বিশ্বের দীর্ঘতম ১২০ কিমি প্রাকৃতিক সৈকত ও নয়নাভিরাম সাগরবেলা।",
+    image_url: "https://images.unsplash.com/photo-1596895111956-bf1cf0599ce5?auto=format&fit=crop&w=800&q=80",
+    description_en: "World's longest unbroken natural sandy beaches and dramatic sea shores along the Bay of Bengal.",
+    description_bn: "বিশ্বের দীর্ঘতম ১২০ কিমি প্রাকৃতিক সৈকত ও বঙ্গোপসাগরের নয়নাভিরাম সাগরবেলা।",
     is_published: true
   },
   {
     id: "hills",
-    name_en: "Hills",
-    name_bn: "পাহাড় ও উপত্যকা",
-    slug: "hills",
+    name_en: "Hills and Mountains",
+    name_bn: "পাহাড় ও পর্বত",
+    slug: "hills-and-mountains",
     icon: "bi-triangle",
-    description_en: "Rolling cloud kingdoms, emerald peaks, and tranquil tribal trails.",
-    description_bn: "মেঘের উপত্যকা, সুউচ্চ সবুজ পর্বতচূড়া ও শান্ত পাহাড়ি ট্রেইল।",
+    image_url: "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=800&q=80",
+    description_en: "Rolling cloud kingdoms, emerald Chittagong Hill Tracts peaks, and tranquil mountain trails.",
+    description_bn: "মেঘের উপত্যকা, সুউচ্চ সবুজ পার্বত্য চূড়া ও শান্ত পাহাড়ি ট্রেইল।",
     is_published: true
   },
   {
@@ -1209,7 +1292,8 @@ export const CATEGORIES: Category[] = [
     name_bn: "ঝর্ণা ও জলপ্রপাত",
     slug: "waterfalls",
     icon: "bi-droplet-half",
-    description_en: "Majestic cascades tumbling down forested gorges and rocky canyons.",
+    image_url: "https://images.unsplash.com/photo-1432405972618-c60b0225b8f9?auto=format&fit=crop&w=800&q=80",
+    description_en: "Majestic cascades tumbling down forested gorges, emerald hills, and rocky canyons.",
     description_bn: "পাহাড়ের গহীনে সতেজ গর্জনশীল জলপ্রপাত ও স্নিগ্ধ পাহাড়ি ঝর্ণা।",
     is_published: true
   },
@@ -1219,7 +1303,8 @@ export const CATEGORIES: Category[] = [
     name_bn: "বন ও অরণ্য",
     slug: "forests",
     icon: "bi-tree",
-    description_en: "The UNESCO Sundarbans mangrove, freshwater swamp, and tropical rainforests.",
+    image_url: "https://images.unsplash.com/photo-1448375240586-882707db888b?auto=format&fit=crop&w=800&q=80",
+    description_en: "The UNESCO Sundarbans mangrove, freshwater swamp forests, and tropical rainforests.",
     description_bn: "বিশ্ব ঐতিহ্য সুন্দরবন ম্যানগ্রোভ, সোয়াম্প ফরেস্ট ও চিরহরিৎ বৃষ্টিবন।",
     is_published: true
   },
@@ -1227,20 +1312,33 @@ export const CATEGORIES: Category[] = [
     id: "historical",
     name_en: "Historical Places",
     name_bn: "ঐতিহাসিক স্থান",
-    slug: "historical",
+    slug: "historical-places",
     icon: "bi-bank",
-    description_en: "Centuries-old Mughal citadels, palaces, terracotta shrines, and Buddhist viharas.",
-    description_bn: "শতবর্ষী মুঘল কেল্লা, রাজবাড়ি, টেরাকোটা স্থাপত্য ও প্রাচীন বৌদ্ধ বিহার।",
+    image_url: "https://images.unsplash.com/photo-1609137144813-7d9921338f24?auto=format&fit=crop&w=800&q=80",
+    description_en: "Centuries-old Mughal citadels, heritage palaces, zamindar estates, and colonial landmarks.",
+    description_bn: "শতবর্ষী মুঘল কেল্লা, রাজবাড়ি, জমিদার প্রাসাদ ও ঐতিহাসিক স্থাপত্য।",
+    is_published: true
+  },
+  {
+    id: "archaeological",
+    name_en: "Archaeological Sites",
+    name_bn: "প্রত্নতাত্ত্বিক নিদর্শন",
+    slug: "archaeological-sites",
+    icon: "bi-columns-gap",
+    image_url: "https://images.unsplash.com/photo-1564507592333-c60657eea523?auto=format&fit=crop&w=800&q=80",
+    description_en: "Ancient Buddhist mahaviharas, Mahasthangarh citadels, and intricate terracotta ruins.",
+    description_bn: "প্রাচীন বৌদ্ধ মহাবিহার, মহাস্থানগড় দুর্গনগরী ও টেরাকোটা প্রত্নস্থল।",
     is_published: true
   },
   {
     id: "religious",
     name_en: "Religious Places",
     name_bn: "ধর্মীয় স্থান",
-    slug: "religious",
+    slug: "religious-places",
     icon: "bi-stars",
-    description_en: "UNESCO Sixty Dome Mosque, venerable sufi shrines, and sacred historic temples.",
-    description_bn: "ইউনেস্কো ষাট গম্বুজ মসজিদ, সুফি দরগাহ ও ঐতিহাসিক পবিত্র তীর্থস্থান।",
+    image_url: "https://images.unsplash.com/photo-1582510003544-4d00b7f74220?auto=format&fit=crop&w=800&q=80",
+    description_en: "UNESCO Sixty Dome Mosque, venerable sufi shrines, historic temples, and monasteries.",
+    description_bn: "ইউনেস্কো ষাট গম্বুজ মসজিদ, সুফি দরগাহ, ঐতিহাসিক মন্দির ও বৌদ্ধ প্যাগোডা।",
     is_published: true
   },
   {
@@ -1249,8 +1347,9 @@ export const CATEGORIES: Category[] = [
     name_bn: "হ্রদ ও হাওর",
     slug: "lakes",
     icon: "bi-tsunami",
-    description_en: "Limitless watery horizons of Tanguar Haor, Kaptai Lake, and Someshwari.",
-    description_bn: "টাঙ্গুয়ার হাওরের দিগন্তবিস্তৃত জলরাশি, কাপ্তাই হ্রদ ও সোমেশ্বরী।",
+    image_url: "https://images.unsplash.com/photo-1513836279014-a89f7a76ae86?auto=format&fit=crop&w=800&q=80",
+    description_en: "Limitless watery horizons of Tanguar Haor, Kaptai Lake, Bogakain, and scenic lagoons.",
+    description_bn: "টাঙ্গুয়ার হাওরের দিগন্তবিস্তৃত জলরাশি, কাপ্তাই হ্রদ ও পাহাড়ি লেক।",
     is_published: true
   },
   {
@@ -1259,8 +1358,42 @@ export const CATEGORIES: Category[] = [
     name_bn: "দ্বীপ",
     slug: "islands",
     icon: "bi-compass",
-    description_en: "Pristine coral shores of Saint Martin, serene Nijhum Dwip, and coastal islets.",
-    description_bn: "সেন্ট মার্টিন প্রবাল দ্বীপ, নিঝুম দ্বীপ ও সাগর মোহনার দ্বীপরাজি।",
+    image_url: "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=800&q=80",
+    description_en: "Pristine coral shores of Saint Martin's, tranquil Nijhum Dwip, and estuarine islets.",
+    description_bn: "সেন্ট মার্টিন প্রবাল দ্বীপ, নিঝুম দ্বীপ ও বঙ্গোপসাগর মোহনার দ্বীপরাজি।",
+    is_published: true
+  },
+  {
+    id: "parks",
+    name_en: "Parks",
+    name_bn: "উদ্যান ও পার্ক",
+    slug: "parks",
+    icon: "bi-flower1",
+    image_url: "https://images.unsplash.com/photo-1585123388867-3bfe6dd4bdbf?auto=format&fit=crop&w=800&q=80",
+    description_en: "Lush botanical gardens, national eco-parks, tea-valley reserves, and urban green sanctuaries.",
+    description_bn: "জাতীয় উদ্যান, ইকোপার্ক, বোটানিক্যাল গার্ডেন ও সবুজ প্রাকৃতিক অভয়ারণ্য।",
+    is_published: true
+  },
+  {
+    id: "wildlife",
+    name_en: "Wildlife",
+    name_bn: "বন্যপ্রাণী ও অভয়ারণ্য",
+    slug: "wildlife",
+    icon: "bi-feather",
+    image_url: "https://images.unsplash.com/photo-1535262412227-85541e910204?auto=format&fit=crop&w=800&q=80",
+    description_en: "Habitats of the Royal Bengal Tiger, hoolock gibbons, spotted deer, and migratory wetland birds.",
+    description_bn: "রয়েল বেঙ্গল টাইগার, উল্লুক, চিত্রা হরিণ ও অতিথি পাখির নিরাপদ আবাসস্থল।",
+    is_published: true
+  },
+  {
+    id: "rivers",
+    name_en: "Rivers",
+    name_bn: "নদী ও নৌভ্রমণ",
+    slug: "rivers",
+    icon: "bi-moisture",
+    image_url: "https://images.unsplash.com/photo-1544735716-392fe2489ffa?auto=format&fit=crop&w=800&q=80",
+    description_en: "Mighty Padma, Meghna, Jamuna, and crystal-clear Someshwari and Jadukata river voyages.",
+    description_bn: "পদ্মা, মেঘনা, যমুনা এবং স্বচ্ছ সোমেশ্বরী ও যাদুকাটা নদীর নৌ-অভিযাত্রা।",
     is_published: true
   }
 ];

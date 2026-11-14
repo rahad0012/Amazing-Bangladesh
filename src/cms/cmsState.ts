@@ -26,6 +26,11 @@ import {
   uploadImageFile, 
   deleteStorageFile 
 } from '../firebase';
+import {
+  DEFAULT_LEGAL_PAGES,
+  normalizeLegalPagesConfig,
+  type LegalPagesConfig
+} from '../services/legalPagesDefaults';
 
 import { 
   collection, 
@@ -45,6 +50,7 @@ export interface CmsStore {
   spots: TouristSpot[];
   articles: Article[];
   media: MediaItem[];
+  legalPages: LegalPagesConfig;
   
   // Table search & pagination state per module
   searchQuery: string;
@@ -66,10 +72,20 @@ export interface CmsStore {
 // Load persisted overrides from localStorage if present
 const storedDivisions = localStorage.getItem('bd_cms_divisions');
 const storedDistricts = localStorage.getItem('bd_cms_districts');
-const storedCategories = localStorage.getItem('bd_cms_categories_v2');
+const storedCategories = localStorage.getItem('bd_cms_categories_v3');
 const storedSpots = localStorage.getItem('bd_cms_spots_v2');
 const storedArticles = localStorage.getItem('bd_cms_articles');
 const storedMedia = localStorage.getItem('bd_cms_media');
+const storedLegalPages = localStorage.getItem('bd_cms_legal_pages');
+
+let parsedLegalPages: LegalPagesConfig = { ...DEFAULT_LEGAL_PAGES };
+if (storedLegalPages) {
+  try {
+    parsedLegalPages = normalizeLegalPagesConfig(JSON.parse(storedLegalPages));
+  } catch {
+    parsedLegalPages = { ...DEFAULT_LEGAL_PAGES };
+  }
+}
 
 export const cmsStore: CmsStore = {
   activeTab: 'overview',
@@ -79,6 +95,7 @@ export const cmsStore: CmsStore = {
   spots: storedSpots ? JSON.parse(storedSpots) : [...TOURIST_SPOTS],
   articles: storedArticles ? JSON.parse(storedArticles) : [...ARTICLES],
   media: storedMedia ? JSON.parse(storedMedia) : [...MEDIA_ITEMS],
+  legalPages: parsedLegalPages,
 
   searchQuery: '',
   currentPage: 1,
@@ -97,10 +114,11 @@ export const cmsStore: CmsStore = {
 export function persistStore(): void {
   localStorage.setItem('bd_cms_divisions', JSON.stringify(cmsStore.divisions));
   localStorage.setItem('bd_cms_districts', JSON.stringify(cmsStore.districts));
-  localStorage.setItem('bd_cms_categories_v2', JSON.stringify(cmsStore.categories));
+  localStorage.setItem('bd_cms_categories_v3', JSON.stringify(cmsStore.categories));
   localStorage.setItem('bd_cms_spots_v2', JSON.stringify(cmsStore.spots));
   localStorage.setItem('bd_cms_articles', JSON.stringify(cmsStore.articles));
   localStorage.setItem('bd_cms_media', JSON.stringify(cmsStore.media));
+  localStorage.setItem('bd_cms_legal_pages', JSON.stringify(cmsStore.legalPages));
 }
 
 // Check admin write privileges
@@ -366,4 +384,25 @@ export async function deleteMediaItem(mediaId: string): Promise<{ success: boole
     success: true, 
     warning: isUsed ? 'Note: This image was previously referenced by one or more destination pages.' : undefined 
   };
+}
+
+// 7. Editable Legal Pages Configuration (Privacy Policy & Terms and Conditions)
+export async function saveLegalPages(config: LegalPagesConfig): Promise<{ syncedToFirestore: boolean; message?: string }> {
+  const normalized = normalizeLegalPagesConfig({
+    ...config,
+    updated_at: new Date().toISOString()
+  });
+  cmsStore.legalPages = normalized;
+  persistStore();
+
+  try {
+    await setDoc(doc(db, 'site_settings', 'legal_pages'), normalized, { merge: true });
+    return { syncedToFirestore: true };
+  } catch (err: any) {
+    console.warn('Firestore legal pages sync note:', err?.message || err);
+    return {
+      syncedToFirestore: false,
+      message: err?.message || 'Saved locally; admin sign-in required for cloud Firestore sync.'
+    };
+  }
 }

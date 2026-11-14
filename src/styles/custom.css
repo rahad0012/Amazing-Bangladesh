@@ -1092,3 +1092,78 @@ body.lang-en {
   margin-left: 0.4rem;
 }
 
+/* Editorial Travel Guides Magazine Styling */
+.featured-article-card {
+  transition: box-shadow 0.3s ease, border-color 0.3s ease;
+}
+
+.featured-article-card:hover {
+  box-shadow: 0 18px 40px rgba(18, 60, 50, 0.12) !important;
+  border-color: rgba(28, 89, 72, 0.32) !important;
+}
+
+.popular-article-item {
+  transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.popular-article-item:hover {
+  transform: translateY(-2px);
+  border-color: var(--color-accent) !important;
+  box-shadow: 0 8px 20px rgba(18, 60, 50, 0.08);
+}
+
+.letter-spacing-1 {
+  letter-spacing: 0.06em;
+}
+
+/* Dynamic Travel Article Details Prose & TOC */
+.article-prose-body {
+  font-size: 1.04rem;
+  line-height: 1.85;
+  color: #2f3e38;
+}
+
+.article-prose-body h2,
+.article-prose-body h3,
+.article-prose-body h4 {
+  scroll-margin-top: 96px;
+}
+
+.article-toc-link {
+  transition: color 0.2s ease, transform 0.2s ease;
+}
+
+.article-toc-link:hover {
+  color: var(--color-primary) !important;
+  transform: translateX(3px);
+}
+
+/* Global Search Page & Autocomplete Suggestions */
+.search-suggestions-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 1050;
+  max-height: 380px;
+  overflow-y: auto;
+}
+
+.search-suggestion-item {
+  transition: background-color 0.15s ease;
+  cursor: pointer;
+}
+
+.search-suggestion-item:hover,
+.search-suggestion-item.active {
+  background-color: #f0f5f2 !important;
+  color: var(--color-primary) !important;
+  border-color: var(--color-border) !important;
+}
+
+.search-highlight {
+  background-color: rgba(217, 164, 65, 0.28);
+  color: inherit;
+  padding: 0.05em 0.18em;
+  border-radius: 4px;
+}

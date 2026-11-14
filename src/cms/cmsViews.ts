@@ -318,6 +318,9 @@ function renderOverviewTab(lang: Language): string {
         <button class="btn btn-outline-bd btn-sm py-2 px-3" data-quick-action="add-media">
           <i class="bi bi-cloud-arrow-up me-1"></i>${isBn ? '+ নতুন ছবি আপলোড' : '+ Upload Image'}
         </button>
+        <button class="btn btn-outline-bd btn-sm py-2 px-3" data-quick-action="edit-legal">
+          <i class="bi bi-file-earmark-text me-1"></i>${isBn ? 'আইনি পাতা সম্পাদনা ও পর্যালোচনা' : 'Edit & Review Legal Pages'}
+        </button>
       </div>
     </div>
 
@@ -357,13 +360,25 @@ function renderOverviewTab(lang: Language): string {
         <div class="card border-0 shadow-sm rounded-4 p-4 h-100 bg-white">
           <h6 class="fw-bold text-primary-bd mb-2">
             <i class="bi bi-shield-lock-fill text-warning me-2"></i>
-            ${isBn ? 'রিলেশনশিপ ভ্যালিডেশন পলিসি' : 'Integrity & Relationship Protection Policy'}
+            ${isBn ? 'আইনি পাতা ও রিলেশনশিপ নীতি' : 'Legal Review Status & Integrity Policy'}
           </h6>
-          <p class="small text-muted mb-2">
+          <p class="small text-muted mb-3">
             ${isBn 
-              ? 'ডাটাবেস সম্পূর্ণ সমন্বিত: কোনো জেলা অন্তর্ভুক্ত থাকলে বিভাগ মুছে ফেলা যাবে না, এবং কোনো দর্শনীয় স্থান বিদ্যমান থাকলে জেলা বা ক্যাটাগরি মুছে ফেলা স্বয়ংক্রিয়ভাবে ব্লক থাকবে।' 
-              : 'Strict relational integrity enforced: Divisions cannot be deleted while containing districts. Districts and categories cannot be deleted while referenced by active tourist spots.'}
+              ? 'গোপনীয়তা নীতি এবং ব্যবহারের শর্তাবলী প্রকাশের পূর্বে আইনি পর্যালোচনা ও অনুমোদন আবশ্যক। সিএমএস থেকে বাংলা ও ইংরেজি উভয় সংস্করণ সম্পাদনা করা যায়।' 
+              : 'Privacy Policy and Terms & Conditions are fully editable in Bengali and English and should be reviewed before formal publication.'}
           </p>
+          <div class="d-flex flex-wrap gap-2 mb-3">
+            <span class="badge ${cmsStore.legalPages.privacy_reviewed ? 'bg-success-subtle text-success border border-success-subtle' : 'bg-warning-subtle text-warning-emphasis border border-warning-subtle'} py-2 px-3">
+              <i class="bi ${cmsStore.legalPages.privacy_reviewed ? 'bi-check-circle-fill' : 'bi-exclamation-triangle-fill'} me-1"></i>
+              ${isBn ? 'গোপনীয়তা নীতি:' : 'Privacy Policy:'}
+              ${cmsStore.legalPages.privacy_reviewed ? (isBn ? 'পর্যালোচিত' : 'Reviewed') : (isBn ? 'পর্যালোচনা বাকি' : 'Needs Review')}
+            </span>
+            <span class="badge ${cmsStore.legalPages.terms_reviewed ? 'bg-success-subtle text-success border border-success-subtle' : 'bg-warning-subtle text-warning-emphasis border border-warning-subtle'} py-2 px-3">
+              <i class="bi ${cmsStore.legalPages.terms_reviewed ? 'bi-check-circle-fill' : 'bi-exclamation-triangle-fill'} me-1"></i>
+              ${isBn ? 'ব্যবহারের শর্তাবলী:' : 'Terms:'}
+              ${cmsStore.legalPages.terms_reviewed ? (isBn ? 'পর্যালোচিত' : 'Reviewed') : (isBn ? 'পর্যালোচনা বাকি' : 'Needs Review')}
+            </span>
+          </div>
           <span class="badge bg-success-subtle text-success border border-success-subtle py-2">
             <i class="bi bi-check2-all me-1"></i>Zero-Orphan Architecture Active
           </span>

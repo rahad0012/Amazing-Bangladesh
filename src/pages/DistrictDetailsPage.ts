@@ -352,9 +352,13 @@ export function renderDistrictDetailPage(props: DistrictDetailPageProps): string
                   <div class="card-travel-body d-flex flex-column flex-grow-1">
                     <h3 class="h6 fw-bold text-primary-bd mb-2">${escapeHtml(isBn ? art.title_bn : art.title_en)}</h3>
                     <p class="small text-secondary flex-grow-1">${escapeHtml(isBn ? art.excerpt_bn : art.excerpt_en)}</p>
-                    <button class="btn btn-outline-bd btn-sm w-100 mt-auto article-detail-btn" data-article-id="${escapeHtml(art.id)}">
+                    <a
+                      href="/travel-guides/${encodeURIComponent((art.slug || art.id).toLowerCase())}/"
+                      class="btn btn-outline-bd btn-sm w-100 mt-auto text-decoration-none article-detail-link"
+                      data-article-slug="${escapeHtml((art.slug || art.id).toLowerCase())}"
+                    >
                       <i class="bi bi-book-half me-1"></i>${isBn ? 'বিস্তারিত পড়ুন' : 'Read Guide'}
-                    </button>
+                    </a>
                   </div>
                 </article>
               </div>

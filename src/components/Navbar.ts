@@ -18,7 +18,8 @@ export function renderNavbar(options: NavbarOptions): string {
   const brandSubtitle = isBn ? 'অফিসিয়াল পর্যটন পোর্টাল' : 'Official Tourism Portal';
   const navHome = isBn ? 'মূলপাতা' : 'Home';
   const navDivisions = isBn ? 'বিভাগসমূহ (৮)' : '8 Divisions';
-  const navDistricts = isBn ? '৬৪ জেলা গাইড' : '64 Districts';
+  const navDistricts = isBn ? '৬৪ জেলা' : '64 Districts';
+  const navCategories = isBn ? 'ক্যাটাগরি' : 'Categories';
   const navSpots = isBn ? 'দর্শনীয় স্থান' : 'Attractions';
   const navGuides = isBn ? 'ভ্রমণ নির্দেশিকা' : 'Travel Guides';
   const navPlanner = isBn ? 'ট্যুর প্ল্যানার' : 'Trip Planner';
@@ -73,13 +74,19 @@ export function renderNavbar(options: NavbarOptions): string {
               </a>
             </li>
             <li class="nav-item">
-              <a class="nav-link-custom ${options.activeNav === 'spots' ? 'active' : ''}" href="/places/" data-nav="spots" id="nav-item-spots">
+              <a class="nav-link-custom ${options.activeNav === 'categories' || options.activeNav === 'category-detail' ? 'active' : ''}" href="/categories/" data-nav="categories" id="nav-item-categories">
+                <span>${escapeHtml(navCategories)}</span>
+                <i class="bi bi-chevron-right d-xl-none opacity-50 small"></i>
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link-custom ${options.activeNav === 'spots' || options.activeNav === 'spot-detail' ? 'active' : ''}" href="/places/" data-nav="spots" id="nav-item-spots">
                 <span>${escapeHtml(navSpots)}</span>
                 <i class="bi bi-chevron-right d-xl-none opacity-50 small"></i>
               </a>
             </li>
             <li class="nav-item">
-              <a class="nav-link-custom ${options.activeNav === 'guides' ? 'active' : ''}" href="/#guides" data-nav="guides" id="nav-item-guides">
+              <a class="nav-link-custom ${options.activeNav === 'guides' || options.activeNav === 'guide-detail' ? 'active' : ''}" href="/travel-guides/" data-nav="guides" id="nav-item-guides">
                 <span>${escapeHtml(navGuides)}</span>
                 <i class="bi bi-chevron-right d-xl-none opacity-50 small"></i>
               </a>
@@ -93,11 +100,11 @@ export function renderNavbar(options: NavbarOptions): string {
           </ul>
 
           <div class="navbar-actions d-flex flex-wrap align-items-center gap-2 pt-3 pb-2 pt-xl-0 pb-xl-0 mt-2 mt-xl-0 flex-shrink-0">
-            <!-- Navbar Quick Search Trigger -->
-            <button class="btn btn-outline-light btn-sm rounded-pill navbar-action-btn d-inline-flex align-items-center justify-content-center" id="btn-nav-search" title="${escapeHtml(searchLabel)}" aria-label="${escapeHtml(searchLabel)}">
-              <i class="bi bi-search text-warning"></i>
+            <!-- Navbar Global Search Link -->
+            <a href="/search/" class="btn btn-outline-light btn-sm rounded-pill navbar-action-btn d-inline-flex align-items-center justify-content-center ${options.activeNav === 'search' ? 'active bg-warning text-dark border-warning' : ''}" id="btn-nav-search" data-nav="search" title="${escapeHtml(searchLabel)}" aria-label="${escapeHtml(searchLabel)}">
+              <i class="bi bi-search ${options.activeNav === 'search' ? 'text-dark' : 'text-warning'}"></i>
               <span class="d-xl-none ms-1">${escapeHtml(searchLabel)}</span>
-            </button>
+            </a>
 
             <!-- Saved Favorites Trigger -->
             <button class="btn btn-outline-light btn-sm rounded-pill px-3 position-relative d-inline-flex align-items-center justify-content-center navbar-action-btn" id="btn-saved-places" title="${escapeHtml(savedLabel)}">

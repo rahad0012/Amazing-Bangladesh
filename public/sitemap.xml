@@ -129,10 +129,56 @@
     <priority>0.85</priority>
   </url>
 
-  <!-- Travel Guides -->
+  <!-- Categories & Travel Guides -->
   <url>
-    <loc>https://bangladesh-tourism.netlify.app/#guides</loc>
+    <loc>https://bangladesh-tourism.netlify.app/categories/</loc>
+    <xhtml:link rel="alternate" hreflang="bn" href="https://bangladesh-tourism.netlify.app/categories/?lang=bn"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://bangladesh-tourism.netlify.app/categories/?lang=en"/>
     <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://bangladesh-tourism.netlify.app/travel-guides/</loc>
+    <xhtml:link rel="alternate" hreflang="bn" href="https://bangladesh-tourism.netlify.app/travel-guides/?lang=bn"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://bangladesh-tourism.netlify.app/travel-guides/?lang=en"/>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://bangladesh-tourism.netlify.app/search/</loc>
+    <xhtml:link rel="alternate" hreflang="bn" href="https://bangladesh-tourism.netlify.app/search/?lang=bn"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://bangladesh-tourism.netlify.app/search/?lang=en"/>
+    <changefreq>weekly</changefreq>
+    <priority>0.85</priority>
+  </url>
+
+  <!-- Static Information & Legal Pages -->
+  <url>
+    <loc>https://bangladesh-tourism.netlify.app/about/</loc>
+    <xhtml:link rel="alternate" hreflang="bn" href="https://bangladesh-tourism.netlify.app/about/?lang=bn"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://bangladesh-tourism.netlify.app/about/?lang=en"/>
+    <changefreq>monthly</changefreq>
+    <priority>0.75</priority>
+  </url>
+  <url>
+    <loc>https://bangladesh-tourism.netlify.app/contact/</loc>
+    <xhtml:link rel="alternate" hreflang="bn" href="https://bangladesh-tourism.netlify.app/contact/?lang=bn"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://bangladesh-tourism.netlify.app/contact/?lang=en"/>
+    <changefreq>monthly</changefreq>
+    <priority>0.75</priority>
+  </url>
+  <url>
+    <loc>https://bangladesh-tourism.netlify.app/privacy-policy/</loc>
+    <xhtml:link rel="alternate" hreflang="bn" href="https://bangladesh-tourism.netlify.app/privacy-policy/?lang=bn"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://bangladesh-tourism.netlify.app/privacy-policy/?lang=en"/>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://bangladesh-tourism.netlify.app/terms-and-conditions/</loc>
+    <xhtml:link rel="alternate" hreflang="bn" href="https://bangladesh-tourism.netlify.app/terms-and-conditions/?lang=bn"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://bangladesh-tourism.netlify.app/terms-and-conditions/?lang=en"/>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
   </url>
 </urlset>

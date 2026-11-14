@@ -759,7 +759,7 @@ export function renderDivisionDetailPage(props: DivisionDetailPageProps): string
                   : `Curated articles, itineraries, and cultural stories connected to ${division.name_en} Division.`)}
           </p>
         </div>
-        <a href="/#guides" class="btn btn-outline-bd btn-sm rounded-pill px-3">
+        <a href="/travel-guides/" class="btn btn-outline-bd btn-sm rounded-pill px-3">
           <i class="bi bi-journal-text me-1"></i>${isBn ? 'সকল ভ্রমণ গাইড' : 'All Travel Guides'}
         </a>
       </div>
@@ -808,9 +808,13 @@ export function renderDivisionDetailPage(props: DivisionDetailPageProps): string
                         <span class="badge bg-light text-secondary border small">${escapeHtml(tag)}</span>
                       `).join('')}
                     </div>
-                    <button class="btn btn-outline-bd btn-sm w-100 mt-auto article-detail-btn" data-article-id="${escapeHtml(art.id)}">
+                    <a
+                      href="/travel-guides/${encodeURIComponent((art.slug || art.id).toLowerCase())}/"
+                      class="btn btn-outline-bd btn-sm w-100 mt-auto text-decoration-none article-detail-link"
+                      data-article-slug="${escapeHtml((art.slug || art.id).toLowerCase())}"
+                    >
                       <i class="bi bi-book-half me-1"></i>${isBn ? 'বিস্তারিত পড়ুন' : 'Read Guide'}
-                    </button>
+                    </a>
                   </div>
                 </article>
               </div>

@@ -98,6 +98,12 @@
         "image_url": { "type": "string" },
         "gallery_urls": { "type": "array" },
         "google_maps_url": { "type": "string" },
+        "estimated_cost_en": { "type": "string" },
+        "estimated_cost_bn": { "type": "string" },
+        "entry_fee_en": { "type": "string" },
+        "entry_fee_bn": { "type": "string" },
+        "opening_hours_en": { "type": "string" },
+        "opening_hours_bn": { "type": "string" },
         "seo_title_en": { "type": "string" },
         "seo_title_bn": { "type": "string" },
         "seo_description_en": { "type": "string" },
@@ -175,7 +181,7 @@
     },
     "SiteSettings": {
       "title": "SiteSettings",
-      "description": "Global settings for the Bangladesh Tourism portal",
+      "description": "Global settings and editable legal documentation for the Bangladesh Tourism portal",
       "type": "object",
       "properties": {
         "site_title_en": { "type": "string" },
@@ -184,9 +190,24 @@
         "hero_heading_bn": { "type": "string" },
         "hero_subtitle_en": { "type": "string" },
         "hero_subtitle_bn": { "type": "string" },
-        "featured_spots_ids": { "type": "array" }
-      },
-      "required": ["site_title_en", "site_title_bn"]
+        "featured_spots_ids": { "type": "array" },
+        "privacy_title_en": { "type": "string" },
+        "privacy_title_bn": { "type": "string" },
+        "privacy_content_en": { "type": "string" },
+        "privacy_content_bn": { "type": "string" },
+        "privacy_reviewed": { "type": "boolean" },
+        "privacy_reviewed_by": { "type": "string" },
+        "privacy_reviewed_at": { "type": "string" },
+        "terms_title_en": { "type": "string" },
+        "terms_title_bn": { "type": "string" },
+        "terms_content_en": { "type": "string" },
+        "terms_content_bn": { "type": "string" },
+        "terms_reviewed": { "type": "boolean" },
+        "terms_reviewed_by": { "type": "string" },
+        "terms_reviewed_at": { "type": "string" },
+        "contact_email": { "type": "string" },
+        "updated_at": { "type": "string" }
+      }
     },
     "NewsletterSubscriber": {
       "title": "NewsletterSubscriber",

@@ -60,9 +60,11 @@ export function renderFooter(lang: Language): string {
               <li><a href="/divisions/" class="footer-link text-white-50 text-decoration-none" data-nav="divisions">${isBn ? 'বিভাগসমূহ (৮)' : '8 Divisions'}</a></li>
               <li><a href="/districts/" class="footer-link text-white-50 text-decoration-none" data-nav="districts">${isBn ? '৬৪ জেলা গাইড' : '64 Districts'}</a></li>
               <li><a href="/places/" class="footer-link text-white-50 text-decoration-none" data-nav="spots">${isBn ? 'সকল দর্শনীয় স্থান' : 'All Destinations'}</a></li>
-              <li><a href="/#guides" class="footer-link text-white-50 text-decoration-none" data-nav="guides">${isBn ? 'ভ্রমণ নির্দেশিকা' : 'Travel Guides'}</a></li>
-              <li><a href="/#categories" class="footer-link text-white-50 text-decoration-none" data-nav="home">${isBn ? 'ক্যাটাগরি সমূহ' : 'Categories'}</a></li>
-              <li><a href="/#newsletter-section" class="footer-link text-white-50 text-decoration-none" data-nav="home">${isBn ? 'নিউজলেটার' : 'Newsletter'}</a></li>
+              <li><a href="/categories/" class="footer-link text-white-50 text-decoration-none" data-nav="categories">${isBn ? 'ক্যাটাগরি সমূহ' : 'Categories'}</a></li>
+              <li><a href="/travel-guides/" class="footer-link text-white-50 text-decoration-none" data-nav="guides">${isBn ? 'ভ্রমণ নির্দেশিকা' : 'Travel Guides'}</a></li>
+              <li><a href="/search/" class="footer-link text-white-50 text-decoration-none" data-nav="search">${isBn ? 'গ্লোবাল অনুসন্ধান' : 'Global Search'}</a></li>
+              <li><a href="/about/" class="footer-link text-white-50 text-decoration-none">${isBn ? 'আমাদের সম্পর্কে' : 'About Us'}</a></li>
+              <li><a href="/contact/" class="footer-link text-white-50 text-decoration-none">${isBn ? 'যোগাযোগ' : 'Contact Us'}</a></li>
             </ul>
           </div>
 
@@ -104,6 +106,11 @@ export function renderFooter(lang: Language): string {
               <i class="bi bi-shield-shaded text-warning me-2"></i>
               <span>${isBn ? 'ট্যুরিস্ট পুলিশ হেল্পলাইন: ০১৩২০-১৬৩৫৯৯' : 'Tourist Police Helpline: 01320-163599'}</span>
             </div>
+            <div class="mt-2">
+              <a href="/contact/" class="btn btn-outline-warning btn-sm rounded-pill px-3">
+                <i class="bi bi-chat-dots-fill me-1"></i>${isBn ? 'অনলাইন যোগাযোগ ফর্ম' : 'Send Us a Message'}
+              </a>
+            </div>
 
             <div class="p-2 rounded mt-3" style="background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1);">
               <div class="d-flex align-items-center gap-2">
@@ -118,21 +125,29 @@ export function renderFooter(lang: Language): string {
 
         <hr class="border-secondary my-4">
 
-        <!-- Bottom Copyright & Privacy Policy -->
+        <!-- Bottom Copyright & Legal Links -->
         <div class="d-flex flex-column flex-md-row justify-content-between align-items-center gap-3 small text-white-50">
           <div>
             ${isBn 
               ? '© ২০২৬ অপরূপ বাংলাদেশ। গণপ্রজাতন্ত্রী বাংলাদেশ পর্যটন পোর্টাল। সর্বস্বত্ব সংরক্ষিত।' 
               : '© 2026 Beautiful Bangladesh. Official Tourism Portal. All rights reserved.'}
           </div>
-          <div class="d-flex gap-3 align-items-center">
-            <button class="btn btn-link text-white-50 p-0 text-decoration-none small" id="btn-privacy-policy">
-              ${isBn ? 'গোপনীয়তা নীতি (Privacy Policy)' : 'Privacy Policy'}
-            </button>
+          <div class="d-flex flex-wrap gap-3 align-items-center justify-content-center">
+            <a href="/about/" class="footer-link text-white-50 text-decoration-none small" id="footer-about-link">
+              ${isBn ? 'আমাদের সম্পর্কে' : 'About'}
+            </a>
             <span>•</span>
-            <button class="btn btn-link text-white-50 p-0 text-decoration-none small" id="btn-terms-service">
-              ${isBn ? 'ব্যবহারের শর্তাবলী' : 'Terms of Service'}
-            </button>
+            <a href="/contact/" class="footer-link text-white-50 text-decoration-none small" id="footer-contact-link">
+              ${isBn ? 'যোগাযোগ' : 'Contact'}
+            </a>
+            <span>•</span>
+            <a href="/privacy-policy/" class="footer-link text-white-50 text-decoration-none small" id="btn-privacy-policy">
+              ${isBn ? 'গোপনীয়তা নীতি' : 'Privacy Policy'}
+            </a>
+            <span>•</span>
+            <a href="/terms-and-conditions/" class="footer-link text-white-50 text-decoration-none small" id="btn-terms-service">
+              ${isBn ? 'ব্যবহারের শর্তাবলী' : 'Terms & Conditions'}
+            </a>
           </div>
         </div>
       </div>
