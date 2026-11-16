@@ -75,9 +75,11 @@ interface FirestoreRestDocument {
   fields?: Record<string, FirestoreRestValue>;
 }
 
-export function loadFirebaseProjectTarget(): FirebaseProjectTarget {
-  let projectId = (process.env.VITE_FIREBASE_PROJECT_ID || '').trim();
-  let firestoreDatabaseId = '(default)';
+export function loadFirebaseProjectTarget(
+  override?: Partial<FirebaseProjectTarget>
+): FirebaseProjectTarget {
+  let projectId = (override?.projectId || process.env.VITE_FIREBASE_PROJECT_ID || '').trim();
+  let firestoreDatabaseId = (override?.firestoreDatabaseId || '(default)').trim() || '(default)';
 
   try {
     const configPath = path.resolve(process.cwd(), 'firebase-applet-config.json');
@@ -309,9 +311,10 @@ export async function inspectGeographyAgainstFirestore(
   divisions: Division[],
   districts: District[],
   bearerToken: string,
-  statusMode: ImportStatusMode = 'preserve'
+  statusMode: ImportStatusMode = 'preserve',
+  targetOverride?: Partial<FirebaseProjectTarget>
 ): Promise<GeographyInspectionResult> {
-  const target = loadFirebaseProjectTarget();
+  const target = loadFirebaseProjectTarget(targetOverride);
   const adjusted = applyStatusMode(divisions, districts, statusMode);
   const report = validateBangladeshGeographyDataset(adjusted.divisions, adjusted.districts);
 
@@ -416,6 +419,7 @@ export async function executeGeographyImport(params: {
   confirmImport: boolean;
   confirmOverwrite?: boolean;
   statusMode?: ImportStatusMode;
+  targetOverride?: Partial<FirebaseProjectTarget>;
 }): Promise<GeographyImportExecutionResult> {
   const {
     divisions,
@@ -423,14 +427,15 @@ export async function executeGeographyImport(params: {
     bearerToken,
     confirmImport,
     confirmOverwrite = false,
-    statusMode = 'preserve'
+    statusMode = 'preserve',
+    targetOverride
   } = params;
 
   if (!confirmImport) {
     throw new Error('Import confirmation is required before writing to Firestore.');
   }
 
-  const target = loadFirebaseProjectTarget();
+  const target = loadFirebaseProjectTarget(targetOverride);
   const adjusted = applyStatusMode(divisions, districts, statusMode);
   const report = validateBangladeshGeographyDataset(adjusted.divisions, adjusted.districts);
   if (!report.valid) {

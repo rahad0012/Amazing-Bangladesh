@@ -114,9 +114,9 @@ export const DEFAULT_SEO_SETTINGS: SeoSettingsConfig = {
   title_suffix_en: 'Beautiful Bangladesh',
   title_suffix_bn: 'অপরূপ বাংলাদেশ',
   meta_description_en:
-    "Discover Bangladesh's 8 administrative divisions, 64 districts, natural wonders, UNESCO World Heritage sites, and curated travel itineraries in Bengali and English.",
+    'An authentic travel companion covering natural wonders, historical heritage, and cultural journeys across all 8 divisions and 64 districts.',
   meta_description_bn:
-    'বাংলাদেশের ৮টি বিভাগ, ৬৪টি জেলা, প্রাকৃতিক বিস্ময়, ইউনেস্কো বিশ্ব ঐতিহ্য এবং নির্ভরযোগ্য ভ্রমণ নির্দেশিকা জানুন বাংলা ও ইংরেজিতে।',
+    '৮টি বিভাগ এবং ৬৪টি জেলার নদী, পাহাড়, অরণ্য, প্রাচীন প্রত্নতত্ত্ব ও ঐতিহাসিক স্থানসমূহের তথ্যবহুল ডিজিটাল মানচিত্র।',
   canonical_base_url: 'https://bangladesh-tourism.netlify.app',
   og_image_url:
     'https://images.unsplash.com/photo-1596895111956-bf1cf0599ce5?auto=format&fit=crop&w=1200&q=80',
@@ -168,11 +168,26 @@ export function getActiveHeroSlides(settings?: Partial<WebsiteSettingsConfig> | 
   return DEFAULT_HERO_SLIDES.map(slide => ({ ...slide }));
 }
 
+const LEGACY_SEEDED_META_DESC_EN =
+  "Discover Bangladesh's 8 administrative divisions, 64 districts, natural wonders, UNESCO World Heritage sites, and curated travel itineraries in Bengali and English.";
+const LEGACY_SEEDED_META_DESC_BN =
+  'বাংলাদেশের ৮টি বিভাগ, ৬৪টি জেলা, প্রাকৃতিক বিস্ময়, ইউনেস্কো বিশ্ব ঐতিহ্য এবং নির্ভরযোগ্য ভ্রমণ নির্দেশিকা জানুন বাংলা ও ইংরেজিতে।';
+
 export function normalizeSeoSettings(raw?: Partial<SeoSettingsConfig> | null): SeoSettingsConfig {
+  const rawDescEn = typeof raw?.meta_description_en === 'string' ? raw.meta_description_en.trim() : '';
+  const rawDescBn = typeof raw?.meta_description_bn === 'string' ? raw.meta_description_bn.trim() : '';
   return {
     ...DEFAULT_SEO_SETTINGS,
     ...(raw || {}),
     id: 'seo_settings',
+    meta_description_en:
+      !rawDescEn || rawDescEn === LEGACY_SEEDED_META_DESC_EN
+        ? DEFAULT_SEO_SETTINGS.meta_description_en
+        : rawDescEn,
+    meta_description_bn:
+      !rawDescBn || rawDescBn === LEGACY_SEEDED_META_DESC_BN
+        ? DEFAULT_SEO_SETTINGS.meta_description_bn
+        : rawDescBn,
     robots_index: raw?.robots_index === 'noindex, nofollow' ? 'noindex, nofollow' : 'index, follow'
   };
 }

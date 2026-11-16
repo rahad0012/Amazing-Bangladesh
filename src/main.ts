@@ -361,8 +361,8 @@ export function updateDynamicSeo(pageTitle?: string, metaDesc?: string, routePat
     ? (seo.default_title_bn || 'অপরূপ বাংলাদেশ | Beautiful Bangladesh - Official Tourism Portal')
     : (seo.default_title_en || 'Beautiful Bangladesh - Official Tourism Portal & Travel Guide');
   const defaultDesc = isBn
-    ? (seo.meta_description_bn || 'বাংলাদেশের ৮টি বিভাগ, ৬৪টি জেলা, দর্শনীয় স্থান, ঐতিহাসিক ঐতিহ্য এবং প্রাকৃতিক সৌন্দর্যের তথ্যবহুল গাইড।')
-    : (seo.meta_description_en || 'Discover Bangladesh\'s 8 administrative divisions, 64 districts, natural wonders, UNESCO World Heritage sites, and curated travel itineraries in Bengali and English.');
+    ? (seo.meta_description_bn || '৮টি বিভাগ এবং ৬৪টি জেলার নদী, পাহাড়, অরণ্য, প্রাচীন প্রত্নতত্ত্ব ও ঐতিহাসিক স্থানসমূহের তথ্যবহুল ডিজিটাল মানচিত্র।')
+    : (seo.meta_description_en || 'An authentic travel companion covering natural wonders, historical heritage, and cultural journeys across all 8 divisions and 64 districts.');
   const titleSuffix = isBn
     ? (seo.title_suffix_bn || 'অপরূপ বাংলাদেশ')
     : (seo.title_suffix_en || 'Beautiful Bangladesh');
