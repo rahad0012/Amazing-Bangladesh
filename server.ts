@@ -2,13 +2,14 @@ import 'dotenv/config';
 import express, { type Request, type Response } from 'express';
 import fs from 'node:fs';
 import path from 'node:path';
+import http from 'node:http';
 import crypto from 'node:crypto';
-import { DISTRICTS, DIVISIONS } from './src/data/bangladeshData';
+import { DISTRICTS, DIVISIONS } from './src/data/bangladeshData.ts';
 import {
   executeGeographyImport,
   inspectGeographyAgainstFirestore,
   type ImportStatusMode
-} from './src/server/firestoreAdminRest';
+} from './src/server/firestoreAdminRest.ts';
 
 interface ContactPayload {
   name?: unknown;
@@ -796,10 +797,18 @@ async function createServer(): Promise<void> {
     }
   });
 
+  const httpServer = http.createServer(app);
+
+  const disableHmr = process.env.DISABLE_HMR === 'true' || Boolean(process.env.APPLET_ID);
+
   if (process.env.NODE_ENV !== 'production') {
     const { createServer: createViteServer } = await import('vite');
     const vite = await createViteServer({
-      server: { middlewareMode: true },
+      server: {
+        middlewareMode: { server: httpServer },
+        hmr: !disableHmr,
+        ...(disableHmr ? { ws: false as const } : {})
+      },
       appType: 'spa'
     });
     app.use(vite.middlewares);
@@ -820,7 +829,7 @@ async function createServer(): Promise<void> {
     });
   }
 
-  app.listen(PORT, HOST, () => {
+  httpServer.listen(PORT, HOST, () => {
     console.log(`Server listening on http://${HOST}:${PORT}`);
   });
 }

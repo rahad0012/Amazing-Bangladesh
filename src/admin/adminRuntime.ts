@@ -49,7 +49,6 @@ export {
 
 export {
   signInAdminWithEmailPassword,
-  signInAdminWithGoogle,
   verifyCurrentAdminSession,
   secureAdminSignOut,
   getVerifiedAdminSession,

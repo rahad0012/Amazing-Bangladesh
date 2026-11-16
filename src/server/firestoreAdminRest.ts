@@ -1,11 +1,11 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
-import type { Division, District } from '../data/bangladeshData';
+import type { Division, District } from '../data/bangladeshData.ts';
 import {
   validateBangladeshGeographyDataset,
   type GeographyValidationReport
-} from '../data/geographyValidator';
+} from '../data/geographyValidator.ts';
 
 export type ImportStatusMode = 'preserve' | 'published' | 'draft';
 

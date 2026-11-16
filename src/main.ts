@@ -3435,7 +3435,7 @@ async function openAdminLoginPage(pushUrl: boolean = true): Promise<void> {
   } else if (outcome.status === 'unauthorized') {
     state.adminSession = null;
     state.adminAuthStatus = 'unauthorized';
-    state.adminLoginFeedback = getAdminFeedbackForReason('unauthorized', rt.mapAdminAuthError({ code: 'NOT_AUTHORIZED' }, state.lang));
+    state.adminLoginFeedback = getAdminFeedbackForReason('unauthorized', rt.mapAdminAuthError({ code: outcome.code || 'NOT_AUTHORIZED' }, state.lang));
     renderApp();
   } else {
     state.adminSession = null;
@@ -3488,7 +3488,7 @@ async function openProtectedAdminRoute(pushUrl: boolean = true, initialTab?: Cms
     navigateToAdminLogin('expired', true);
   } else if (outcome.status === 'unauthorized') {
     state.adminAuthStatus = 'unauthorized';
-    navigateToAdminLogin('unauthorized', true, rt.mapAdminAuthError({ code: 'NOT_AUTHORIZED' }, state.lang));
+    navigateToAdminLogin('unauthorized', true, rt.mapAdminAuthError({ code: outcome.code || 'NOT_AUTHORIZED' }, state.lang));
   } else if (outcome.status === 'error') {
     state.adminAuthStatus = 'unauthenticated';
     navigateToAdminLogin('error', true, outcome.message);
@@ -3623,61 +3623,6 @@ function attachAdminLoginEventListeners(): void {
         state.lang === 'bn'
           ? 'অ্যাডমিন পোর্টালে সফলভাবে লগইন সম্পন্ন হয়েছে।'
           : 'Signed in to Administrator Dashboard.',
-        'success'
-      );
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    } catch (err) {
-      state.adminLoginSubmitting = false;
-      state.adminSession = null;
-      state.adminAuthStatus = 'unauthenticated';
-      state.currentUser = null;
-      state.adminLoginFeedback = {
-        type: 'error',
-        message: rt.mapAdminAuthError(err, state.lang)
-      };
-      renderApp();
-    }
-  });
-
-  const googleBtn = document.getElementById('btn-admin-google-login') as HTMLButtonElement | null;
-  googleBtn?.addEventListener('click', async () => {
-    if (state.adminLoginSubmitting) return;
-    const remember = Boolean(rememberCheckbox?.checked);
-    state.adminLoginRememberSession = remember;
-    state.adminLoginSubmitting = true;
-    state.adminLoginFeedback = null;
-    renderApp();
-
-    try {
-      const session = await rt.signInAdminWithGoogle(remember, () => {
-        void handleAdminSessionExpired();
-      });
-
-      state.adminLoginSubmitting = false;
-      state.adminLoginShowPassword = false;
-      state.adminSession = session;
-      state.adminAuthStatus = 'authenticated';
-      state.currentUser = rt.auth.currentUser;
-      state.adminLoginFeedback = null;
-      state.activeView = 'cms';
-      cmsStore.activeTab = 'overview';
-
-      navigateToPath('/admin/dashboard/');
-      renderLayoutShell();
-      updateDynamicSeo();
-      renderApp();
-      void rt.recordAdminAuditLog({
-        action: 'login',
-        entityType: 'auth',
-        entityId: session.uid,
-        entityTitle: session.email || 'Administrator',
-        details: 'Verified Google Firebase Admin Session'
-      });
-      void loadAdminDashboardData(true);
-      showToast(
-        state.lang === 'bn'
-          ? 'গুগল অ্যাকাউন্টের মাধ্যমে অ্যাডমিন পোর্টালে লগইন সম্পন্ন হয়েছে।'
-          : 'Signed in with Google to Administrator Dashboard.',
         'success'
       );
       window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -4367,25 +4312,30 @@ function attachCmsEventListeners(): void {
     });
   });
 
-  // Firestore Dataset Seeder Button
-  document.getElementById('btn-seed-firestore-data')?.addEventListener('click', async () => {
+  // Firestore Dataset Seeder Buttons (Website Settings, Overview, and Divisions tabs)
+  const triggerSeedMissingDataset = async (
+    btn: HTMLButtonElement | null,
+    ensureAllEightDivisionsPublished: boolean = false
+  ): Promise<void> => {
     if (!ensureSession()) return;
-    const seedBtn = document.getElementById('btn-seed-firestore-data') as HTMLButtonElement | null;
-    if (seedBtn) {
-      seedBtn.disabled = true;
-      seedBtn.innerHTML = `<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>${
+    const originalHtml = btn?.innerHTML || '';
+    if (btn) {
+      btn.disabled = true;
+      btn.innerHTML = `<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>${
         state.lang === 'bn' ? 'সিঙ্ক হচ্ছে...' : 'Syncing to Firestore...'
       }`;
     }
     try {
-      const result = await rt.seedFirestoreFromCms();
+      const result = await rt.seedFirestoreFromCms({ ensureAllEightDivisionsPublished });
       showToast(
         state.lang === 'bn'
-          ? `ফায়ারস্টোর সিঙ্ক সম্পন্ন: ${result.createdCount}টি নতুন নথি যোগ হয়েছে, ${result.skippedCount}টি বিদ্যমান ছিল।`
-          : `Firestore sync complete: ${result.createdCount} created, ${result.skippedCount} skipped.`,
+          ? `ফায়ারস্টোর সিঙ্ক সম্পন্ন: ${result.createdCount}টি নতুন যোগ, ${result.updatedCount}টি প্রকাশিত, ${result.skippedCount}টি বিদ্যমান ছিল।`
+          : `Firestore sync complete: ${result.createdCount} created, ${result.updatedCount} published, ${result.skippedCount} skipped.`,
         'success'
       );
       await loadAdminDashboardData(true, true);
+      await loadPortalDataFromFirestore(true);
+      renderApp();
     } catch (err: any) {
       if (err?.message === 'ADMIN_UNAUTHORIZED') {
         void handleAdminSessionExpired();
@@ -4393,13 +4343,21 @@ function attachCmsEventListeners(): void {
       }
       showToast(err?.message || 'Could not seed Firestore dataset.', 'error');
     } finally {
-      if (seedBtn) {
-        seedBtn.disabled = false;
-        seedBtn.innerHTML = `<i class="bi bi-database-add me-1"></i>${
-          state.lang === 'bn' ? 'প্রাথমিক ডাটা ফায়ারস্টোরে সিঙ্ক করুন' : 'Seed Missing Dataset to Firestore'
-        }`;
+      if (btn && document.body.contains(btn)) {
+        btn.disabled = false;
+        btn.innerHTML = originalHtml;
       }
     }
+  };
+
+  document.getElementById('btn-seed-firestore-data')?.addEventListener('click', (e) => {
+    void triggerSeedMissingDataset(e.currentTarget as HTMLButtonElement, false);
+  });
+
+  document.querySelectorAll<HTMLButtonElement>('[data-seed-missing-btn]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      void triggerSeedMissingDataset(btn, true);
+    });
   });
 
   // Verified 8 Divisions & 64 Districts Geography Validation & Safe Importer
@@ -4579,6 +4537,7 @@ function attachCmsEventListeners(): void {
       'success'
     );
     await loadAdminDashboardData(true, true);
+    await loadPortalDataFromFirestore(true);
     renderApp();
   };
 

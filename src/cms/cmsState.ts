@@ -20,7 +20,11 @@ import { TouristSpotsService } from '../services/touristSpotsService';
 import { ArticlesService } from '../services/articlesService';
 import { AdminsService, type AdminRecord, type AdminRole } from '../services/adminsService';
 import { SiteSettingsService } from '../services/siteSettingsService';
-import { seedInitialTourismDataToFirestore, type SeedResultSummary } from '../services/seedFirestoreService';
+import {
+  seedInitialTourismDataToFirestore,
+  type SeedFirestoreOptions,
+  type SeedResultSummary
+} from '../services/seedFirestoreService';
 
 export {
   cmsStore,
@@ -568,15 +572,15 @@ export async function deleteAdminRecord(uid: string): Promise<{ success: boolean
 }
 
 // 9. Admin-Only Batched Initial Dataset Seeder
-export async function seedFirestoreFromCms(): Promise<SeedResultSummary> {
+export async function seedFirestoreFromCms(options?: SeedFirestoreOptions): Promise<SeedResultSummary> {
   assertAdminAccess();
-  const summary = await seedInitialTourismDataToFirestore();
+  const summary = await seedInitialTourismDataToFirestore(options);
   void recordAdminAuditLog({
     action: 'create',
     entityType: 'website_settings',
     entityId: 'firestore_seed',
     entityTitle: 'Initial Tourism Dataset Seed',
-    details: `Created ${summary.createdCount} documents, skipped ${summary.skippedCount} existing`
+    details: `Created ${summary.createdCount}, updated ${summary.updatedCount}, skipped ${summary.skippedCount}`
   });
   return summary;
 }

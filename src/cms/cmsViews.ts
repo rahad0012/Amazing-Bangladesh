@@ -635,7 +635,36 @@ function renderOverviewTab(lang: Language): string {
   const recentUpdates = adminDashboardState.recentUpdates;
   const recentActivity = adminDashboardState.recentActivity;
 
+  const incompleteGeo =
+    stats.totalDivisions < 8 ||
+    stats.publishedDivisions < 8 ||
+    stats.totalDistricts < 64 ||
+    stats.publishedDistricts < 64;
+
   return `
+    ${incompleteGeo ? `
+    <div class="admin-panel-card p-3 p-md-4 mb-4 border-warning-subtle" style="border-left: 4px solid #f59e0b;">
+      <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
+        <div>
+          <h2 class="h6 fw-bold text-primary-bd mb-1">
+            <i class="bi bi-cloud-arrow-up-fill text-warning me-2"></i>
+            ${isBn
+              ? `ফায়ারস্টোরে বাংলাদেশের সব ৮ বিভাগ প্রকাশিত অবস্থায় নেই (${stats.publishedDivisions}/৮ বিভাগ প্রকাশিত, ${stats.publishedDistricts}/৬৪ জেলা প্রকাশিত)`
+              : `Incomplete Published Geography in Firestore (${stats.publishedDivisions}/8 Divisions Published, ${stats.publishedDistricts}/64 Districts Published)`}
+          </h2>
+          <p class="small text-muted mb-0">
+            ${isBn
+              ? 'কোনো বিভাগ খসড়া (Draft) বা অনুপস্থিত থাকলে পাবলিক সাইটে তা দেখা যায় না। নিচের বাটনে ক্লিক করলে বাকি বিভাগ/জেলা যুক্ত হওয়ার পাশাপাশি খসড়া থাকা অফিসিয়াল বিভাগগুলোও প্রকাশ (Published) হয়ে যাবে।'
+              : 'Draft or missing divisions are hidden from the live portal. Click below to add any missing divisions/districts and ensure all 8 official divisions are published.'}
+          </p>
+        </div>
+        <button type="button" class="btn btn-accent btn-sm px-3 text-nowrap" data-seed-missing-btn="overview">
+          <i class="bi bi-database-add me-1"></i>${isBn ? 'সব ৮ বিভাগ প্রকাশ ও যুক্ত করুন' : 'Publish & Sync All 8 Divisions'}
+        </button>
+      </div>
+    </div>
+    ` : ''}
+
     <!-- Real Firestore KPI Statistics Grid -->
     <section aria-label="${isBn ? 'ফায়ারস্টোর পরিসংখ্যান' : 'Firestore Statistics'}" class="mb-4">
       <div class="row g-3">
@@ -1735,7 +1764,45 @@ function renderDivisionsModule(lang: Language): string {
   const start = (page - 1) * cmsStore.itemsPerPage;
   const paginated = list.slice(start, start + cmsStore.itemsPerPage);
 
+  const publishedDivisionsCount = cmsStore.divisions.filter(d => d.is_published).length;
+  const draftDivisions = cmsStore.divisions.filter(d => !d.is_published);
+  const draftNames = draftDivisions.map(d => (isBn ? d.name_bn : d.name_en)).join(', ');
+
   return `
+    ${cmsStore.divisions.length < 8 || publishedDivisionsCount < 8 ? `
+    <div class="admin-panel-card p-4 mb-4" style="border-left: 4px solid #f59e0b;">
+      <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
+        <div>
+          <h2 class="h6 fw-bold text-primary-bd mb-1">
+            <i class="bi bi-geo-alt-fill text-warning me-2"></i>
+            ${isBn
+              ? `বাংলাদেশের ৮টি বিভাগ পাবলিক সাইটে সম্পূর্ণ করুন (প্রকাশিত: ${publishedDivisionsCount}/৮)`
+              : `Complete All 8 Official Divisions on Live Portal (Published: ${publishedDivisionsCount}/8)`}
+          </h2>
+          <p class="small text-muted mb-0">
+            ${
+              draftDivisions.length > 0
+                ? isBn
+                  ? `সতর্কতা: বর্তমানে "${escapeHtml(draftNames)}" খসড়া (Draft) অবস্থায় থাকায় সাইটে দেখাচ্ছে না। নিচের বাটনে ক্লিক করলে ৮টি বিভাগই প্রকাশিত ও সিঙ্ক হয়ে যাবে।`
+                  : `Note: "${escapeHtml(draftNames)}" is currently saved as Draft and hidden on the public site. Click below to publish & sync all 8 divisions.`
+                : isBn
+                  ? 'এক ক্লিকে অনুপস্থিত বিভাগগুলো (এবং ৬৪ জেলা/দর্শনীয় স্থান) ফায়ারস্টোরে যুক্ত ও প্রকাশিত করুন।'
+                  : 'Click below to safely insert and publish all remaining official divisions (plus 64 districts and starter spots).'
+            }
+          </p>
+        </div>
+        <div class="d-flex flex-wrap gap-2">
+          <button type="button" class="btn btn-accent btn-sm px-3 text-nowrap" data-seed-missing-btn="divisions">
+            <i class="bi bi-database-add me-1"></i>${isBn ? 'সব ৮ বিভাগ প্রকাশ ও যুক্ত করুন' : 'Publish & Sync All 8 Divisions'}
+          </button>
+          <button type="button" class="btn btn-outline-bd btn-sm px-3 text-nowrap" data-cms-tab="districts">
+            <i class="bi bi-diagram-3 me-1"></i>${isBn ? 'জেলা ও ভূগোল ইম্পোর্টার' : 'Districts Importer'}
+          </button>
+        </div>
+      </div>
+    </div>
+    ` : ''}
+
     <div class="cms-table-card">
       <div class="cms-table-toolbar d-flex flex-wrap justify-content-between align-items-center gap-3">
         <div class="d-flex flex-wrap align-items-center gap-2">

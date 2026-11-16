@@ -20,8 +20,7 @@ export const firebaseApp: FirebaseApp =
   getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
 
 export const FIRESTORE_DATABASE_ID: string =
-  firebaseAppletConfig.firestoreDatabaseId ||
-  'ai-studio-bangladeshtouris-f1470a1c-bd36-4ff0-915f-d2c78f8a06c2';
+  firebaseAppletConfig.firestoreDatabaseId || '(default)';
 
 export const db: Firestore = getFirestore(firebaseApp, FIRESTORE_DATABASE_ID);
 

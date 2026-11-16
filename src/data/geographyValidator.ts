@@ -5,7 +5,7 @@
  * and produces a pre-import Validation Report.
  */
 
-import type { Division, District } from './bangladeshData';
+import type { Division, District } from './bangladeshData.ts';
 
 export interface CanonicalDivisionSpec {
   id: string;

@@ -6,7 +6,7 @@
 
 import {
   signInWithEmailAndPassword,
-  signInWithPopup,
+  sendEmailVerification,
   signOut,
   setPersistence,
   browserLocalPersistence,
@@ -14,7 +14,7 @@ import {
   onIdTokenChanged,
   type User
 } from 'firebase/auth';
-import { auth, googleProvider } from '../firebase';
+import { auth } from '../firebase';
 import type { Language } from '../utils/langUtils';
 
 export interface VerifiedAdminSession {
@@ -31,7 +31,7 @@ export type AdminVerificationOutcome =
   | { status: 'authenticated'; session: VerifiedAdminSession }
   | { status: 'unauthenticated'; reason?: string }
   | { status: 'expired'; message: string }
-  | { status: 'unauthorized'; message: string }
+  | { status: 'unauthorized'; code?: 'NOT_AUTHORIZED' | 'EMAIL_NOT_VERIFIED'; message: string }
   | { status: 'error'; message: string };
 
 export class AdminAuthError extends Error {
@@ -146,6 +146,10 @@ export function mapAdminAuthError(error: unknown, lang: Language): string {
       return isBn
         ? 'আপনার অ্যাডমিন সেশনের মেয়াদ শেষ হয়েছে। নিরাপত্তা নিশ্চিত করতে অনুগ্রহ করে পুনরায় লগইন করুন।'
         : 'Your administrator session has expired. Please sign in again to continue.';
+    case 'EMAIL_NOT_VERIFIED':
+      return isBn
+        ? 'আপনার ইমেইল ঠিকানাটি এখনও ভেরিফাই করা হয়নি। আপনার ইমেইল ইনবক্সে একটি ভেরিফিকেশন লিংক পাঠানো হয়েছে—লিংকটি ক্লিক করে ভেরিফাই করার পর আবার লগইন করুন।'
+        : 'Your email address is not verified yet. A verification link has been sent to your inbox—please verify your email and sign in again.';
     case 'NOT_AUTHORIZED':
       return isBn
         ? 'প্রবেশাধিকার প্রত্যাখ্যাত। এই অ্যাকাউন্টে অ্যাডমিনিস্ট্রেটর অনুমতি নেই।'
@@ -214,9 +218,23 @@ async function performBackendVerification(
 
     if (response.status === 403 || !response.ok || !data.authorized) {
       if (response.status === 403 || data.code === 'NOT_AUTHORIZED') {
+        if (!user.emailVerified) {
+          try {
+            await sendEmailVerification(user);
+          } catch {
+            // Non-fatal if rate-limited or already recently sent
+          }
+          await secureAdminSignOut();
+          return {
+            status: 'unauthorized',
+            code: 'EMAIL_NOT_VERIFIED',
+            message: 'Your email address is not verified yet. Please check your inbox for a verification link.'
+          };
+        }
         await secureAdminSignOut();
         return {
           status: 'unauthorized',
+          code: 'NOT_AUTHORIZED',
           message: data.message || 'Access denied. This account does not have administrator privileges.'
         };
       }
@@ -325,33 +343,7 @@ export async function signInAdminWithEmailPassword(
   }
 
   if (outcome.status === 'unauthorized') {
-    throw new AdminAuthError('NOT_AUTHORIZED', outcome.message);
-  }
-  if (outcome.status === 'expired') {
-    throw new AdminAuthError('SESSION_EXPIRED', outcome.message);
-  }
-  if (outcome.status === 'error') {
-    throw new AdminAuthError('VERIFICATION_UNAVAILABLE', outcome.message);
-  }
-  throw new AdminAuthError('UNAUTHENTICATED', 'Authentication session could not be established.');
-}
-
-export async function signInAdminWithGoogle(
-  rememberSession: boolean,
-  onSessionExpired?: () => void
-): Promise<VerifiedAdminSession> {
-  clearInMemorySession();
-
-  await setPersistence(auth, rememberSession ? browserLocalPersistence : browserSessionPersistence);
-  const credential = await signInWithPopup(auth, googleProvider);
-
-  const outcome = await performBackendVerification(credential.user, true, onSessionExpired);
-  if (outcome.status === 'authenticated') {
-    return outcome.session;
-  }
-
-  if (outcome.status === 'unauthorized') {
-    throw new AdminAuthError('NOT_AUTHORIZED', outcome.message);
+    throw new AdminAuthError(outcome.code || 'NOT_AUTHORIZED', outcome.message);
   }
   if (outcome.status === 'expired') {
     throw new AdminAuthError('SESSION_EXPIRED', outcome.message);
