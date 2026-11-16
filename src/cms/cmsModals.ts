@@ -346,9 +346,9 @@ export function openDivisionFormModal(division?: Division, lang: Language = 'bn'
           <div class="col-12">
             ${renderImageUploadFieldHtml({
               idPrefix: 'div',
-              label: 'Cover Image URL',
+              label: 'Cover Image URL (Optional)',
               value: division?.image_url,
-              required: true
+              required: false
             })}
           </div>
 
@@ -366,6 +366,17 @@ export function openDivisionFormModal(division?: Division, lang: Language = 'bn'
               <span class="bilingual-badge-bn">বাংলা</span>
             </label>
             <textarea class="form-control" id="div-desc-bn" rows="2" required placeholder="বিভাগের সংক্ষিপ্ত পরিচিতি...">${escapeHtml(division?.description_bn || '')}</textarea>
+          </div>
+
+          <div class="col-12">
+            ${renderSeoFieldsHtml({
+              idPrefix: 'div',
+              seo_title_en: division?.seo_title_en,
+              seo_title_bn: division?.seo_title_bn,
+              seo_description_en: division?.seo_description_en,
+              seo_description_bn: division?.seo_description_bn,
+              isBn
+            })}
           </div>
 
           <div class="col-12">
@@ -428,8 +439,8 @@ export function openDivisionFormModal(division?: Division, lang: Language = 'bn'
       showModalFormError('div-form-error', 'Area (sq km) must be a positive number.');
       return;
     }
-    if (!isValidImageSourceUrl(imgUrl)) {
-      showModalFormError('div-form-error', 'Please provide a valid cover image URL or upload an image file.');
+    if (imgUrl && !isValidImageSourceUrl(imgUrl)) {
+      showModalFormError('div-form-error', 'Please provide a valid cover image URL or leave it blank.');
       return;
     }
 
@@ -448,6 +459,8 @@ export function openDivisionFormModal(division?: Division, lang: Language = 'bn'
       return;
     }
 
+    const divSeoFields = readSeoFields('div');
+
     const newDiv: Division = {
       id: division?.id || `div_${slug}`,
       name_en: nameEn,
@@ -459,8 +472,10 @@ export function openDivisionFormModal(division?: Division, lang: Language = 'bn'
       districts_count: division?.districts_count || cmsStore.districts.filter(d => d.division_id === (division?.id || `div_${slug}`)).length,
       order: orderVal,
       image_url: imgUrl,
+      thumbnail_url: division?.thumbnail_url ?? imgUrl,
       description_en: descEn,
       description_bn: descBn,
+      ...divSeoFields,
       is_published: (document.getElementById('div-published') as HTMLInputElement).checked,
       created_at: division?.created_at
     };
@@ -576,9 +591,9 @@ export function openDistrictFormModal(district?: District, lang: Language = 'bn'
           <div class="col-12">
             ${renderImageUploadFieldHtml({
               idPrefix: 'dist',
-              label: 'Cover Image URL',
+              label: 'Cover Image URL (Optional)',
               value: district?.image_url,
-              required: true
+              required: false
             })}
           </div>
 
@@ -673,8 +688,8 @@ export function openDistrictFormModal(district?: District, lang: Language = 'bn'
       showModalFormError('dist-form-error', 'Longitude must be between -180 and 180.');
       return;
     }
-    if (!isValidImageSourceUrl(imgUrl)) {
-      showModalFormError('dist-form-error', 'Please provide a valid cover image URL or upload an image.');
+    if (imgUrl && !isValidImageSourceUrl(imgUrl)) {
+      showModalFormError('dist-form-error', 'Please provide a valid cover image URL or leave it blank.');
       return;
     }
 

@@ -3,6 +3,12 @@ import express, { type Request, type Response } from 'express';
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
+import { DISTRICTS, DIVISIONS } from './src/data/bangladeshData';
+import {
+  executeGeographyImport,
+  inspectGeographyAgainstFirestore,
+  type ImportStatusMode
+} from './src/server/firestoreAdminRest';
 
 interface ContactPayload {
   name?: unknown;
@@ -24,7 +30,7 @@ interface StoredContactRecord {
   deliveryMode: 'webhook' | 'email-api' | 'recorded';
 }
 
-const PORT = Number(process.env.PORT) || 3000;
+const PORT = 3000;
 const HOST = '0.0.0.0';
 const RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000;
 const RATE_LIMIT_MAX_REQUESTS = 10;
@@ -519,6 +525,154 @@ async function createServer(): Promise<void> {
     res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private');
     res.setHeader('Pragma', 'no-cache');
     res.status(200).json({ success: true });
+  });
+
+  app.get('/api/admin/geography/report', async (req: Request, res: Response) => {
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+    res.setHeader('Pragma', 'no-cache');
+
+    const clientIp = getClientIp(req);
+    if (isRateLimited(clientIp, adminRateLimitMap, ADMIN_VERIFY_MAX_REQUESTS)) {
+      res.status(429).json({
+        success: false,
+        code: 'RATE_LIMITED',
+        message: 'Too many requests. Please wait a moment and try again.'
+      });
+      return;
+    }
+
+    const authHeader = req.headers.authorization || '';
+    const tokenMatch = authHeader.match(/^Bearer\s+(.+)$/i);
+    const idToken = tokenMatch?.[1]?.trim() || '';
+
+    if (!idToken) {
+      res.status(401).json({
+        success: false,
+        code: 'UNAUTHENTICATED',
+        message: 'Missing administrator authentication token.'
+      });
+      return;
+    }
+
+    try {
+      const payload = await verifyFirebaseIdToken(idToken);
+      const authResult = await resolveAdminAuthorization(idToken, payload);
+      if (!authResult.authorized) {
+        res.status(403).json({
+          success: false,
+          code: 'NOT_AUTHORIZED',
+          message: 'Access denied. Administrator privileges are required.'
+        });
+        return;
+      }
+
+      const rawStatus = typeof req.query.status === 'string' ? req.query.status.trim().toLowerCase() : 'preserve';
+      const statusMode: ImportStatusMode =
+        rawStatus === 'published' || rawStatus === 'draft' ? rawStatus : 'preserve';
+
+      const inspection = await inspectGeographyAgainstFirestore(DIVISIONS, DISTRICTS, idToken, statusMode);
+      res.status(200).json({
+        success: true,
+        ...inspection
+      });
+    } catch (err) {
+      if (err instanceof TokenVerificationError) {
+        res.status(err.status).json({ success: false, code: err.code, message: err.message });
+        return;
+      }
+      console.error('[geography-report] Failed:', err instanceof Error ? err.message : err);
+      res.status(502).json({
+        success: false,
+        code: 'GEOGRAPHY_REPORT_FAILED',
+        message: err instanceof Error ? err.message : 'Unable to generate geography validation report.'
+      });
+    }
+  });
+
+  app.post('/api/admin/geography/import', async (req: Request, res: Response) => {
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+    res.setHeader('Pragma', 'no-cache');
+
+    const clientIp = getClientIp(req);
+    if (isRateLimited(clientIp, adminRateLimitMap, ADMIN_VERIFY_MAX_REQUESTS)) {
+      res.status(429).json({
+        success: false,
+        code: 'RATE_LIMITED',
+        message: 'Too many requests. Please wait a moment and try again.'
+      });
+      return;
+    }
+
+    const authHeader = req.headers.authorization || '';
+    const tokenMatch = authHeader.match(/^Bearer\s+(.+)$/i);
+    const idToken = tokenMatch?.[1]?.trim() || '';
+
+    if (!idToken) {
+      res.status(401).json({
+        success: false,
+        code: 'UNAUTHENTICATED',
+        message: 'Missing administrator authentication token.'
+      });
+      return;
+    }
+
+    try {
+      const payload = await verifyFirebaseIdToken(idToken);
+      const authResult = await resolveAdminAuthorization(idToken, payload);
+      if (!authResult.authorized) {
+        res.status(403).json({
+          success: false,
+          code: 'NOT_AUTHORIZED',
+          message: 'Access denied. Administrator privileges are required.'
+        });
+        return;
+      }
+
+      const body = (req.body || {}) as {
+        confirmImport?: unknown;
+        confirmOverwrite?: unknown;
+        statusMode?: unknown;
+      };
+
+      if (body.confirmImport !== true) {
+        res.status(400).json({
+          success: false,
+          code: 'CONFIRMATION_REQUIRED',
+          message: 'Explicit confirmation (confirmImport: true) is required after reviewing the validation report.'
+        });
+        return;
+      }
+
+      const statusMode: ImportStatusMode =
+        body.statusMode === 'published' || body.statusMode === 'draft' ? body.statusMode : 'preserve';
+      const confirmOverwrite = body.confirmOverwrite === true;
+
+      const result = await executeGeographyImport({
+        divisions: DIVISIONS,
+        districts: DISTRICTS,
+        bearerToken: idToken,
+        confirmImport: true,
+        confirmOverwrite,
+        statusMode
+      });
+
+      console.info(
+        `[geography-import] actor=${payload.email || payload.sub} createdDiv=${result.createdDivisions} createdDist=${result.createdDistricts} overwrittenDiv=${result.overwrittenDivisions} overwrittenDist=${result.overwrittenDistricts}`
+      );
+
+      res.status(200).json(result);
+    } catch (err) {
+      if (err instanceof TokenVerificationError) {
+        res.status(err.status).json({ success: false, code: err.code, message: err.message });
+        return;
+      }
+      console.error('[geography-import] Failed:', err instanceof Error ? err.message : err);
+      res.status(502).json({
+        success: false,
+        code: 'GEOGRAPHY_IMPORT_FAILED',
+        message: err instanceof Error ? err.message : 'Unable to execute geography import.'
+      });
+    }
   });
 
   app.post('/api/contact', async (req: Request, res: Response) => {

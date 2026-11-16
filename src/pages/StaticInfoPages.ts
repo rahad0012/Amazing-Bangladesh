@@ -40,7 +40,7 @@ export interface ContactFormState {
 
 export interface ContactPageProps {
   lang: Language;
-  contactEmail: string;
+  contactEmail?: string;
   formState: ContactFormState;
 }
 
@@ -365,7 +365,7 @@ export function renderAboutPage(props: AboutPageProps): string {
 // 2. CONTACT PAGE (/contact/)
 // ============================================================================
 export function renderContactPage(props: ContactPageProps): string {
-  const { lang, contactEmail, formState } = props;
+  const { lang, formState } = props;
   const isBn = lang === 'bn';
 
   const breadcrumbs = renderBreadcrumbs([
@@ -577,26 +577,10 @@ export function renderContactPage(props: ContactPageProps): string {
             <div class="d-flex flex-column gap-4">
               <div class="card border-0 shadow-sm rounded-4 p-4 bg-white">
                 <h2 class="h5 fw-bold text-primary-bd mb-3">
-                  <i class="bi bi-building text-warning me-2"></i>
-                  ${isBn ? 'অফিসিয়াল যোগাযোগ ঠিকানা' : 'Official Contact Information'}
+                  <i class="bi bi-clock-history text-warning me-2"></i>
+                  ${isBn ? 'সম্পাদনা ও সহায়তার সময়সূচি' : 'Editorial & Support Hours'}
                 </h2>
                 <ul class="list-unstyled d-flex flex-column gap-3 mb-0 small text-secondary">
-                  <li class="d-flex gap-3">
-                    <i class="bi bi-geo-alt-fill text-success fs-5 flex-shrink-0"></i>
-                    <div>
-                      <strong class="text-primary-bd d-block">${isBn ? 'কার্যালয়' : 'Office Address'}</strong>
-                      ${isBn
-                        ? 'পর্যটন ভবন, প্লট ই-৫/সি-১, আগারগাঁও, শেরেবাংলা নগর, ঢাকা-১২০৭, বাংলাদেশ'
-                        : 'Tourism Bhaban, Plot E-5/C-1, Agargaon, Sher-e-Bangla Nagar, Dhaka-1207, Bangladesh'}
-                    </div>
-                  </li>
-                  <li class="d-flex gap-3">
-                    <i class="bi bi-envelope-fill text-success fs-5 flex-shrink-0"></i>
-                    <div>
-                      <strong class="text-primary-bd d-block">${isBn ? 'ইমেইল' : 'Email'}</strong>
-                      <a href="mailto:${escapeHtml(contactEmail)}" class="text-secondary-bd fw-semibold text-decoration-none">${escapeHtml(contactEmail)}</a>
-                    </div>
-                  </li>
                   <li class="d-flex gap-3">
                     <i class="bi bi-clock-fill text-success fs-5 flex-shrink-0"></i>
                     <div>

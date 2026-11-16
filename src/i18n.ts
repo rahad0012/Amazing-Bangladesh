@@ -67,15 +67,15 @@ export const I18N: Translations = {
   
   // Hero section
   hero_badge: {
-    bn: "অফিসিয়াল বাংলাদেশ পর্যটন গাইড",
-    en: "Official Bangladesh Tourism Guide"
+    bn: "বাংলাদেশ পর্যটন গাইড",
+    en: "Bangladesh Tourism Guide"
   },
   hero_title_1: {
     bn: "চিরসবুজ বাংলাদেশের",
     en: "Discover the Soul of"
   },
   hero_title_2: {
-    bn: "অনুপম সৌন্দর্য আবিষ্কার করুন",
+    bn: "অপরূপ সৌন্দর্য উপভোগ করুন",
     en: "Beautiful Bangladesh"
   },
   hero_subtitle: {

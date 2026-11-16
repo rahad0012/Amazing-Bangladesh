@@ -31,6 +31,7 @@ export type CmsTab =
   | 'spots'
   | 'articles'
   | 'media'
+  | 'hero-banners'
   | 'seo-settings'
   | 'website-settings';
 

@@ -43,6 +43,8 @@ export function getAdminRouteForTab(tab: string): string {
       return '/admin/travel-guides/';
     case 'media':
       return '/admin/media/';
+    case 'hero-banners':
+      return '/admin/hero-banners/';
     case 'seo-settings':
       return '/admin/seo-settings/';
     case 'website-settings':
@@ -81,6 +83,9 @@ export function parseCurrentRoute(): ParsedRoute {
   }
   if (pathname === '/admin/media') {
     return { type: 'cms', id: 'media' };
+  }
+  if (pathname === '/admin/hero-banners') {
+    return { type: 'cms', id: 'hero-banners' };
   }
   if (pathname === '/admin/seo-settings') {
     return { type: 'cms', id: 'seo-settings' };

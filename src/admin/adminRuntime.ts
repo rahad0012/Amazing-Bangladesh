@@ -17,6 +17,9 @@ export {
   deleteArticle,
   saveMediaItem,
   deleteMediaItem,
+  saveAdminRecord,
+  deleteAdminRecord,
+  seedFirestoreFromCms,
   getMediaReferences,
   syncCmsStoreFromAdminSnapshot,
   canWriteAdmin
@@ -46,6 +49,7 @@ export {
 
 export {
   signInAdminWithEmailPassword,
+  signInAdminWithGoogle,
   verifyCurrentAdminSession,
   secureAdminSignOut,
   getVerifiedAdminSession,
@@ -68,3 +72,8 @@ export {
   uploadImageFile,
   validateImageFile
 } from '../firebase';
+
+export {
+  validateBangladeshGeographyDataset,
+  type GeographyValidationReport
+} from '../data/geographyValidator';

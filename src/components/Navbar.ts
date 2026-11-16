@@ -1,6 +1,6 @@
 /**
  * Reusable Responsive Navbar Component
- * Features: Brand logo, Navigation links, Quick Search, Saved Places counter, Language Switcher, Admin Portal trigger
+ * Features: Brand logo, Navigation links, Quick Search, Saved Places counter, Language Switcher
  */
 
 import { Language } from '../utils/langUtils';
@@ -26,7 +26,6 @@ export function renderNavbar(options: NavbarOptions): string {
   const langLabel = isBn ? 'English' : 'বাংলা';
   const savedLabel = isBn ? 'পছন্দ' : 'Saved';
   const searchLabel = isBn ? 'অনুসন্ধান' : 'Search';
-  const adminLabel = isBn ? 'অ্যাডমিন' : 'Admin';
 
   return `
     <nav class="navbar navbar-expand-xl site-navbar" id="main-nav" aria-label="Main Navigation">
@@ -117,12 +116,6 @@ export function renderNavbar(options: NavbarOptions): string {
             <button type="button" class="lang-switcher-btn flex-shrink-0" id="lang-switcher" aria-label="${isBn ? 'Switch website language to English' : 'ওয়েবসাইটের ভাষা বাংলায় পরিবর্তন করুন'}">
               <i class="bi bi-translate" aria-hidden="true"></i>
               <span id="lang-btn-text">${escapeHtml(langLabel)}</span>
-            </button>
-
-            <!-- Admin / Firebase Portal Trigger -->
-            <button type="button" class="btn btn-warning btn-sm fw-semibold rounded-pill px-3 text-dark flex-shrink-0 d-inline-flex align-items-center justify-content-center" id="btn-admin-portal" title="${escapeHtml(adminLabel)}" aria-label="${isBn ? 'অ্যাডমিন পোর্টাল খুলুন' : 'Open Admin CMS Portal'}">
-              <i class="bi bi-shield-lock-fill me-1" aria-hidden="true"></i>
-              <span id="label-admin-text">${escapeHtml(adminLabel)}</span>
             </button>
           </div>
         </div>

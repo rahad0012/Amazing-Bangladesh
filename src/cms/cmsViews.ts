@@ -15,6 +15,7 @@ import {
   type AdminAuditLogEntry,
   type RecentContentUpdateItem
 } from '../services/adminDashboardService';
+import { getActiveHeroSlides } from '../services/siteSettingsService';
 
 import { ARTICLE_CATEGORIES } from '../data/bangladeshData';
 
@@ -43,6 +44,19 @@ export function generateSlug(text: string): string {
     .trim()
     .replace(/[\s\W-]+/g, '-')
     .replace(/^-+|-+$/g, '');
+}
+
+function renderCmsThumbHtml(
+  imageUrl: string | undefined,
+  alt: string,
+  width: number = 48,
+  height: number = 36
+): string {
+  const optimized = imageUrl ? optimizeImageUrl(imageUrl, 160) : '';
+  if (!optimized) {
+    return `<div class="rounded-2 bg-light border d-flex align-items-center justify-content-center text-muted" style="width: ${width}px; height: ${height}px;" title="${escapeHtml(alt)}" aria-label="${escapeHtml(alt)}"><i class="bi bi-image"></i></div>`;
+  }
+  return `<img src="${escapeHtml(optimized)}" class="rounded-2" style="width: ${width}px; height: ${height}px; object-fit: cover;" alt="${escapeHtml(alt)}" loading="lazy" decoding="async">`;
 }
 
 // Confirmation / Blocker Modal
@@ -168,6 +182,13 @@ function getTabMeta(tab: CmsTab, lang: Language): { title: string; subtitle: str
         title: isBn ? 'ইমেজ ম্যানেজার' : 'Image Manager',
         subtitle: isBn ? 'ফায়ারবেস স্টোরেজ ও মিডিয়া সম্পদ আপলোড এবং পরিচালনা করুন' : 'Upload and organize destination photography and assets'
       };
+    case 'hero-banners':
+      return {
+        title: isBn ? 'হিরো ব্যানার ও স্লাইডার ইমেজ' : 'Hero Banner Images',
+        subtitle: isBn
+          ? 'হোমপেজের হিরো ক্যারোসেল ব্যানার পরিবর্তন, নতুন ছবি যোগ এবং সঠিক ইমেজ সাইজ গাইডলাইন পরিচালনা করুন'
+          : 'Change existing hero carousel banners, add new banner slides, and view recommended image dimensions'
+      };
     case 'seo-settings':
       return {
         title: isBn ? 'এসইও সেটিংস' : 'SEO Settings',
@@ -216,6 +237,7 @@ export function renderCmsDashboard(lang: Language, _onExitCms: () => void, onRef
     labelEn: string;
     labelBn: string;
   }> = [
+    { tab: 'hero-banners', icon: 'bi-card-image', labelEn: 'Hero Banners', labelBn: 'হিরো ব্যানার' },
     { tab: 'seo-settings', icon: 'bi-search', labelEn: 'SEO Settings', labelBn: 'এসইও সেটিংস' },
     { tab: 'website-settings', icon: 'bi-sliders', labelEn: 'Website Settings', labelBn: 'ওয়েবসাইট সেটিংস' }
   ];
@@ -401,6 +423,8 @@ function renderTabContent(lang: Language, onRefresh: () => void): string {
       return renderArticlesModule(lang);
     case 'media':
       return renderMediaModule(lang);
+    case 'hero-banners':
+      return renderHeroBannersModule(lang);
     case 'seo-settings':
       return renderSeoSettingsModule(lang);
     case 'website-settings':
@@ -660,6 +684,9 @@ function renderOverviewTab(lang: Language): string {
         </button>
         <button type="button" class="btn btn-outline-bd btn-sm px-3 text-nowrap" data-quick-action="add-media">
           <i class="bi bi-cloud-arrow-up me-1"></i>${isBn ? 'ছবি আপলোড' : 'Upload Image'}
+        </button>
+        <button type="button" class="btn btn-outline-bd btn-sm px-3 text-nowrap" data-cms-tab="hero-banners">
+          <i class="bi bi-card-image me-1"></i>${isBn ? 'হিরো ব্যানার ইমেজ' : 'Hero Banners'}
         </button>
         <button type="button" class="btn btn-outline-secondary btn-sm px-3 text-nowrap" data-cms-tab="seo-settings">
           <i class="bi bi-search me-1"></i>${isBn ? 'এসইও সেটিংস' : 'SEO Settings'}
@@ -1298,7 +1325,25 @@ function renderWebsiteSettingsModule(lang: Language): string {
         </div>
       </div>
 
-      <div class="col-12 col-xl-4">
+      <div class="col-12 col-xl-4 d-flex flex-column gap-4">
+        <div class="admin-panel-card p-4">
+          <h2 class="h6 fw-bold text-primary-bd mb-2">
+            <i class="bi bi-card-image me-1"></i>${isBn ? 'হিরো ব্যানার স্লাইডার' : 'Hero Banner Carousel'}
+          </h2>
+          <p class="small text-muted mb-3">
+            ${isBn
+              ? 'হোমপেজের হিরো ব্যানার ছবি পরিবর্তন, নতুন ছবি যোগ ও প্রস্তাবিত ইমেজ সাইজ দেখতে হিরো ব্যানার ম্যানেজার ব্যবহার করুন।'
+              : 'Change existing hero banner images, add new slides, and view recommended dimensions.'}
+          </p>
+          <div class="d-flex justify-content-between align-items-center small mb-3">
+            <span class="text-muted">${isBn ? 'সক্রিয় ব্যানার স্লাইড:' : 'Active Banner Slides:'}</span>
+            <span class="fw-bold text-primary-bd tabular-nums">${getActiveHeroSlides(site).length}</span>
+          </div>
+          <button type="button" class="btn btn-accent btn-sm w-100" data-cms-tab="hero-banners">
+            <i class="bi bi-images me-1"></i>${isBn ? 'হিরো ব্যানার ইমেজ পরিচালনা করুন' : 'Manage Hero Banner Images'}
+          </button>
+        </div>
+
         <div class="admin-panel-card p-4">
           <h2 class="h6 fw-bold text-primary-bd mb-2">
             ${isBn ? 'আইনি নথি ব্যবস্থাপনা' : 'Legal Pages Management'}
@@ -1328,6 +1373,335 @@ function renderWebsiteSettingsModule(lang: Language): string {
             <i class="bi bi-file-earmark-text me-1"></i>${isBn ? 'আইনি নথি এডিটর খুলুন' : 'Open Legal Pages Editor'}
           </button>
         </div>
+
+        <div class="admin-panel-card p-4">
+          <h2 class="h6 fw-bold text-primary-bd mb-2">
+            <i class="bi bi-shield-check me-1"></i>${isBn ? 'অনুমোদিত অ্যাডমিন তালিকা (admins)' : 'Authorized Admins (admins)'}
+          </h2>
+          <p class="small text-muted mb-3">
+            ${isBn
+              ? 'ফায়ারস্টোর admins সংগ্রহে থাকা অনুমোদিত অ্যাডমিনিস্ট্রেটরদের পরিচালনা করুন।'
+              : 'Manage authorized administrator UIDs and roles in Cloud Firestore.'}
+          </p>
+          <div class="mb-3" style="max-height: 200px; overflow-y: auto;">
+            ${adminDashboardState.admins.length === 0
+              ? `<div class="small text-muted fst-italic">${isBn ? 'কোনো অতিরিক্ত অ্যাডমিন নথি নেই (ইমেইল/ক্লেইম দ্বারা পরিচালিত)।' : 'No explicit admin documents yet (using claims / allowlist).'}</div>`
+              : adminDashboardState.admins.map(adm => `
+                <div class="d-flex justify-content-between align-items-center gap-2 py-2 border-bottom">
+                  <div class="min-w-0">
+                    <div class="small fw-semibold text-primary-bd text-truncate">${escapeHtml(adm.email)}</div>
+                    <div class="text-muted text-truncate" style="font-size: 0.72rem;">UID: <code>${escapeHtml(adm.uid)}</code> · ${escapeHtml(adm.role)}</div>
+                  </div>
+                  <button type="button" class="btn btn-outline-danger btn-sm py-0 px-2" data-delete-admin-uid="${escapeHtml(adm.uid)}" title="${isBn ? 'অপসারণ করুন' : 'Remove Admin'}">
+                    <i class="bi bi-trash"></i>
+                  </button>
+                </div>
+              `).join('')}
+          </div>
+          <form id="form-add-admin-user" class="d-flex flex-column gap-2">
+            <input type="text" class="form-control form-control-sm" id="new-admin-uid" placeholder="${isBn ? 'Firebase Auth UID' : 'Firebase Auth UID'}" required maxlength="128">
+            <input type="email" class="form-control form-control-sm" id="new-admin-email" placeholder="${isBn ? 'অ্যাডমিন ইমেইল' : 'Admin Email'}" required maxlength="180">
+            <div class="d-flex gap-2">
+              <select class="form-select form-select-sm" id="new-admin-role">
+                <option value="admin">admin</option>
+                <option value="super_admin">super_admin</option>
+                <option value="editor">editor</option>
+              </select>
+              <button type="submit" class="btn btn-primary-bd btn-sm text-nowrap px-3">
+                <i class="bi bi-person-plus me-1"></i>${isBn ? 'যোগ করুন' : 'Add'}
+              </button>
+            </div>
+          </form>
+        </div>
+
+        <div class="admin-panel-card p-4">
+          <h2 class="h6 fw-bold text-primary-bd mb-2">
+            <i class="bi bi-cloud-upload me-1"></i>${isBn ? 'ফায়ারস্টোর ডাটাবেস সিডিং' : 'Firestore Dataset Sync'}
+          </h2>
+          <p class="small text-muted mb-3">
+            ${isBn
+              ? 'খালি থাকা বিভাগ, ৬৪ জেলা, ক্যাটাগরি, দর্শনীয় স্থান, নিবন্ধ ও সাইট সেটিংস ফায়ারস্টোরে সংযুক্ত করুন (বিদ্যমান নথি অক্ষত থাকবে)।'
+              : 'Populate missing divisions, 64 districts, categories, spots, articles, and default site settings into Cloud Firestore without overwriting existing docs.'}
+          </p>
+          <button type="button" class="btn btn-outline-bd btn-sm w-100" id="btn-seed-firestore-data">
+            <i class="bi bi-database-add me-1"></i>${isBn ? 'প্রাথমিক ডাটা ফায়ারস্টোরে সিঙ্ক করুন' : 'Seed Missing Dataset to Firestore'}
+          </button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+// ============================================================================
+// HERO BANNER IMAGES & SLIDER MANAGEMENT MODULE
+// ============================================================================
+function renderHeroBannersModule(lang: Language): string {
+  const isBn = lang === 'bn';
+  const site = adminDashboardState.websiteSettings;
+  const slides = getActiveHeroSlides(site);
+  const saving = adminDashboardState.savingWebsite;
+
+  return `
+    <!-- Recommended Image Size & Guidelines Card -->
+    <div class="admin-panel-card p-4 mb-4">
+      <div class="d-flex flex-wrap justify-content-between align-items-start gap-3">
+        <div>
+          <h2 class="h6 fw-bold text-primary-bd mb-1">
+            <i class="bi bi-aspect-ratio-fill text-accent-bd me-2"></i>
+            ${isBn ? 'হিরো ব্যানার ইমেজের প্রস্তাবিত সাইজ ও গাইডলাইন' : 'Recommended Hero Banner Image Size & Guidelines'}
+          </h2>
+          <p class="small text-muted mb-0">
+            ${isBn
+              ? 'হিরো সেকশনের ছবি অবিকৃতভাবে (object-fit: contain) প্রদর্শিত হয়। নিখুঁত ভিউয়ের জন্য নিচের মাপ অনুযায়ী ছবি আপলোড করুন।'
+              : 'Hero banners render uncropped with object-fit: contain. Follow these specs for crisp, well-proportioned banners.'}
+          </p>
+        </div>
+        <span class="badge-published tabular-nums">
+          <i class="bi bi-layers me-1"></i>${slides.length} / 15 ${isBn ? 'স্লাইড' : 'Slides'}
+        </span>
+      </div>
+
+      <div class="row g-3 mt-2">
+        <div class="col-12 col-md-6 col-xl-3">
+          <div class="p-3 rounded-3 border bg-light h-100">
+            <div class="small text-muted mb-1">${isBn ? 'প্রস্তাবিত পিক্সেল সাইজ' : 'Recommended Dimensions'}</div>
+            <div class="fw-bold text-primary-bd tabular-nums">1600 × 900 px <span class="fw-normal small text-muted">(16:9)</span></div>
+            <div class="small text-muted mt-1">${isBn ? 'অথবা 1600 × 600 px (ওয়াইড ব্যানার)' : 'or 1600 × 600 px (Wide Banner)'}</div>
+          </div>
+        </div>
+        <div class="col-12 col-md-6 col-xl-3">
+          <div class="p-3 rounded-3 border bg-light h-100">
+            <div class="small text-muted mb-1">${isBn ? 'হিরো সেকশন উচ্চতা ও ডিসপ্লে' : 'Hero Display Height & Fit'}</div>
+            <div class="fw-bold text-primary-bd tabular-nums">${isBn ? 'ডেস্কটপ ৪২০px · মোবাইল ৩৬০px' : 'Desktop 420px · Mobile 360px'}</div>
+            <div class="small text-muted mt-1">${isBn ? 'object-fit: contain (ছবি কাটবে না)' : 'object-fit: contain (zero cropping)'}</div>
+          </div>
+        </div>
+        <div class="col-12 col-md-6 col-xl-3">
+          <div class="p-3 rounded-3 border bg-light h-100">
+            <div class="small text-muted mb-1">${isBn ? 'অবস্থান ও সর্বনিম্ন প্রস্থ' : 'Orientation & Min Width'}</div>
+            <div class="fw-bold text-primary-bd tabular-nums">${isBn ? 'আড়াআড়ি (Landscape) ≥ 1200 px' : 'Landscape ≥ 1200 px wide'}</div>
+            <div class="small text-muted mt-1">${isBn ? 'আদর্শ অনুপাত 16:9 থেকে 8:3' : 'Ideal aspect ratio 16:9 to 8:3'}</div>
+          </div>
+        </div>
+        <div class="col-12 col-md-6 col-xl-3">
+          <div class="p-3 rounded-3 border bg-light h-100">
+            <div class="small text-muted mb-1">${isBn ? 'সমর্থিত ফরম্যাট ও ফাইল সাইজ' : 'Supported Formats & Max Size'}</div>
+            <div class="fw-bold text-primary-bd tabular-nums">WEBP / JPEG / PNG / SVG</div>
+            <div class="small text-muted mt-1">${isBn ? 'সর্বোচ্চ 5 MB (< 500 KB সুপারিশকৃত)' : 'Max 5 MB (< 500 KB recommended)'}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Add New Hero Banner Slide Card -->
+    <div class="admin-panel-card p-4 mb-4">
+      <h2 class="h6 fw-bold text-primary-bd mb-3">
+        <i class="bi bi-plus-circle-fill text-accent-bd me-2"></i>
+        ${isBn ? 'নতুন হিরো ব্যানার ইমেজ যোগ করুন' : 'Add New Hero Banner Image'}
+      </h2>
+      <form id="form-add-hero-banner">
+        <div class="row g-3">
+          <div class="col-12 col-lg-7">
+            <label for="new-hero-slide-url" class="form-label small fw-semibold text-primary-bd">
+              ${isBn ? 'ব্যানার ছবির ইউআরএল (URL) বা ডিভাইস থেকে আপলোড করুন' : 'Banner Image URL or Upload File'} <span class="text-danger">*</span>
+            </label>
+            <div class="input-group">
+              <input
+                type="url"
+                class="form-control"
+                id="new-hero-slide-url"
+                placeholder="https://images.unsplash.com/..."
+                required
+                maxlength="2000"
+              >
+              <input
+                type="file"
+                id="new-hero-file-input"
+                accept="image/jpeg,image/png,image/webp,image/gif,image/svg+xml"
+                class="d-none"
+              >
+              <button type="button" class="btn btn-outline-bd" id="btn-new-hero-upload" ${saving ? 'disabled' : ''}>
+                <i class="bi bi-cloud-arrow-up me-1"></i>${isBn ? 'ফাইল আপলোড' : 'Upload File'}
+              </button>
+            </div>
+            ${cmsStore.media.length > 0 ? `
+              <div class="mt-2">
+                <select class="form-select form-select-sm" id="new-hero-media-pick" aria-label="${isBn ? 'মিডিয়া লাইব্রেরি থেকে বেছে নিন' : 'Pick from Media Library'}">
+                  <option value="">${isBn ? '— অথবা মিডিয়া লাইব্রেরি থেকে ছবি বেছে নিন —' : '— Or choose from Media Library —'}</option>
+                  ${cmsStore.media.slice(0, 40).map(m => `
+                    <option value="${escapeHtml(m.url)}">${escapeHtml(m.file_name)} ${m.alt_bn || m.alt_en ? `(${escapeHtml(isBn ? m.alt_bn || m.alt_en : m.alt_en || m.alt_bn)})` : ''}</option>
+                  `).join('')}
+                </select>
+              </div>
+            ` : ''}
+          </div>
+
+          <div class="col-12 col-lg-5 d-flex align-items-center">
+            <div id="new-hero-preview-box" class="w-100 rounded-3 border d-flex flex-column align-items-center justify-content-center p-2 text-center" style="min-height: 112px; background: #0d2a23; color: rgba(255,255,255,0.75);">
+              <i class="bi bi-image fs-3 mb-1"></i>
+              <span class="small">${isBn ? 'ছবির প্রিভিউ এবং পিক্সেল সাইজ এখানে দেখা যাবে' : 'Image preview & pixel dimensions will appear here'}</span>
+            </div>
+          </div>
+
+          <div class="col-12 col-md-6">
+            <label for="new-hero-label-bn" class="form-label small fw-semibold text-primary-bd">
+              ${isBn ? 'স্থানের নাম / ক্যাপশন (বাংলা)' : 'Slide Location / Caption (Bengali)'}
+            </label>
+            <input type="text" class="form-control" id="new-hero-label-bn" maxlength="160" placeholder="${isBn ? 'যেমন: রাতারগুল সোয়াম্প ফরেস্ট • সিলেট' : 'e.g. রাতারগুল সোয়াম্প ফরেস্ট • সিলেট'}">
+          </div>
+          <div class="col-12 col-md-6">
+            <label for="new-hero-label-en" class="form-label small fw-semibold text-primary-bd">
+              ${isBn ? 'স্থানের নাম / ক্যাপশন (ইংরেজি)' : 'Slide Location / Caption (English)'}
+            </label>
+            <input type="text" class="form-control" id="new-hero-label-en" maxlength="160" placeholder="e.g. Ratargul Swamp Forest • Sylhet">
+          </div>
+        </div>
+
+        <div class="d-flex justify-content-end mt-3 pt-3 border-top">
+          <button type="submit" class="btn btn-accent px-4" id="btn-add-hero-slide" ${saving || slides.length >= 15 ? 'disabled' : ''}>
+            <i class="bi bi-plus-lg me-1"></i>${isBn ? 'নতুন ব্যানার যোগ ও সংরক্ষণ করুন' : 'Add & Save Hero Banner'}
+          </button>
+        </div>
+      </form>
+    </div>
+
+    <!-- Existing Hero Banner Slides Manager -->
+    <div class="admin-panel-card p-4">
+      <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 pb-3 mb-3 border-bottom">
+        <div>
+          <h2 class="h6 fw-bold text-primary-bd mb-1">
+            ${isBn ? 'বিদ্যমান হিরো ব্যানার স্লাইডসমূহ পরিবর্তন ও ব্যবস্থাপনা' : 'Edit & Manage Existing Hero Banner Slides'}
+          </h2>
+          <p class="small text-muted mb-0">
+            ${isBn
+              ? 'যেকোনো স্লাইডের ছবি আপলোড করে পরিবর্তন করুন, ক্রম বদলান অথবা ক্যাপশন আপডেট করে সংরক্ষণ করুন।'
+              : 'Replace any slide image by uploading a new file or pasting a URL, reorder slides, or edit captions.'}
+          </p>
+        </div>
+        <div class="d-flex flex-wrap gap-2">
+          <button type="button" class="btn btn-outline-secondary btn-sm" id="btn-hero-reset-defaults" ${saving ? 'disabled' : ''}>
+            <i class="bi bi-arrow-counterclockwise me-1"></i>${isBn ? 'ডিফল্ট রিস্টোর' : 'Reset Defaults'}
+          </button>
+          <button type="button" class="btn btn-primary-bd btn-sm px-3" id="btn-hero-save-all" ${saving ? 'disabled' : ''}>
+            ${saving
+              ? `<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>${isBn ? 'সংরক্ষণ হচ্ছে...' : 'Saving...'}`
+              : `<i class="bi bi-check2-circle me-1"></i>${isBn ? 'সব পরিবর্তন সংরক্ষণ করুন' : 'Save All Changes'}`
+            }
+          </button>
+        </div>
+      </div>
+
+      <div class="d-flex flex-column gap-3" id="hero-banners-list">
+        ${slides.map((slide, idx) => `
+          <div class="p-3 rounded-3 border bg-light" data-hero-slide-row="${idx}" data-hero-slide-id="${escapeHtml(slide.id)}">
+            <div class="row g-3 align-items-center">
+              <div class="col-12 col-md-4 col-lg-3">
+                <div class="rounded-2 overflow-hidden border position-relative" style="background: #0d2a23; height: 120px;">
+                  <img
+                    src="${escapeHtml(slide.image_url)}"
+                    alt="${escapeHtml(isBn ? slide.label_bn : slide.label_en)}"
+                    class="w-100 h-100"
+                    style="object-fit: contain; object-position: center;"
+                    data-hero-preview-img="${idx}"
+                    loading="lazy"
+                    decoding="async"
+                  >
+                  <span class="position-absolute top-0 start-0 m-1 badge bg-dark bg-opacity-75 tabular-nums">#${idx + 1}</span>
+                  <span class="position-absolute bottom-0 end-0 m-1 badge bg-dark bg-opacity-75 tabular-nums d-none" data-hero-dim-badge="${idx}"></span>
+                </div>
+              </div>
+
+              <div class="col-12 col-md-8 col-lg-7">
+                <div class="row g-2">
+                  <div class="col-12">
+                    <label class="form-label small fw-semibold text-primary-bd mb-1" for="hero-url-${idx}">
+                      ${isBn ? 'ইমেজ ইউআরএল / নতুন ছবি আপলোড' : 'Image URL / Upload Replacement'}
+                    </label>
+                    <div class="input-group input-group-sm">
+                      <input
+                        type="url"
+                        class="form-control"
+                        id="hero-url-${idx}"
+                        data-hero-url="${idx}"
+                        value="${escapeHtml(slide.image_url)}"
+                        maxlength="2000"
+                        required
+                      >
+                      <input
+                        type="file"
+                        id="hero-file-input-${idx}"
+                        data-hero-file-input="${idx}"
+                        accept="image/jpeg,image/png,image/webp,image/gif,image/svg+xml"
+                        class="d-none"
+                      >
+                      <button type="button" class="btn btn-outline-bd" data-hero-upload-btn="${idx}" ${saving ? 'disabled' : ''}>
+                        <i class="bi bi-upload me-1"></i>${isBn ? 'ছবি পরিবর্তন' : 'Replace'}
+                      </button>
+                    </div>
+                  </div>
+                  <div class="col-12 col-sm-6">
+                    <label class="form-label small text-muted mb-1" for="hero-label-bn-${idx}">
+                      ${isBn ? 'ক্যাপশন (বাংলা)' : 'Caption (Bengali)'}
+                    </label>
+                    <input
+                      type="text"
+                      class="form-control form-control-sm"
+                      id="hero-label-bn-${idx}"
+                      data-hero-label-bn="${idx}"
+                      value="${escapeHtml(slide.label_bn)}"
+                      maxlength="160"
+                    >
+                  </div>
+                  <div class="col-12 col-sm-6">
+                    <label class="form-label small text-muted mb-1" for="hero-label-en-${idx}">
+                      ${isBn ? 'ক্যাপশন (ইংরেজি)' : 'Caption (English)'}
+                    </label>
+                    <input
+                      type="text"
+                      class="form-control form-control-sm"
+                      id="hero-label-en-${idx}"
+                      data-hero-label-en="${idx}"
+                      value="${escapeHtml(slide.label_en)}"
+                      maxlength="160"
+                    >
+                  </div>
+                </div>
+              </div>
+
+              <div class="col-12 col-lg-2 d-flex flex-lg-column justify-content-end gap-2">
+                <div class="btn-group btn-group-sm" role="group" aria-label="${isBn ? 'ক্রম পরিবর্তন' : 'Reorder slide'}">
+                  <button
+                    type="button"
+                    class="btn btn-outline-secondary"
+                    data-hero-move-up="${idx}"
+                    title="${isBn ? 'উপরে তুলুন' : 'Move up'}"
+                    ${idx === 0 || saving ? 'disabled' : ''}
+                  >
+                    <i class="bi bi-arrow-up"></i>
+                  </button>
+                  <button
+                    type="button"
+                    class="btn btn-outline-secondary"
+                    data-hero-move-down="${idx}"
+                    title="${isBn ? 'নিচে নামান' : 'Move down'}"
+                    ${idx === slides.length - 1 || saving ? 'disabled' : ''}
+                  >
+                    <i class="bi bi-arrow-down"></i>
+                  </button>
+                </div>
+                <button
+                  type="button"
+                  class="btn btn-outline-danger btn-sm"
+                  data-hero-delete="${idx}"
+                  title="${isBn ? 'স্লাইড মুছুন' : 'Delete slide'}"
+                  ${slides.length <= 1 || saving ? 'disabled' : ''}
+                >
+                  <i class="bi bi-trash me-1"></i>${isBn ? 'মুছুন' : 'Remove'}
+                </button>
+              </div>
+            </div>
+          </div>
+        `).join('')}
       </div>
     </div>
   `;
@@ -1411,7 +1785,7 @@ function renderDivisionsModule(lang: Language): string {
               return `
                 <tr>
                   <td>
-                    <img src="${escapeHtml(optimizeImageUrl(div.image_url, 160))}" class="rounded-2" style="width: 48px; height: 36px; object-fit: cover;" alt="${escapeHtml(div.name_en)}" loading="lazy" decoding="async">
+                    ${renderCmsThumbHtml(div.image_url, div.name_en, 48, 36)}
                   </td>
                   <td class="fw-bold text-primary-bd">${escapeHtml(div.name_en)}</td>
                   <td>${escapeHtml(div.name_bn)}</td>
@@ -1477,6 +1851,41 @@ function renderDistrictsModule(lang: Language): string {
   const paginated = list.slice(start, start + cmsStore.itemsPerPage);
 
   return `
+    <div class="admin-panel-card p-4 mb-4" id="cms-geography-importer-card">
+      <div class="d-flex flex-wrap justify-content-between align-items-start gap-3">
+        <div>
+          <h2 class="h6 fw-bold text-primary-bd mb-1">
+            <i class="bi bi-diagram-3-fill text-accent-bd me-2"></i>
+            ${isBn ? 'যাচাইকৃত ৮ বিভাগ ও ৬৪ জেলা ডাটাবেস ইম্পোর্টার' : 'Verified 8 Divisions & 64 Districts Importer'}
+          </h2>
+          <p class="small text-muted mb-0">
+            ${
+              isBn
+                ? 'ইম্পোর্টের আগে প্রশাসনিক কাঠামো, অনন্য স্লাগ ও ফায়ারস্টোরের বর্তমান অবস্থা যাচাই করুন। অনুমতি ছাড়া কোনো বিদ্যমান নথি প্রতিস্থাপন হবে না।'
+                : 'Validate administrative structure, unique slugs, bilingual SEO, and live Firestore state before importing. Existing records are never overwritten without explicit confirmation.'
+            }
+          </p>
+        </div>
+        <div class="d-flex flex-wrap align-items-center gap-2">
+          <select class="form-select form-select-sm" id="cms-geo-status-mode" aria-label="${isBn ? 'ইম্পোর্ট স্ট্যাটাস' : 'Import publication status'}" style="width: auto;">
+            <option value="preserve">${isBn ? 'ডিফল্ট অবস্থা (প্রকাশিত)' : 'Dataset Default (Published)'}</option>
+            <option value="published">${isBn ? 'প্রকাশিত হিসেবে ইম্পোর্ট' : 'Import as Published'}</option>
+            <option value="draft">${isBn ? 'খসড়া হিসেবে ইম্পোর্ট' : 'Import as Draft'}</option>
+          </select>
+          <button type="button" class="btn btn-outline-bd btn-sm" id="btn-geo-validate-report">
+            <i class="bi bi-clipboard2-check me-1"></i>${isBn ? 'যাচাই ও রিপোর্ট দেখুন' : 'Validate & View Report'}
+          </button>
+          <button type="button" class="btn btn-primary-bd btn-sm" id="btn-geo-import-missing">
+            <i class="bi bi-cloud-upload me-1"></i>${isBn ? 'নতুনগুলো ইম্পোর্ট করুন' : 'Import Missing Only'}
+          </button>
+          <button type="button" class="btn btn-outline-danger btn-sm" id="btn-geo-import-overwrite">
+            <i class="bi bi-arrow-repeat me-1"></i>${isBn ? 'নিশ্চিত ওভাররাইট সিঙ্ক' : 'Overwrite Sync...'}
+          </button>
+        </div>
+      </div>
+      <div id="cms-geo-report-panel" class="mt-3 d-none"></div>
+    </div>
+
     <div class="cms-table-card">
       <div class="cms-table-toolbar d-flex flex-wrap justify-content-between align-items-center gap-3">
         <div class="d-flex flex-wrap align-items-center gap-2">
@@ -1536,7 +1945,7 @@ function renderDistrictsModule(lang: Language): string {
               return `
                 <tr>
                   <td>
-                    <img src="${escapeHtml(optimizeImageUrl(dist.image_url, 160))}" class="rounded-2" style="width: 44px; height: 32px; object-fit: cover;" alt="${escapeHtml(dist.name_en)}" loading="lazy" decoding="async">
+                    ${renderCmsThumbHtml(dist.image_url, dist.name_en, 44, 32)}
                   </td>
                   <td class="fw-bold text-primary-bd">${escapeHtml(dist.name_en)}</td>
                   <td>${escapeHtml(dist.name_bn)}</td>
@@ -1789,7 +2198,7 @@ function renderTouristSpotsModule(lang: Language): string {
               return `
                 <tr>
                   <td>
-                    <img src="${escapeHtml(optimizeImageUrl(spot.image_url, 160))}" class="rounded-2" style="width: 48px; height: 36px; object-fit: cover;" alt="${escapeHtml(spot.name_en)}" loading="lazy" decoding="async">
+                    ${renderCmsThumbHtml(spot.image_url, spot.name_en, 48, 36)}
                     ${galleryCount > 0 ? `<div class="text-muted mt-1" style="font-size: 0.7rem;">+${galleryCount} ${isBn ? 'গ্যালারি' : 'gallery'}</div>` : ''}
                   </td>
                   <td>
@@ -1923,7 +2332,7 @@ function renderArticlesModule(lang: Language): string {
               return `
                 <tr>
                   <td>
-                    <img src="${escapeHtml(optimizeImageUrl(art.image_url, 160))}" class="rounded-2" style="width: 48px; height: 36px; object-fit: cover;" alt="${escapeHtml(art.title_en)}" loading="lazy" decoding="async">
+                    ${renderCmsThumbHtml(art.image_url, art.title_en, 48, 36)}
                   </td>
                   <td>
                     <div class="fw-bold text-primary-bd">${escapeHtml(art.title_en)}</div>

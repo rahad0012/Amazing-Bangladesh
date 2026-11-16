@@ -1,14 +1,12 @@
 /**
  * Admin Dashboard Firestore Data & Settings Service
  * Fetches live statistics, recent content updates, recently added tourist spots,
- * audit activity logs, SEO settings, and Website settings directly from Firestore.
- * Never fabricates statistics or trusts client-side role flags.
+ * audit activity logs, SEO settings, Website settings, and Admins registry directly from Firestore.
  */
 
 import {
   collection,
   doc,
-  getDoc,
   getDocs,
   limit,
   orderBy,
@@ -16,17 +14,37 @@ import {
   setDoc
 } from 'firebase/firestore';
 import { auth, db, handleFirestoreError, OperationType } from '../firebase';
-import {
-  type Article,
-  type Category,
-  type District,
-  type Division,
-  type MediaItem,
-  type TouristSpot
+import type {
+  Article,
+  Category,
+  District,
+  Division,
+  MediaItem,
+  TouristSpot
 } from '../data/bangladeshData';
-import { COLLECTIONS, normalizeFirestoreDivisions } from './firestoreService';
-import { normalizeLegalPagesConfig, type LegalPagesConfig } from './legalPagesDefaults';
+import { COLLECTIONS } from './firestoreBase';
+import { DivisionsService } from './divisionsService';
+import { DistrictsService } from './districtsService';
+import { CategoriesService } from './categoriesService';
+import { TouristSpotsService } from './touristSpotsService';
+import { ArticlesService } from './articlesService';
+import { AdminsService, type AdminRecord } from './adminsService';
+import {
+  DEFAULT_SEO_SETTINGS,
+  DEFAULT_WEBSITE_SETTINGS,
+  SiteSettingsService,
+  type SeoSettingsConfig,
+  type WebsiteSettingsConfig
+} from './siteSettingsService';
+import type { LegalPagesConfig } from './legalPagesDefaults';
 import { isVerifiedAdminActive, getVerifiedAdminSession } from './adminAuthService';
+
+export {
+  DEFAULT_SEO_SETTINGS,
+  DEFAULT_WEBSITE_SETTINGS,
+  type SeoSettingsConfig,
+  type WebsiteSettingsConfig
+};
 
 export interface AdminDashboardStats {
   totalDivisions: number;
@@ -69,6 +87,7 @@ export interface AdminAuditLogEntry {
     | 'tourist_spot'
     | 'article'
     | 'media'
+    | 'admin'
     | 'seo_settings'
     | 'website_settings'
     | 'legal_pages'
@@ -81,71 +100,6 @@ export interface AdminAuditLogEntry {
   timestamp: string;
 }
 
-export interface SeoSettingsConfig {
-  id: 'seo_settings';
-  default_title_en: string;
-  default_title_bn: string;
-  title_suffix_en: string;
-  title_suffix_bn: string;
-  meta_description_en: string;
-  meta_description_bn: string;
-  canonical_base_url: string;
-  og_image_url: string;
-  robots_index: 'index, follow' | 'noindex, nofollow';
-  twitter_handle: string;
-  updated_at: string;
-  updated_by?: string;
-}
-
-export interface WebsiteSettingsConfig {
-  id: 'website_settings';
-  site_title_en: string;
-  site_title_bn: string;
-  hero_heading_en: string;
-  hero_heading_bn: string;
-  hero_subtitle_en: string;
-  hero_subtitle_bn: string;
-  contact_email: string;
-  tourist_helpline: string;
-  default_language: 'bn' | 'en';
-  maintenance_mode: boolean;
-  updated_at: string;
-  updated_by?: string;
-}
-
-export const DEFAULT_SEO_SETTINGS: SeoSettingsConfig = {
-  id: 'seo_settings',
-  default_title_en: 'Beautiful Bangladesh - Official Tourism Portal',
-  default_title_bn: 'অপরূপ বাংলাদেশ | Beautiful Bangladesh - অফিসিয়াল পর্যটন পোর্টাল',
-  title_suffix_en: 'Beautiful Bangladesh',
-  title_suffix_bn: 'অপরূপ বাংলাদেশ',
-  meta_description_en:
-    "Discover Bangladesh's 8 administrative divisions, 64 districts, natural wonders, UNESCO World Heritage sites, and curated travel itineraries in Bengali and English.",
-  meta_description_bn:
-    'বাংলাদেশের ৮টি বিভাগ, ৬৪টি জেলা, প্রাকৃতিক বিস্ময়, ইউনেস্কো বিশ্ব ঐতিহ্য এবং নির্ভরযোগ্য ভ্রমণ নির্দেশিকা জানুন বাংলা ও ইংরেজিতে।',
-  canonical_base_url: 'https://bangladesh-tourism.netlify.app',
-  og_image_url:
-    'https://images.unsplash.com/photo-1596895111956-bf1cf0599ce5?auto=format&fit=crop&w=1200&q=80',
-  robots_index: 'index, follow',
-  twitter_handle: '@BeautifulBD',
-  updated_at: ''
-};
-
-export const DEFAULT_WEBSITE_SETTINGS: WebsiteSettingsConfig = {
-  id: 'website_settings',
-  site_title_en: 'Beautiful Bangladesh',
-  site_title_bn: 'অপরূপ বাংলাদেশ',
-  hero_heading_en: 'Discover the Untold Beauty of Bangladesh',
-  hero_heading_bn: 'আবিষ্কার করুন অপরূপ বাংলার অদেখা সৌন্দর্য',
-  hero_subtitle_en: 'Official Bilingual Guide to 8 Divisions, 64 Districts & Heritage Landmarks',
-  hero_subtitle_bn: '৮ বিভাগ, ৬৪ জেলা এবং ঐতিহ্যবাহী দর্শনীয় স্থানের নির্ভরযোগ্য দ্বিভাষিক পোর্টাল',
-  contact_email: 'info@tourism.gov.bd',
-  tourist_helpline: '+880 1320-163599',
-  default_language: 'bn',
-  maintenance_mode: false,
-  updated_at: ''
-};
-
 export interface AdminDashboardSnapshot {
   stats: AdminDashboardStats;
   divisions: Division[];
@@ -154,6 +108,7 @@ export interface AdminDashboardSnapshot {
   spots: TouristSpot[];
   articles: Article[];
   media: MediaItem[];
+  admins: AdminRecord[];
   recentSpots: TouristSpot[];
   recentUpdates: RecentContentUpdateItem[];
   recentActivity: AdminAuditLogEntry[];
@@ -169,6 +124,7 @@ export interface AdminDashboardRuntimeState {
   errorMessage: string | null;
   lastSyncedAt: string | null;
   stats: AdminDashboardStats | null;
+  admins: AdminRecord[];
   recentSpots: TouristSpot[];
   recentUpdates: RecentContentUpdateItem[];
   recentActivity: AdminAuditLogEntry[];
@@ -184,6 +140,7 @@ export const adminDashboardState: AdminDashboardRuntimeState = {
   errorMessage: null,
   lastSyncedAt: null,
   stats: null,
+  admins: [],
   recentSpots: [],
   recentUpdates: [],
   recentActivity: [],
@@ -199,6 +156,7 @@ export function resetAdminDashboardState(): void {
   adminDashboardState.errorMessage = null;
   adminDashboardState.lastSyncedAt = null;
   adminDashboardState.stats = null;
+  adminDashboardState.admins = [];
   adminDashboardState.recentSpots = [];
   adminDashboardState.recentUpdates = [];
   adminDashboardState.recentActivity = [];
@@ -211,25 +169,6 @@ function parseSortableTime(value?: string): number {
   if (!value || typeof value !== 'string') return 0;
   const parsed = Date.parse(value);
   return Number.isNaN(parsed) ? 0 : parsed;
-}
-
-function normalizeSeoSettings(raw?: Partial<SeoSettingsConfig> | null): SeoSettingsConfig {
-  return {
-    ...DEFAULT_SEO_SETTINGS,
-    ...(raw || {}),
-    id: 'seo_settings',
-    robots_index: raw?.robots_index === 'noindex, nofollow' ? 'noindex, nofollow' : 'index, follow'
-  };
-}
-
-function normalizeWebsiteSettings(raw?: Partial<WebsiteSettingsConfig> | null): WebsiteSettingsConfig {
-  return {
-    ...DEFAULT_WEBSITE_SETTINGS,
-    ...(raw || {}),
-    id: 'website_settings',
-    default_language: raw?.default_language === 'en' ? 'en' : 'bn',
-    maintenance_mode: Boolean(raw?.maintenance_mode)
-  };
 }
 
 export function buildRecentUpdates(
@@ -333,12 +272,12 @@ export function buildRecentSpots(spots: TouristSpot[]): TouristSpot[] {
     .slice(0, 6);
 }
 
-async function fetchAllCollectionDocs<T>(collectionName: string): Promise<T[]> {
+async function fetchAllMediaDocs(): Promise<MediaItem[]> {
   try {
-    const snapshot = await getDocs(collection(db, collectionName));
-    const docs: T[] = [];
+    const snapshot = await getDocs(collection(db, COLLECTIONS.MEDIA));
+    const docs: MediaItem[] = [];
     snapshot.forEach(docSnap => {
-      docs.push({ id: docSnap.id, ...docSnap.data() } as T);
+      docs.push({ id: docSnap.id, ...docSnap.data() } as MediaItem);
     });
     return docs;
   } catch (error: any) {
@@ -346,7 +285,7 @@ async function fetchAllCollectionDocs<T>(collectionName: string): Promise<T[]> {
       error?.code === 'permission-denied' ||
       (error instanceof Error && error.message.includes('Missing or insufficient permissions'))
     ) {
-      handleFirestoreError(error, OperationType.LIST, collectionName);
+      handleFirestoreError(error, OperationType.LIST, COLLECTIONS.MEDIA);
     }
     throw error;
   }
@@ -397,29 +336,27 @@ export async function fetchAdminDashboardSnapshot(): Promise<AdminDashboardSnaps
     throw new Error('ADMIN_UNAUTHORIZED');
   }
 
-  const [rawDivisions, rawDistricts, categories, spots, articles, media] = await Promise.all([
-    fetchAllCollectionDocs<Division>(COLLECTIONS.DIVISIONS),
-    fetchAllCollectionDocs<District>(COLLECTIONS.DISTRICTS),
-    fetchAllCollectionDocs<Category>(COLLECTIONS.CATEGORIES),
-    fetchAllCollectionDocs<TouristSpot>(COLLECTIONS.TOURIST_SPOTS),
-    fetchAllCollectionDocs<Article>(COLLECTIONS.ARTICLES),
-    fetchAllCollectionDocs<MediaItem>('media')
+  const [divisions, districts, categories, spots, articles, media, admins] = await Promise.all([
+    DivisionsService.getAll(true),
+    DistrictsService.getAll(true),
+    CategoriesService.getAll(true),
+    TouristSpotsService.getAll(true),
+    ArticlesService.getAll(true),
+    fetchAllMediaDocs(),
+    AdminsService.listAll(true).catch(() => [])
   ]);
 
-  const divisions = rawDivisions.length > 0 ? normalizeFirestoreDivisions(rawDivisions) : [];
-  const districts = rawDistricts;
-
-  const [seoDoc, websiteDoc, legalDoc] = await Promise.all([
-    getDoc(doc(db, COLLECTIONS.SITE_SETTINGS, 'seo_settings')).catch(() => null),
-    getDoc(doc(db, COLLECTIONS.SITE_SETTINGS, 'website_settings')).catch(() => null),
-    getDoc(doc(db, COLLECTIONS.SITE_SETTINGS, 'legal_pages')).catch(() => null)
+  const [seoSettings, websiteSettings, legalPages] = await Promise.all([
+    SiteSettingsService.getSeoSettings(true),
+    SiteSettingsService.getWebsiteSettings(true),
+    SiteSettingsService.getLegalPagesSettings(true)
   ]);
 
   let recentActivity: AdminAuditLogEntry[] = [];
   let auditLogStatus: 'available' | 'rules_pending' | 'error' = 'available';
   try {
     const auditQuery = query(
-      collection(db, 'admin_audit_logs'),
+      collection(db, COLLECTIONS.ADMIN_AUDIT_LOGS),
       orderBy('timestamp', 'desc'),
       limit(12)
     );
@@ -447,17 +384,6 @@ export async function fetchAdminDashboardSnapshot(): Promise<AdminDashboardSnaps
     media
   });
 
-  const seoSettings = normalizeSeoSettings(
-    seoDoc && seoDoc.exists() ? (seoDoc.data() as Partial<SeoSettingsConfig>) : null
-  );
-  const websiteSettings = normalizeWebsiteSettings(
-    websiteDoc && websiteDoc.exists() ? (websiteDoc.data() as Partial<WebsiteSettingsConfig>) : null
-  );
-  const legalPages =
-    legalDoc && legalDoc.exists()
-      ? normalizeLegalPagesConfig(legalDoc.data() as Partial<LegalPagesConfig>)
-      : null;
-
   return {
     stats,
     divisions,
@@ -466,6 +392,7 @@ export async function fetchAdminDashboardSnapshot(): Promise<AdminDashboardSnaps
     spots,
     articles,
     media,
+    admins,
     recentSpots: buildRecentSpots(spots),
     recentUpdates: buildRecentUpdates(divisions, districts, categories, spots, articles),
     recentActivity,
@@ -521,7 +448,7 @@ export async function recordAdminAuditLog(params: {
   adminDashboardState.recentActivity = [entry, ...adminDashboardState.recentActivity].slice(0, 12);
 
   try {
-    await setDoc(doc(db, 'admin_audit_logs', logId), payload);
+    await setDoc(doc(db, COLLECTIONS.ADMIN_AUDIT_LOGS, logId), payload);
     adminDashboardState.auditLogStatus = 'available';
   } catch (err: any) {
     if (
@@ -540,34 +467,21 @@ export async function saveSeoSettings(
     throw new Error('ADMIN_UNAUTHORIZED');
   }
   const session = getVerifiedAdminSession();
-  const normalized = normalizeSeoSettings({
+  const saved = await SiteSettingsService.saveSeoSettings({
     ...config,
-    updated_at: new Date().toISOString(),
     updated_by: session?.email || auth.currentUser?.email || ''
   });
 
-  try {
-    await setDoc(doc(db, COLLECTIONS.SITE_SETTINGS, 'seo_settings'), normalized, { merge: true });
-  } catch (error: any) {
-    if (
-      error?.code === 'permission-denied' ||
-      (error instanceof Error && error.message.includes('Missing or insufficient permissions'))
-    ) {
-      handleFirestoreError(error, OperationType.WRITE, `${COLLECTIONS.SITE_SETTINGS}/seo_settings`);
-    }
-    throw error;
-  }
-
-  adminDashboardState.seoSettings = normalized;
+  adminDashboardState.seoSettings = saved;
   await recordAdminAuditLog({
     action: 'settings_update',
     entityType: 'seo_settings',
     entityId: 'seo_settings',
     entityTitle: 'Global SEO Settings',
-    details: `Robots: ${normalized.robots_index}`
+    details: `Robots: ${saved.robots_index}`
   });
 
-  return normalized;
+  return saved;
 }
 
 export async function saveWebsiteSettings(
@@ -577,32 +491,19 @@ export async function saveWebsiteSettings(
     throw new Error('ADMIN_UNAUTHORIZED');
   }
   const session = getVerifiedAdminSession();
-  const normalized = normalizeWebsiteSettings({
+  const saved = await SiteSettingsService.saveWebsiteSettings({
     ...config,
-    updated_at: new Date().toISOString(),
     updated_by: session?.email || auth.currentUser?.email || ''
   });
 
-  try {
-    await setDoc(doc(db, COLLECTIONS.SITE_SETTINGS, 'website_settings'), normalized, { merge: true });
-  } catch (error: any) {
-    if (
-      error?.code === 'permission-denied' ||
-      (error instanceof Error && error.message.includes('Missing or insufficient permissions'))
-    ) {
-      handleFirestoreError(error, OperationType.WRITE, `${COLLECTIONS.SITE_SETTINGS}/website_settings`);
-    }
-    throw error;
-  }
-
-  adminDashboardState.websiteSettings = normalized;
+  adminDashboardState.websiteSettings = saved;
   await recordAdminAuditLog({
     action: 'settings_update',
     entityType: 'website_settings',
     entityId: 'website_settings',
     entityTitle: 'Website Settings',
-    details: `Default lang: ${normalized.default_language}, Maintenance: ${normalized.maintenance_mode ? 'On' : 'Off'}`
+    details: `Default lang: ${saved.default_language}, Maintenance: ${saved.maintenance_mode ? 'On' : 'Off'}`
   });
 
-  return normalized;
+  return saved;
 }

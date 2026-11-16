@@ -225,6 +225,22 @@ export function renderAdminLoginPage(options: AdminLoginViewOptions): string {
                   : `<i class="bi bi-box-arrow-in-right"></i>`}
                 <span>${escapeHtml(submitLabel)}</span>
               </button>
+
+              <div class="d-flex align-items-center my-3">
+                <hr class="flex-grow-1 m-0">
+                <span class="px-2 small text-muted">${isBn ? 'অথবা' : 'OR'}</span>
+                <hr class="flex-grow-1 m-0">
+              </div>
+
+              <button
+                type="button"
+                class="btn btn-outline-secondary w-100 py-2 fw-semibold d-flex align-items-center justify-content-center gap-2"
+                id="btn-admin-google-login"
+                ${isSubmitting ? 'disabled' : ''}
+              >
+                <i class="bi bi-google"></i>
+                <span>${isBn ? 'গুগল অ্যাকাউন্ট দিয়ে সাইন ইন করুন' : 'Sign in with Google'}</span>
+              </button>
             </form>
           </div>
         </div>

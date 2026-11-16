@@ -84,6 +84,17 @@ import {
   CANONICAL_DIVISION_ORDER,
   normalizeFirestoreDivisions
 } from './services/firestoreService';
+import { testConnection } from './config/firebaseDb';
+import {
+  SiteSettingsService,
+  DEFAULT_WEBSITE_SETTINGS,
+  DEFAULT_SEO_SETTINGS,
+  DEFAULT_HERO_SLIDES,
+  getActiveHeroSlides,
+  type HeroBannerSlide,
+  type WebsiteSettingsConfig,
+  type SeoSettingsConfig
+} from './services/siteSettingsService';
 import type { VerifiedAdminSession } from './services/adminAuthService';
 
 import {
@@ -194,51 +205,9 @@ interface AppState {
   adminLoginShowPassword: boolean;
   adminLoginSubmitting: boolean;
   adminLoginFeedback: AdminLoginFeedback | null;
+  websiteSettings: WebsiteSettingsConfig;
+  seoSettings: SeoSettingsConfig;
 }
-
-interface HeroSlide {
-  imageUrl: string;
-  labelBn: string;
-  labelEn: string;
-}
-
-const HERO_SLIDES: ReadonlyArray<HeroSlide> = [
-  {
-    imageUrl: 'https://images.unsplash.com/photo-1596895111956-bf1cf0599ce5?auto=format&fit=crop&w=1600&q=80',
-    labelBn: 'কক্সবাজার সমুদ্র সৈকত • চট্টগ্রাম',
-    labelEn: "Cox's Bazar Sea Beach • Chattogram"
-  },
-  {
-    imageUrl: 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=1600&q=80',
-    labelBn: 'সাজেক ভ্যালি মেঘের রাজ্য • রাঙামাটি',
-    labelEn: 'Sajek Cloud Valley • Rangamati'
-  },
-  {
-    imageUrl: 'https://images.unsplash.com/photo-1448375240586-882707db888b?auto=format&fit=crop&w=1600&q=80',
-    labelBn: 'সুন্দরবন ম্যানগ্রোভ অরণ্য • খুলনা',
-    labelEn: 'Sundarbans Mangrove Forest • Khulna'
-  },
-  {
-    imageUrl: 'https://images.unsplash.com/photo-1585123388867-3bfe6dd4bdbf?auto=format&fit=crop&w=1600&q=80',
-    labelBn: 'শ্রীমঙ্গল সবুজ চা বাগান • সিলেট',
-    labelEn: 'Sreemangal Tea Gardens • Sylhet'
-  },
-  {
-    imageUrl: 'https://images.unsplash.com/photo-1609137144813-7d9921338f24?auto=format&fit=crop&w=1600&q=80',
-    labelBn: 'লালবাগ কেল্লা ও পুরান ঢাকা • ঢাকা',
-    labelEn: 'Lalbagh Fort & Old Dhaka • Dhaka'
-  },
-  {
-    imageUrl: 'https://images.unsplash.com/photo-1544735716-392fe2489ffa?auto=format&fit=crop&w=1600&q=80',
-    labelBn: 'কুয়াকাটা সাগরকন্যা সৈকত • বরিশাল',
-    labelEn: 'Kuakata Sunrise & Sunset Beach • Barishal'
-  },
-  {
-    imageUrl: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1600&q=80',
-    labelBn: 'সেন্টমার্টিন প্রবাল দ্বীপ • কক্সবাজার',
-    labelEn: "Saint Martin's Coral Island • Bay of Bengal"
-  }
-];
 
 let heroCarouselTimer: number | null = null;
 let heroCarouselPaused = false;
@@ -336,7 +305,9 @@ const state: AppState = {
   adminLoginRememberSession: false,
   adminLoginShowPassword: false,
   adminLoginSubmitting: false,
-  adminLoginFeedback: null
+  adminLoginFeedback: null,
+  websiteSettings: { ...DEFAULT_WEBSITE_SETTINGS },
+  seoSettings: { ...DEFAULT_SEO_SETTINGS }
 };
 
 // Bootstrap modal helpers
@@ -385,18 +356,22 @@ async function ensureAdminRuntime(): Promise<AdminRuntimeModule> {
 // Synchronize SEO meta tags, title, canonical URLs, and structured data dynamically
 export function updateDynamicSeo(pageTitle?: string, metaDesc?: string, routePath?: string): void {
   const isBn = state.lang === 'bn';
-  const defaultTitle = isBn 
-    ? 'অপরূপ বাংলাদেশ | Beautiful Bangladesh - Official Tourism Portal' 
-    : 'Beautiful Bangladesh - Official Tourism Portal & Travel Guide';
+  const seo = state.seoSettings || DEFAULT_SEO_SETTINGS;
+  const defaultTitle = isBn
+    ? (seo.default_title_bn || 'অপরূপ বাংলাদেশ | Beautiful Bangladesh - Official Tourism Portal')
+    : (seo.default_title_en || 'Beautiful Bangladesh - Official Tourism Portal & Travel Guide');
   const defaultDesc = isBn
-    ? 'বাংলাদেশের ৮টি বিভাগ, ৬৪টি জেলা, দর্শনীয় স্থান, ঐতিহাসিক ঐতিহ্য এবং প্রাকৃতিক সৌন্দর্যের তথ্যবহুল গাইড।'
-    : 'Discover Bangladesh\'s 8 administrative divisions, 64 districts, natural wonders, UNESCO World Heritage sites, and curated travel itineraries in Bengali and English.';
+    ? (seo.meta_description_bn || 'বাংলাদেশের ৮টি বিভাগ, ৬৪টি জেলা, দর্শনীয় স্থান, ঐতিহাসিক ঐতিহ্য এবং প্রাকৃতিক সৌন্দর্যের তথ্যবহুল গাইড।')
+    : (seo.meta_description_en || 'Discover Bangladesh\'s 8 administrative divisions, 64 districts, natural wonders, UNESCO World Heritage sites, and curated travel itineraries in Bengali and English.');
+  const titleSuffix = isBn
+    ? (seo.title_suffix_bn || 'অপরূপ বাংলাদেশ')
+    : (seo.title_suffix_en || 'Beautiful Bangladesh');
 
-  let resolvedTitle = pageTitle ? `${pageTitle} | ${isBn ? 'অপরূপ বাংলাদেশ' : 'Beautiful Bangladesh'}` : defaultTitle;
+  let resolvedTitle = pageTitle ? `${pageTitle} | ${titleSuffix}` : defaultTitle;
   let resolvedDesc = metaDesc || defaultDesc;
   let resolvedPath = routePath;
   let resolvedOgType: 'website' | 'article' = 'website';
-  let resolvedImage: string | undefined;
+  let resolvedImage: string | undefined = seo.og_image_url || undefined;
 
   if (!pageTitle && state.activeView === 'divisions') {
     resolvedTitle = isBn
@@ -441,9 +416,11 @@ export function updateDynamicSeo(pageTitle?: string, metaDesc?: string, routePat
     if (div) {
       const divName = isBn ? div.name_bn : div.name_en;
       resolvedTitle = isBn
-        ? `${divName} বিভাগ (${div.name_en}) - জেলা ও দর্শনীয় স্থান | অপরূপ বাংলাদেশ`
-        : `${divName} Division (${div.name_bn}) - Districts & Attractions | Beautiful Bangladesh`;
-      resolvedDesc = isBn ? div.description_bn : div.description_en;
+        ? (div.seo_title_bn || `${divName} বিভাগ (${div.name_en}) - জেলা ও দর্শনীয় স্থান | অপরূপ বাংলাদেশ`)
+        : (div.seo_title_en || `${divName} Division (${div.name_bn}) - Districts & Attractions | Beautiful Bangladesh`);
+      resolvedDesc = isBn
+        ? (div.seo_description_bn || div.description_bn)
+        : (div.seo_description_en || div.description_en);
       resolvedPath = `/divisions/${div.slug || div.id}/`;
       resolvedImage = div.image_url || undefined;
 
@@ -1073,6 +1050,7 @@ export function updateDynamicSeo(pageTitle?: string, metaDesc?: string, routePat
       spots: { en: 'Tourist Spots Management', bn: 'দর্শনীয় স্থান ব্যবস্থাপনা' },
       articles: { en: 'Travel Guides Management', bn: 'ভ্রমণ গাইড ব্যবস্থাপনা' },
       media: { en: 'Image Manager', bn: 'ইমেজ ম্যানেজার' },
+      'hero-banners': { en: 'Hero Banner Images', bn: 'হিরো ব্যানার ইমেজ' },
       'seo-settings': { en: 'SEO Settings', bn: 'এসইও সেটিংস' },
       'website-settings': { en: 'Website Settings', bn: 'ওয়েবসাইট সেটিংস' }
     };
@@ -1121,6 +1099,13 @@ export function updateDynamicSeo(pageTitle?: string, metaDesc?: string, routePat
 
   let robotsMeta = document.querySelector('meta[name="robots"]') as HTMLMetaElement | null;
   if (state.activeView === 'admin-login' || state.activeView === 'cms') {
+    if (!robotsMeta) {
+      robotsMeta = document.createElement('meta');
+      robotsMeta.name = 'robots';
+      document.head.appendChild(robotsMeta);
+    }
+    robotsMeta.content = 'noindex, nofollow';
+  } else if (state.seoSettings?.robots_index === 'noindex, nofollow') {
     if (!robotsMeta) {
       robotsMeta = document.createElement('meta');
       robotsMeta.name = 'robots';
@@ -1210,13 +1195,13 @@ async function loadPortalDataFromFirestore(force: boolean = false): Promise<void
   }
 
   try {
-    const [fsDivisions, fsDistricts, fsSpots, fsCategories, fsArticles, fsLegalPages] = await Promise.all([
+    const [fsDivisions, fsDistricts, fsSpots, fsCategories, fsArticles, publicSettings] = await Promise.all([
       FirestoreService.getCollectionItems<Division>(COLLECTIONS.DIVISIONS, true),
       FirestoreService.getAllPublishedDistricts(),
       FirestoreService.getAllPublishedSpots(),
       FirestoreService.getAllPublishedCategories(),
       FirestoreService.getPublishedArticles(),
-      FirestoreService.getLegalPagesSettings()
+      SiteSettingsService.getAllPublicSettings()
     ]);
 
     if (fsDivisions.length > 0) {
@@ -1245,8 +1230,10 @@ async function loadPortalDataFromFirestore(force: boolean = false): Promise<void
       });
     }
 
-    if (fsLegalPages) {
-      cmsStore.legalPages = fsLegalPages;
+    state.websiteSettings = publicSettings.website;
+    state.seoSettings = publicSettings.seo;
+    if (publicSettings.legal) {
+      cmsStore.legalPages = publicSettings.legal;
     }
 
     state.firestoreHydrated = true;
@@ -1887,6 +1874,19 @@ function renderLayoutShell(): void {
 
   if (footerRoot) {
     footerRoot.innerHTML = renderFooter(state.lang);
+    document.getElementById('btn-admin-portal')?.addEventListener('click', (e) => {
+      e.preventDefault();
+      if (state.activeView === 'cms') {
+        state.activeView = 'home';
+        navigateToPath('/');
+        renderLayoutShell();
+        updateDynamicSeo();
+        renderApp();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        return;
+      }
+      void openProtectedAdminRoute(true);
+    });
   }
 }
 
@@ -2231,7 +2231,9 @@ function stopHeroCarousel(): void {
 }
 
 function setHeroSlide(index: number): void {
-  const total = HERO_SLIDES.length;
+  const heroSlides = getActiveHeroSlides(state.websiteSettings);
+  const total = heroSlides.length;
+  if (total === 0) return;
   const nextIndex = ((index % total) + total) % total;
   state.heroSlideIndex = nextIndex;
 
@@ -2249,24 +2251,23 @@ function setHeroSlide(index: number): void {
 
   const captionEl = document.getElementById('hero-slide-caption');
   if (captionEl) {
-    const slide = HERO_SLIDES[nextIndex];
-    captionEl.textContent = state.lang === 'bn' ? slide.labelBn : slide.labelEn;
+    const slide = heroSlides[nextIndex];
+    captionEl.textContent = state.lang === 'bn' ? slide.label_bn : slide.label_en;
   }
 }
 
 function startHeroCarousel(): void {
   stopHeroCarousel();
+  heroCarouselPaused = false;
   const carouselEl = document.getElementById('hero-carousel');
-  if (!carouselEl) return;
-
-  const prefersReducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
-  if (prefersReducedMotion) return;
+  const heroSlides = getActiveHeroSlides(state.websiteSettings);
+  if (!carouselEl || heroSlides.length <= 1) return;
 
   heroCarouselTimer = window.setInterval(() => {
-    if (!heroCarouselPaused && document.getElementById('hero-carousel')) {
+    if (!heroCarouselPaused && document.visibilityState !== 'hidden' && document.getElementById('hero-carousel')) {
       setHeroSlide(state.heroSlideIndex + 1);
     }
-  }, 4500);
+  }, 4000);
 }
 
 // ============================================================================
@@ -2562,7 +2563,7 @@ function renderApp(): void {
   if (state.activeView === 'contact') {
     root.innerHTML = renderContactPage({
       lang: state.lang,
-      contactEmail: cmsStore.legalPages.contact_email,
+      contactEmail: state.websiteSettings.contact_email || cmsStore.legalPages.contact_email,
       formState: state.contactForm
     });
     attachContactPageEventListeners();
@@ -2632,18 +2633,37 @@ function renderApp(): void {
     return true;
   });
 
+  const hasCustomHeroHeading = isBn
+    ? state.websiteSettings.hero_heading_bn !== DEFAULT_WEBSITE_SETTINGS.hero_heading_bn
+    : state.websiteSettings.hero_heading_en !== DEFAULT_WEBSITE_SETTINGS.hero_heading_en;
+  const hasCustomHeroSubtitle = isBn
+    ? state.websiteSettings.hero_subtitle_bn !== DEFAULT_WEBSITE_SETTINGS.hero_subtitle_bn
+    : state.websiteSettings.hero_subtitle_en !== DEFAULT_WEBSITE_SETTINGS.hero_subtitle_en;
+
+  const heroSlides = getActiveHeroSlides(state.websiteSettings);
+  const activeHeroIdx = ((state.heroSlideIndex % heroSlides.length) + heroSlides.length) % heroSlides.length;
+  state.heroSlideIndex = activeHeroIdx;
+
   // Render Public Portal HTML
   root.innerHTML = `
+    ${state.websiteSettings.maintenance_mode ? `
+      <div class="alert alert-warning rounded-0 mb-0 py-2 text-center small fw-semibold border-bottom" role="status">
+        <i class="bi bi-tools me-2"></i>
+        ${isBn
+          ? 'পোর্টাল রক্ষণাবেক্ষণ সতর্কতা: কিছু তথ্য ও ছবি হালনাগাদ করা হচ্ছে।'
+          : 'Portal Maintenance Notice: Content updates and database synchronization are currently in progress.'}
+      </div>
+    ` : ''}
     <!-- Hero Section with Sliding Background Carousel -->
     <section class="hero-wrapper hero-with-carousel" id="hero-carousel">
       <div class="hero-bg-slides" aria-hidden="true">
-        ${HERO_SLIDES.map((slide, idx) => `
-          <div class="hero-bg-slide ${idx === state.heroSlideIndex ? 'active' : ''}">
+        ${heroSlides.map((slide, idx) => `
+          <div class="hero-bg-slide ${idx === activeHeroIdx ? 'active' : ''}">
             <img
-              src="${optimizeImageUrl(slide.imageUrl, 1600)}"
-              alt="${escapeHtml(isBn ? slide.labelBn : slide.labelEn)}"
+              src="${optimizeImageUrl(slide.image_url, 1600)}"
+              alt="${escapeHtml(isBn ? slide.label_bn : slide.label_en)}"
               class="hero-bg-img"
-              loading="${idx === 0 || idx === state.heroSlideIndex ? 'eager' : 'lazy'}"
+              loading="eager"
               fetchpriority="${idx === 0 ? 'high' : 'auto'}"
               decoding="async"
               onerror="this.onerror=null;this.src='https://images.unsplash.com/photo-1596895111956-bf1cf0599ce5?auto=format&fit=crop&w=1600&q=80';"
@@ -2653,18 +2673,21 @@ function renderApp(): void {
       </div>
 
       <div class="container hero-content-layer">
-        <div class="row align-items-end g-4">
-          <div class="col-lg-8">
+        <div class="row align-items-center g-3">
+          <div class="col-lg-9">
             <div class="hero-pill-badge">
               <i class="bi bi-compass"></i>
               <span>${t('hero_badge')}</span>
             </div>
-            <h1 class="hero-title mb-3">
-              ${t('hero_title_1')}<br>
-              <span>${t('hero_title_2')}</span>
+            <h1 class="hero-title mb-2">
+              ${hasCustomHeroHeading
+                ? escapeHtml(isBn ? state.websiteSettings.hero_heading_bn : state.websiteSettings.hero_heading_en)
+                : `${t('hero_title_1')}<br><span>${t('hero_title_2')}</span>`}
             </h1>
-            <p class="hero-subtitle mb-4">
-              ${t('hero_subtitle')}
+            <p class="hero-subtitle mb-3">
+              ${hasCustomHeroSubtitle
+                ? escapeHtml(isBn ? state.websiteSettings.hero_subtitle_bn : state.websiteSettings.hero_subtitle_en)
+                : t('hero_subtitle')}
             </p>
 
             <div class="d-flex flex-wrap gap-2">
@@ -2674,39 +2697,36 @@ function renderApp(): void {
               <a href="/districts/" class="btn btn-outline-light px-4 py-2 rounded-pill" id="hero-btn-districts">
                 <i class="bi bi-geo-alt-fill me-2"></i>${t('nav_districts')}
               </a>
-              <button class="btn btn-warning px-4 py-2 rounded-pill text-dark fw-bold" id="hero-btn-cms">
-                <i class="bi bi-gear-fill me-2"></i>${isBn ? 'সিএমএস অ্যাডমিন পোর্টাল' : 'Open CMS Portal'}
-              </button>
             </div>
           </div>
+        </div>
 
-          <div class="col-lg-4 d-flex flex-column align-items-lg-end gap-2">
-            <div class="d-inline-flex align-items-center gap-2 px-3 py-1 rounded-pill" style="background: rgba(18, 60, 50, 0.72); border: 1px solid rgba(255, 255, 255, 0.2);">
-              <i class="bi bi-geo-alt-fill text-warning small"></i>
-              <span class="hero-slide-caption" id="hero-slide-caption">
-                ${escapeHtml(isBn ? HERO_SLIDES[state.heroSlideIndex].labelBn : HERO_SLIDES[state.heroSlideIndex].labelEn)}
-              </span>
-            </div>
+        <div class="hero-carousel-center-wrap d-flex flex-column align-items-center justify-content-center gap-2 mt-3">
+          <div class="d-inline-flex align-items-center gap-2 px-3 py-1 rounded-pill" style="background: rgba(18, 60, 50, 0.72); border: 1px solid rgba(255, 255, 255, 0.2);">
+            <i class="bi bi-geo-alt-fill text-warning small"></i>
+            <span class="hero-slide-caption" id="hero-slide-caption">
+              ${escapeHtml(isBn ? heroSlides[activeHeroIdx].label_bn : heroSlides[activeHeroIdx].label_en)}
+            </span>
+          </div>
 
-            <div class="hero-carousel-controls" role="region" aria-label="${isBn ? 'হিরো ইমেজ স্লাইডার' : 'Hero image carousel controls'}">
-              <button type="button" class="hero-carousel-nav-btn" id="hero-prev-btn" aria-label="${isBn ? 'আগের ছবি' : 'Previous slide'}">
-                <i class="bi bi-chevron-left"></i>
-              </button>
-              <div class="hero-carousel-dots">
-                ${HERO_SLIDES.map((slide, idx) => `
-                  <button
-                    type="button"
-                    class="hero-carousel-dot ${idx === state.heroSlideIndex ? 'active' : ''}"
-                    data-hero-slide="${idx}"
-                    aria-label="${escapeHtml(isBn ? slide.labelBn : slide.labelEn)}"
-                    aria-current="${idx === state.heroSlideIndex ? 'true' : 'false'}"
-                  ></button>
-                `).join('')}
-              </div>
-              <button type="button" class="hero-carousel-nav-btn" id="hero-next-btn" aria-label="${isBn ? 'পরের ছবি' : 'Next slide'}">
-                <i class="bi bi-chevron-right"></i>
-              </button>
+          <div class="hero-carousel-controls" id="hero-carousel-controls" role="region" aria-label="${isBn ? 'হিরো ইমেজ স্লাইডার' : 'Hero image carousel controls'}">
+            <button type="button" class="hero-carousel-nav-btn" id="hero-prev-btn" aria-label="${isBn ? 'আগের ছবি' : 'Previous slide'}">
+              <i class="bi bi-chevron-left"></i>
+            </button>
+            <div class="hero-carousel-dots">
+              ${heroSlides.map((slide, idx) => `
+                <button
+                  type="button"
+                  class="hero-carousel-dot ${idx === activeHeroIdx ? 'active' : ''}"
+                  data-hero-slide="${idx}"
+                  aria-label="${escapeHtml(isBn ? slide.label_bn : slide.label_en)}"
+                  aria-current="${idx === activeHeroIdx ? 'true' : 'false'}"
+                ></button>
+              `).join('')}
             </div>
+            <button type="button" class="hero-carousel-nav-btn" id="hero-next-btn" aria-label="${isBn ? 'পরের ছবি' : 'Next slide'}">
+              <i class="bi bi-chevron-right"></i>
+            </button>
           </div>
         </div>
       </div>
@@ -3043,10 +3063,11 @@ function attachPublicPortalEventListeners(): void {
   const heroCarousel = document.getElementById('hero-carousel');
   if (heroCarousel) {
     startHeroCarousel();
-    heroCarousel.addEventListener('mouseenter', () => { heroCarouselPaused = true; });
-    heroCarousel.addEventListener('mouseleave', () => { heroCarouselPaused = false; });
-    heroCarousel.addEventListener('focusin', () => { heroCarouselPaused = true; });
-    heroCarousel.addEventListener('focusout', () => { heroCarouselPaused = false; });
+    const heroControls = document.getElementById('hero-carousel-controls');
+    heroControls?.addEventListener('mouseenter', () => { heroCarouselPaused = true; });
+    heroControls?.addEventListener('mouseleave', () => { heroCarouselPaused = false; });
+    heroControls?.addEventListener('focusin', () => { heroCarouselPaused = true; });
+    heroControls?.addEventListener('focusout', () => { heroCarouselPaused = false; });
 
     document.getElementById('hero-prev-btn')?.addEventListener('click', () => {
       setHeroSlide(state.heroSlideIndex - 1);
@@ -3098,11 +3119,6 @@ function attachPublicPortalEventListeners(): void {
     state.searchPageCategoryFilter = state.categoryFilter || 'all';
     state.searchPageCurrentPage = 1;
     openSearchPage(true);
-  });
-
-  // Hero CMS button
-  document.getElementById('hero-btn-cms')?.addEventListener('click', () => {
-    void openProtectedAdminRoute(true);
   });
 
   // Division select filter
@@ -3622,6 +3638,61 @@ function attachAdminLoginEventListeners(): void {
       renderApp();
     }
   });
+
+  const googleBtn = document.getElementById('btn-admin-google-login') as HTMLButtonElement | null;
+  googleBtn?.addEventListener('click', async () => {
+    if (state.adminLoginSubmitting) return;
+    const remember = Boolean(rememberCheckbox?.checked);
+    state.adminLoginRememberSession = remember;
+    state.adminLoginSubmitting = true;
+    state.adminLoginFeedback = null;
+    renderApp();
+
+    try {
+      const session = await rt.signInAdminWithGoogle(remember, () => {
+        void handleAdminSessionExpired();
+      });
+
+      state.adminLoginSubmitting = false;
+      state.adminLoginShowPassword = false;
+      state.adminSession = session;
+      state.adminAuthStatus = 'authenticated';
+      state.currentUser = rt.auth.currentUser;
+      state.adminLoginFeedback = null;
+      state.activeView = 'cms';
+      cmsStore.activeTab = 'overview';
+
+      navigateToPath('/admin/dashboard/');
+      renderLayoutShell();
+      updateDynamicSeo();
+      renderApp();
+      void rt.recordAdminAuditLog({
+        action: 'login',
+        entityType: 'auth',
+        entityId: session.uid,
+        entityTitle: session.email || 'Administrator',
+        details: 'Verified Google Firebase Admin Session'
+      });
+      void loadAdminDashboardData(true);
+      showToast(
+        state.lang === 'bn'
+          ? 'গুগল অ্যাকাউন্টের মাধ্যমে অ্যাডমিন পোর্টালে লগইন সম্পন্ন হয়েছে।'
+          : 'Signed in with Google to Administrator Dashboard.',
+        'success'
+      );
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } catch (err) {
+      state.adminLoginSubmitting = false;
+      state.adminSession = null;
+      state.adminAuthStatus = 'unauthenticated';
+      state.currentUser = null;
+      state.adminLoginFeedback = {
+        type: 'error',
+        message: rt.mapAdminAuthError(err, state.lang)
+      };
+      renderApp();
+    }
+  });
 }
 
 // ============================================================================
@@ -3778,7 +3849,7 @@ function attachCmsEventListeners(): void {
     renderApp();
 
     try {
-      await rt.saveSeoSettings({
+      const savedSeo = await rt.saveSeoSettings({
         default_title_en: defaultTitleEn,
         default_title_bn: defaultTitleBn,
         title_suffix_en: titleSuffixEn,
@@ -3790,6 +3861,8 @@ function attachCmsEventListeners(): void {
         robots_index: robotsIndex,
         twitter_handle: twitterHandle
       });
+      state.seoSettings = savedSeo;
+      updateDynamicSeo();
       showToast(
         state.lang === 'bn'
           ? 'এসইও সেটিংস ফায়ারস্টোরে সংরক্ষিত হয়েছে।'
@@ -3840,18 +3913,20 @@ function attachCmsEventListeners(): void {
     renderApp();
 
     try {
-      await rt.saveWebsiteSettings({
+      const savedSite = await rt.saveWebsiteSettings({
         site_title_en: siteTitleEn,
         site_title_bn: siteTitleBn,
         hero_heading_en: heroHeadingEn,
         hero_heading_bn: heroHeadingBn,
         hero_subtitle_en: heroSubtitleEn,
         hero_subtitle_bn: heroSubtitleBn,
+        hero_slides: getActiveHeroSlides(rt.adminDashboardState.websiteSettings),
         contact_email: contactEmail,
         tourist_helpline: touristHelpline,
         default_language: defaultLang,
         maintenance_mode: maintenanceMode
       });
+      state.websiteSettings = savedSite;
       showToast(
         state.lang === 'bn'
           ? 'ওয়েবসাইট সেটিংস ফায়ারস্টোরে সংরক্ষিত হয়েছে।'
@@ -3867,6 +3942,725 @@ function attachCmsEventListeners(): void {
     } finally {
       rt.adminDashboardState.savingWebsite = false;
       renderApp();
+    }
+  });
+
+  // Hero Banners Management Handlers (`hero-banners` tab)
+  const collectHeroSlidesFromDom = (): HeroBannerSlide[] => {
+    const rows = Array.from(document.querySelectorAll('#hero-banners-list [data-hero-slide-row]'));
+    if (rows.length === 0) {
+      return getActiveHeroSlides(rt.adminDashboardState.websiteSettings);
+    }
+    const collected: HeroBannerSlide[] = [];
+    rows.forEach((row, i) => {
+      const idxAttr = row.getAttribute('data-hero-slide-row') || String(i);
+      const slideId = row.getAttribute('data-hero-slide-id') || `hero_slide_${i + 1}`;
+      const urlVal =
+        (row.querySelector(`[data-hero-url="${idxAttr}"]`) as HTMLInputElement | null)?.value.trim() || '';
+      const labelBn =
+        (row.querySelector(`[data-hero-label-bn="${idxAttr}"]`) as HTMLInputElement | null)?.value.trim() || '';
+      const labelEn =
+        (row.querySelector(`[data-hero-label-en="${idxAttr}"]`) as HTMLInputElement | null)?.value.trim() || '';
+      if (urlVal) {
+        collected.push({
+          id: slideId,
+          image_url: urlVal.slice(0, 2000),
+          label_bn: (labelBn || labelEn || 'বাংলাদেশ ভ্রমণ ব্যানার').slice(0, 160),
+          label_en: (labelEn || labelBn || 'Bangladesh Tourism Banner').slice(0, 160)
+        });
+      }
+    });
+    return collected;
+  };
+
+  const persistHeroSlides = async (nextSlides: HeroBannerSlide[], successMessage: string): Promise<void> => {
+    if (!ensureSession() || rt.adminDashboardState.savingWebsite) return;
+    if (nextSlides.length === 0) {
+      showToast(
+        state.lang === 'bn'
+          ? 'অন্তত ১টি হিরো ব্যানার ইমেজ রাখতে হবে।'
+          : 'At least 1 hero banner slide is required.',
+        'error'
+      );
+      return;
+    }
+
+    const currentSite = rt.adminDashboardState.websiteSettings;
+    rt.adminDashboardState.savingWebsite = true;
+    renderApp();
+
+    try {
+      const savedSite = await rt.saveWebsiteSettings({
+        site_title_en: currentSite.site_title_en,
+        site_title_bn: currentSite.site_title_bn,
+        hero_heading_en: currentSite.hero_heading_en,
+        hero_heading_bn: currentSite.hero_heading_bn,
+        hero_subtitle_en: currentSite.hero_subtitle_en,
+        hero_subtitle_bn: currentSite.hero_subtitle_bn,
+        hero_slides: nextSlides.slice(0, 15),
+        contact_email: currentSite.contact_email,
+        tourist_helpline: currentSite.tourist_helpline,
+        default_language: currentSite.default_language,
+        maintenance_mode: currentSite.maintenance_mode
+      });
+      state.websiteSettings = savedSite;
+      state.heroSlideIndex = 0;
+      showToast(successMessage, 'success');
+    } catch (err: any) {
+      if (err?.message === 'ADMIN_UNAUTHORIZED') {
+        void handleAdminSessionExpired();
+        return;
+      }
+      showToast(err?.message || 'Failed to save hero banner slides.', 'error');
+    } finally {
+      rt.adminDashboardState.savingWebsite = false;
+      renderApp();
+    }
+  };
+
+  const renderNewHeroPreview = (url: string): void => {
+    const box = document.getElementById('new-hero-preview-box');
+    if (!box) return;
+    const cleanUrl = url.trim();
+    if (!cleanUrl || (!cleanUrl.startsWith('http://') && !cleanUrl.startsWith('https://'))) {
+      box.innerHTML = `
+        <i class="bi bi-image fs-3 mb-1"></i>
+        <span class="small">${state.lang === 'bn' ? 'ছবির প্রিভিউ এবং পিক্সেল সাইজ এখানে দেখা যাবে' : 'Image preview & pixel dimensions will appear here'}</span>
+      `;
+      return;
+    }
+
+    box.innerHTML = `
+      <div class="position-relative w-100" style="height: 108px;">
+        <img id="new-hero-preview-img" src="${escapeHtml(cleanUrl)}" alt="Banner Preview" class="w-100 h-100 rounded-2" style="object-fit: contain;">
+        <span id="new-hero-preview-dim" class="position-absolute bottom-0 end-0 m-1 badge bg-dark bg-opacity-75 tabular-nums d-none"></span>
+      </div>
+    `;
+    const previewImg = document.getElementById('new-hero-preview-img') as HTMLImageElement | null;
+    const dimBadge = document.getElementById('new-hero-preview-dim');
+    if (previewImg && dimBadge) {
+      previewImg.addEventListener('load', () => {
+        if (previewImg.naturalWidth > 0 && previewImg.naturalHeight > 0) {
+          dimBadge.textContent = `${previewImg.naturalWidth} × ${previewImg.naturalHeight} px`;
+          dimBadge.classList.remove('d-none');
+        }
+      });
+    }
+  };
+
+  const newHeroUrlInput = document.getElementById('new-hero-slide-url') as HTMLInputElement | null;
+  newHeroUrlInput?.addEventListener('input', () => {
+    renderNewHeroPreview(newHeroUrlInput.value);
+  });
+
+  const newHeroMediaPick = document.getElementById('new-hero-media-pick') as HTMLSelectElement | null;
+  newHeroMediaPick?.addEventListener('change', () => {
+    if (newHeroMediaPick.value && newHeroUrlInput) {
+      newHeroUrlInput.value = newHeroMediaPick.value;
+      renderNewHeroPreview(newHeroMediaPick.value);
+    }
+  });
+
+  const newHeroFileInput = document.getElementById('new-hero-file-input') as HTMLInputElement | null;
+  const newHeroUploadBtn = document.getElementById('btn-new-hero-upload') as HTMLButtonElement | null;
+  newHeroUploadBtn?.addEventListener('click', () => newHeroFileInput?.click());
+  newHeroFileInput?.addEventListener('change', async () => {
+    if (!ensureSession() || !newHeroFileInput.files || !newHeroFileInput.files[0]) return;
+    const file = newHeroFileInput.files[0];
+    const check = rt.validateImageFile(file);
+    if (!check.valid) {
+      showToast(check.error || 'Invalid image file.', 'error');
+      newHeroFileInput.value = '';
+      return;
+    }
+
+    try {
+      if (newHeroUploadBtn) {
+        newHeroUploadBtn.disabled = true;
+        newHeroUploadBtn.innerHTML = `<span class="spinner-border spinner-border-sm me-1"></span>${state.lang === 'bn' ? 'আপলোড হচ্ছে...' : 'Uploading...'}`;
+      }
+      const downloadUrl = await rt.uploadImageFile(file, 'settings');
+      if (newHeroUrlInput) {
+        newHeroUrlInput.value = downloadUrl;
+        renderNewHeroPreview(downloadUrl);
+      }
+      showToast(
+        state.lang === 'bn'
+          ? 'ছবি ফায়ারবেস স্টোরেজে আপলোড হয়েছে। এখন যোগ বাটনে ক্লিক করে সংরক্ষণ করুন।'
+          : 'Image uploaded to Firebase Storage. Click Add & Save Hero Banner to publish.',
+        'success'
+      );
+    } catch (err: any) {
+      showToast(err?.message || 'Image upload failed.', 'error');
+    } finally {
+      if (newHeroUploadBtn) {
+        newHeroUploadBtn.disabled = false;
+        newHeroUploadBtn.innerHTML = `<i class="bi bi-cloud-arrow-up me-1"></i>${state.lang === 'bn' ? 'ফাইল আপলোড' : 'Upload File'}`;
+      }
+      newHeroFileInput.value = '';
+    }
+  });
+
+  document.getElementById('form-add-hero-banner')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (!ensureSession() || rt.adminDashboardState.savingWebsite) return;
+
+    const url = (document.getElementById('new-hero-slide-url') as HTMLInputElement)?.value.trim() || '';
+    const labelBn = (document.getElementById('new-hero-label-bn') as HTMLInputElement)?.value.trim() || '';
+    const labelEn = (document.getElementById('new-hero-label-en') as HTMLInputElement)?.value.trim() || '';
+
+    if (!url || (!url.startsWith('http://') && !url.startsWith('https://'))) {
+      showToast(
+        state.lang === 'bn'
+          ? 'বৈধ HTTPS ইমেজ ইউআরএল দিন বা ফাইল আপলোড করুন।'
+          : 'Please enter a valid HTTPS image URL or upload an image file.',
+        'error'
+      );
+      return;
+    }
+
+    const currentSlides = collectHeroSlidesFromDom();
+    if (currentSlides.length >= 15) {
+      showToast(
+        state.lang === 'bn'
+          ? 'সর্বোচ্চ ১৫টি হিরো ব্যানার যোগ করা যাবে।'
+          : 'Maximum limit of 15 hero banners reached.',
+        'error'
+      );
+      return;
+    }
+
+    const newSlide: HeroBannerSlide = {
+      id: `hero_slide_${Date.now()}`,
+      image_url: url.slice(0, 2000),
+      label_bn: (labelBn || labelEn || 'বাংলাদেশ ভ্রমণ ব্যানার').slice(0, 160),
+      label_en: (labelEn || labelBn || 'Bangladesh Tourism Banner').slice(0, 160)
+    };
+
+    await persistHeroSlides(
+      [...currentSlides, newSlide],
+      state.lang === 'bn'
+        ? 'নতুন হিরো ব্যানার ইমেজ যোগ ও সংরক্ষণ করা হয়েছে।'
+        : 'New hero banner slide added and saved.'
+    );
+  });
+
+  // Live dimensions & URL preview on existing hero slides
+  document.querySelectorAll('[data-hero-preview-img]').forEach(el => {
+    const img = el as HTMLImageElement;
+    const idx = img.getAttribute('data-hero-preview-img');
+    const badge = idx !== null ? document.querySelector(`[data-hero-dim-badge="${idx}"]`) : null;
+    const updateBadge = () => {
+      if (badge && img.naturalWidth > 0 && img.naturalHeight > 0) {
+        badge.textContent = `${img.naturalWidth} × ${img.naturalHeight} px`;
+        badge.classList.remove('d-none');
+      }
+    };
+    if (img.complete) updateBadge();
+    img.addEventListener('load', updateBadge);
+  });
+
+  document.querySelectorAll('[data-hero-url]').forEach(input => {
+    input.addEventListener('input', () => {
+      const idx = input.getAttribute('data-hero-url');
+      const val = (input as HTMLInputElement).value.trim();
+      const img = idx !== null ? (document.querySelector(`[data-hero-preview-img="${idx}"]`) as HTMLImageElement | null) : null;
+      if (img && (val.startsWith('http://') || val.startsWith('https://'))) {
+        img.src = val;
+      }
+    });
+  });
+
+  document.querySelectorAll('[data-hero-upload-btn]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const idx = btn.getAttribute('data-hero-upload-btn');
+      const fileInput = idx !== null ? (document.querySelector(`[data-hero-file-input="${idx}"]`) as HTMLInputElement | null) : null;
+      fileInput?.click();
+    });
+  });
+
+  document.querySelectorAll('[data-hero-file-input]').forEach(input => {
+    const fileInput = input as HTMLInputElement;
+    fileInput.addEventListener('change', async () => {
+      if (!ensureSession() || !fileInput.files || !fileInput.files[0]) return;
+      const idxAttr = fileInput.getAttribute('data-hero-file-input');
+      const idx = idxAttr ? parseInt(idxAttr, 10) : -1;
+      const file = fileInput.files[0];
+      const check = rt.validateImageFile(file);
+      if (!check.valid) {
+        showToast(check.error || 'Invalid image file.', 'error');
+        fileInput.value = '';
+        return;
+      }
+
+      const replaceBtn = document.querySelector(`[data-hero-upload-btn="${idxAttr}"]`) as HTMLButtonElement | null;
+      try {
+        if (replaceBtn) {
+          replaceBtn.disabled = true;
+          replaceBtn.innerHTML = `<span class="spinner-border spinner-border-sm"></span>`;
+        }
+        const downloadUrl = await rt.uploadImageFile(file, 'settings');
+        const slides = collectHeroSlidesFromDom();
+        if (idx >= 0 && idx < slides.length) {
+          slides[idx] = { ...slides[idx], image_url: downloadUrl };
+          await persistHeroSlides(
+            slides,
+            state.lang === 'bn'
+              ? `স্লাইড #${idx + 1}-এর ব্যানার ছবি পরিবর্তন ও সংরক্ষণ করা হয়েছে।`
+              : `Slide #${idx + 1} image replaced and saved.`
+          );
+        }
+      } catch (err: any) {
+        showToast(err?.message || 'Image upload failed.', 'error');
+      } finally {
+        if (replaceBtn) {
+          replaceBtn.disabled = false;
+          replaceBtn.innerHTML = `<i class="bi bi-upload me-1"></i>${state.lang === 'bn' ? 'ছবি পরিবর্তন' : 'Replace'}`;
+        }
+        fileInput.value = '';
+      }
+    });
+  });
+
+  document.querySelectorAll('[data-hero-move-up]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const idx = parseInt(btn.getAttribute('data-hero-move-up') || '-1', 10);
+      const slides = collectHeroSlidesFromDom();
+      if (idx <= 0 || idx >= slides.length) return;
+      [slides[idx - 1], slides[idx]] = [slides[idx], slides[idx - 1]];
+      void persistHeroSlides(
+        slides,
+        state.lang === 'bn' ? 'স্লাইডের ক্রম আপডেট ও সংরক্ষণ করা হয়েছে।' : 'Hero slide order updated.'
+      );
+    });
+  });
+
+  document.querySelectorAll('[data-hero-move-down]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const idx = parseInt(btn.getAttribute('data-hero-move-down') || '-1', 10);
+      const slides = collectHeroSlidesFromDom();
+      if (idx < 0 || idx >= slides.length - 1) return;
+      [slides[idx], slides[idx + 1]] = [slides[idx + 1], slides[idx]];
+      void persistHeroSlides(
+        slides,
+        state.lang === 'bn' ? 'স্লাইডের ক্রম আপডেট ও সংরক্ষণ করা হয়েছে।' : 'Hero slide order updated.'
+      );
+    });
+  });
+
+  document.querySelectorAll('[data-hero-delete]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const idx = parseInt(btn.getAttribute('data-hero-delete') || '-1', 10);
+      const slides = collectHeroSlidesFromDom();
+      if (slides.length <= 1 || idx < 0 || idx >= slides.length) return;
+      rt.showConfirmModal({
+        title: state.lang === 'bn' ? 'হিরো ব্যানার স্লাইড মুছুন' : 'Remove Hero Banner Slide',
+        message:
+          state.lang === 'bn'
+            ? `আপনি কি নিশ্চিতভাবে স্লাইড #${idx + 1} ("${slides[idx].label_bn}") মুছে ফেলতে চান?`
+            : `Are you sure you want to remove slide #${idx + 1} ("${slides[idx].label_en}")?`,
+        lang: state.lang,
+        onConfirm: async () => {
+          const next = slides.filter((_, i) => i !== idx);
+          await persistHeroSlides(
+            next,
+            state.lang === 'bn' ? 'হিরো ব্যানার স্লাইড মুছে ফেলা হয়েছে।' : 'Hero banner slide removed.'
+          );
+        }
+      });
+    });
+  });
+
+  document.getElementById('btn-hero-reset-defaults')?.addEventListener('click', () => {
+    if (!ensureSession()) return;
+    rt.showConfirmModal({
+      title: state.lang === 'bn' ? 'ডিফল্ট ব্যানার রিস্টোর' : 'Reset Default Hero Banners',
+      message:
+        state.lang === 'bn'
+          ? 'বর্তমান কাস্টম স্লাইডগুলোর পরিবর্তে ডিফল্ট ৭টি বাংলাদেশ পর্যটন ব্যানার রিস্টোর করতে চান?'
+          : 'Restore the 7 default Bangladesh hero banner slides?',
+      lang: state.lang,
+      onConfirm: async () => {
+        await persistHeroSlides(
+          DEFAULT_HERO_SLIDES.map(s => ({ ...s })),
+          state.lang === 'bn' ? 'ডিফল্ট হিরো ব্যানার স্লাইড রিস্টোর করা হয়েছে।' : 'Default hero banners restored.'
+        );
+      }
+    });
+  });
+
+  document.getElementById('btn-hero-save-all')?.addEventListener('click', () => {
+    const slides = collectHeroSlidesFromDom();
+    void persistHeroSlides(
+      slides,
+      state.lang === 'bn'
+        ? 'সকল হিরো ব্যানার পরিবর্তন ফায়ারস্টোরে সংরক্ষিত হয়েছে।'
+        : 'All hero banner changes saved to Cloud Firestore.'
+    );
+  });
+
+  // Authorized Admins Management (`admins` collection)
+  document.getElementById('form-add-admin-user')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (!ensureSession()) return;
+    const uid = (document.getElementById('new-admin-uid') as HTMLInputElement)?.value.trim() || '';
+    const email = (document.getElementById('new-admin-email') as HTMLInputElement)?.value.trim() || '';
+    const role = ((document.getElementById('new-admin-role') as HTMLSelectElement)?.value || 'admin') as
+      | 'admin'
+      | 'super_admin'
+      | 'editor';
+    if (!uid || !email) {
+      showToast(
+        state.lang === 'bn' ? 'UID এবং ইমেইল উভয়ই আবশ্যক।' : 'Firebase Auth UID and email are required.',
+        'error'
+      );
+      return;
+    }
+    try {
+      await rt.saveAdminRecord({ uid, email, role });
+      showToast(
+        state.lang === 'bn' ? 'অ্যাডমিন রেকর্ড সফলভাবে সংরক্ষিত হয়েছে।' : `Admin "${email}" added successfully.`,
+        'success'
+      );
+      void loadAdminDashboardData(true, true);
+      renderApp();
+    } catch (err: any) {
+      if (err?.message === 'ADMIN_UNAUTHORIZED') {
+        void handleAdminSessionExpired();
+        return;
+      }
+      showToast(err?.message || 'Could not save admin record.', 'error');
+    }
+  });
+
+  document.querySelectorAll('[data-delete-admin-uid]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      if (!ensureSession()) return;
+      const uid = btn.getAttribute('data-delete-admin-uid') || '';
+      const record = rt.adminDashboardState.admins.find(a => a.uid === uid);
+      if (!uid) return;
+      rt.showConfirmModal({
+        title: state.lang === 'bn' ? 'অ্যাডমিন অপসারণ' : 'Remove Administrator',
+        message:
+          state.lang === 'bn'
+            ? `আপনি কি নিশ্চিতভাবে "${record?.email || uid}" এর অ্যাডমিন অধিকার অপসারণ করতে চান?`
+            : `Are you sure you want to remove administrator access for "${record?.email || uid}"?`,
+        lang: state.lang,
+        onConfirm: async () => {
+          try {
+            await rt.deleteAdminRecord(uid);
+            showToast(
+              state.lang === 'bn' ? 'অ্যাডমিন অপসারণ করা হয়েছে।' : 'Administrator removed.',
+              'success'
+            );
+            void loadAdminDashboardData(true, true);
+            renderApp();
+          } catch (err: any) {
+            if (err?.message === 'ADMIN_UNAUTHORIZED') {
+              void handleAdminSessionExpired();
+              return;
+            }
+            showToast(err?.message || 'Could not remove administrator.', 'error');
+          }
+        }
+      });
+    });
+  });
+
+  // Firestore Dataset Seeder Button
+  document.getElementById('btn-seed-firestore-data')?.addEventListener('click', async () => {
+    if (!ensureSession()) return;
+    const seedBtn = document.getElementById('btn-seed-firestore-data') as HTMLButtonElement | null;
+    if (seedBtn) {
+      seedBtn.disabled = true;
+      seedBtn.innerHTML = `<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>${
+        state.lang === 'bn' ? 'সিঙ্ক হচ্ছে...' : 'Syncing to Firestore...'
+      }`;
+    }
+    try {
+      const result = await rt.seedFirestoreFromCms();
+      showToast(
+        state.lang === 'bn'
+          ? `ফায়ারস্টোর সিঙ্ক সম্পন্ন: ${result.createdCount}টি নতুন নথি যোগ হয়েছে, ${result.skippedCount}টি বিদ্যমান ছিল।`
+          : `Firestore sync complete: ${result.createdCount} created, ${result.skippedCount} skipped.`,
+        'success'
+      );
+      await loadAdminDashboardData(true, true);
+    } catch (err: any) {
+      if (err?.message === 'ADMIN_UNAUTHORIZED') {
+        void handleAdminSessionExpired();
+        return;
+      }
+      showToast(err?.message || 'Could not seed Firestore dataset.', 'error');
+    } finally {
+      if (seedBtn) {
+        seedBtn.disabled = false;
+        seedBtn.innerHTML = `<i class="bi bi-database-add me-1"></i>${
+          state.lang === 'bn' ? 'প্রাথমিক ডাটা ফায়ারস্টোরে সিঙ্ক করুন' : 'Seed Missing Dataset to Firestore'
+        }`;
+      }
+    }
+  });
+
+  // Verified 8 Divisions & 64 Districts Geography Validation & Safe Importer
+  interface GeoReportApiResponse {
+    success: boolean;
+    message?: string;
+    report?: import('./admin/adminRuntime').GeographyValidationReport;
+    firestoreDiff?: {
+      existingDivisionsCount: number;
+      existingDistrictsCount: number;
+      existingDivisionIds: string[];
+      missingDivisionIds: string[];
+      existingDistrictIds: string[];
+      missingDistrictIds: string[];
+      divisionSlugCollisions: Array<{ datasetId: string; existingDocId: string; slug: string }>;
+      districtSlugCollisions: Array<{ datasetId: string; existingDocId: string; slug: string }>;
+      readyToImport: boolean;
+    };
+  }
+
+  let lastGeoInspection: GeoReportApiResponse | null = null;
+
+  const renderGeoReportPanel = (data: GeoReportApiResponse): void => {
+    const panel = document.getElementById('cms-geo-report-panel');
+    if (!panel || !data.report || !data.firestoreDiff) return;
+    const r = data.report;
+    const diff = data.firestoreDiff;
+    const isBn = state.lang === 'bn';
+    const collisionCount = diff.divisionSlugCollisions.length + diff.districtSlugCollisions.length;
+
+    panel.classList.remove('d-none');
+    panel.innerHTML = `
+      <div class="p-3 rounded-3 border bg-light">
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+          <div class="d-flex align-items-center gap-2">
+            <span class="badge ${r.valid ? 'bg-success' : 'bg-danger'}">
+              ${r.valid ? (isBn ? 'ভ্যালিডেশন পাস' : 'VALIDATION PASSED') : (isBn ? 'ত্রুটি পাওয়া গেছে' : 'VALIDATION FAILED')}
+            </span>
+            <span class="small fw-semibold text-primary-bd tabular-nums">
+              ${r.divisionsCount} ${isBn ? 'বিভাগ' : 'Divisions'} · ${r.districtsCount} ${isBn ? 'জেলা' : 'Districts'}
+            </span>
+          </div>
+          <span class="small text-muted tabular-nums">
+            ${isBn ? 'বিদ্যমান:' : 'In Firestore:'} ${diff.existingDivisionsCount} div / ${diff.existingDistrictsCount} dist ·
+            ${isBn ? 'নতুন অনুপস্থিত:' : 'Missing to Insert:'} <strong>${diff.missingDivisionIds.length}</strong> div / <strong>${diff.missingDistrictIds.length}</strong> dist
+          </span>
+        </div>
+
+        <div class="row g-2 mb-3 small">
+          <div class="col-md-4">
+            <div class="bg-white p-2 rounded border">
+              <div class="text-muted">${isBn ? 'ডুপ্লিকেট আইডি / স্লাগ' : 'Duplicate IDs / Slugs'}</div>
+              <div class="fw-bold ${r.checks.noDuplicateDivisionIds && r.checks.noDuplicateDistrictIds && r.checks.noDuplicateDivisionSlugs && r.checks.noDuplicateDistrictSlugs ? 'text-success' : 'text-danger'}">
+                ${r.checks.noDuplicateDivisionIds && r.checks.noDuplicateDistrictIds && r.checks.noDuplicateDivisionSlugs && r.checks.noDuplicateDistrictSlugs ? '0 (Unique)' : 'Duplicates Detected'}
+              </div>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <div class="bg-white p-2 rounded border">
+              <div class="text-muted">${isBn ? 'অভিভাবক বিভাগ ও সম্পর্ক' : 'Parent Division Links'}</div>
+              <div class="fw-bold ${r.checks.allDistrictsMappedToValidDivision && r.checks.officialDivisionCountsMatch ? 'text-success' : 'text-danger'}">
+                ${r.checks.allDistrictsMappedToValidDivision && r.checks.officialDivisionCountsMatch ? '64 / 64 Official Match' : 'Mismatch Detected'}
+              </div>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <div class="bg-white p-2 rounded border">
+              <div class="text-muted">${isBn ? 'ফায়ারস্টোর স্লাগ সংঘর্ষ' : 'Firestore Slug Collisions'}</div>
+              <div class="fw-bold ${collisionCount === 0 ? 'text-success' : 'text-warning'}">
+                ${collisionCount === 0 ? '0 (Clean)' : `${collisionCount} Collision(s)`}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        ${r.errors.length > 0 ? `
+          <div class="alert alert-danger small py-2 mb-3">
+            <strong>Validation Errors:</strong>
+            <ul class="mb-0 ps-3">${r.errors.map(err => `<li>${escapeHtml(err)}</li>`).join('')}</ul>
+          </div>
+        ` : ''}
+
+        <div class="table-responsive">
+          <table class="table table-sm table-bordered bg-white mb-0 small">
+            <thead class="table-light">
+              <tr>
+                <th>Division</th>
+                <th>ID</th>
+                <th class="text-end">Expected</th>
+                <th class="text-end">Actual</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${r.divisionBreakdown.map(row => `
+                <tr>
+                  <td>${escapeHtml(isBn ? row.nameBn : row.nameEn)}</td>
+                  <td><code>${escapeHtml(row.divisionId)}</code></td>
+                  <td class="text-end tabular-nums">${row.expectedDistricts}</td>
+                  <td class="text-end tabular-nums">${row.actualDistricts}</td>
+                  <td>
+                    <span class="${row.status === 'valid' ? 'text-success fw-semibold' : 'text-danger fw-semibold'}">
+                      ${row.status === 'valid' ? 'OK' : 'Mismatch'}
+                    </span>
+                  </td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    `;
+  };
+
+  const fetchGeoValidationReport = async (statusMode: string): Promise<GeoReportApiResponse | null> => {
+    const idToken = await rt.auth.currentUser?.getIdToken(false);
+    if (!idToken) {
+      void handleAdminSessionExpired();
+      return null;
+    }
+    const resp = await fetch(`/api/admin/geography/report?status=${encodeURIComponent(statusMode)}`, {
+      method: 'GET',
+      headers: { Authorization: `Bearer ${idToken}` }
+    });
+    const json = (await resp.json()) as GeoReportApiResponse;
+    if (resp.status === 401 || resp.status === 403) {
+      void handleAdminSessionExpired();
+      return null;
+    }
+    if (!resp.ok || !json.success) {
+      throw new Error(json.message || 'Could not validate geography dataset.');
+    }
+    lastGeoInspection = json;
+    renderGeoReportPanel(json);
+    return json;
+  };
+
+  const executeGeoImportRequest = async (confirmOverwrite: boolean, statusMode: string): Promise<void> => {
+    const idToken = await rt.auth.currentUser?.getIdToken(false);
+    if (!idToken) {
+      void handleAdminSessionExpired();
+      return;
+    }
+    const resp = await fetch('/api/admin/geography/import', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${idToken}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        confirmImport: true,
+        confirmOverwrite,
+        statusMode
+      })
+    });
+    const json = (await resp.json()) as {
+      success?: boolean;
+      message?: string;
+      createdDivisions?: number;
+      createdDistricts?: number;
+      overwrittenDivisions?: number;
+      overwrittenDistricts?: number;
+      skippedExistingDivisions?: number;
+      skippedExistingDistricts?: number;
+    };
+    if (resp.status === 401 || resp.status === 403) {
+      void handleAdminSessionExpired();
+      return;
+    }
+    if (!resp.ok || !json.success) {
+      throw new Error(json.message || 'Geography import failed.');
+    }
+    showToast(
+      state.lang === 'bn'
+        ? `ইম্পোর্ট সম্পন্ন: নতুন ${json.createdDivisions ?? 0} বিভাগ ও ${json.createdDistricts ?? 0} জেলা যোগ হয়েছে, আপডেট ${json.overwrittenDivisions ?? 0} বিভাগ / ${json.overwrittenDistricts ?? 0} জেলা।`
+        : `Geography import complete: created ${json.createdDivisions ?? 0} division(s) & ${json.createdDistricts ?? 0} district(s); updated ${json.overwrittenDivisions ?? 0} / ${json.overwrittenDistricts ?? 0}.`,
+      'success'
+    );
+    await loadAdminDashboardData(true, true);
+    renderApp();
+  };
+
+  document.getElementById('btn-geo-validate-report')?.addEventListener('click', async () => {
+    if (!ensureSession()) return;
+    const statusMode = (document.getElementById('cms-geo-status-mode') as HTMLSelectElement)?.value || 'preserve';
+    const btn = document.getElementById('btn-geo-validate-report') as HTMLButtonElement | null;
+    if (btn) btn.disabled = true;
+    try {
+      await fetchGeoValidationReport(statusMode);
+    } catch (err: any) {
+      showToast(err?.message || 'Validation report failed.', 'error');
+    } finally {
+      if (btn) btn.disabled = false;
+    }
+  });
+
+  document.getElementById('btn-geo-import-missing')?.addEventListener('click', async () => {
+    if (!ensureSession()) return;
+    const statusMode = (document.getElementById('cms-geo-status-mode') as HTMLSelectElement)?.value || 'preserve';
+    try {
+      const inspection = lastGeoInspection || (await fetchGeoValidationReport(statusMode));
+      if (!inspection?.report?.valid || !inspection.firestoreDiff) {
+        showToast('Fix validation errors before importing.', 'error');
+        return;
+      }
+      const { missingDivisionIds, missingDistrictIds } = inspection.firestoreDiff;
+      if (missingDivisionIds.length === 0 && missingDistrictIds.length === 0) {
+        showToast(
+          state.lang === 'bn'
+            ? 'সকল ৮টি বিভাগ ও ৬৪টি জেলা ইতোমধ্যেই ফায়ারস্টোরে বিদ্যমান (কোনো ওভাররাইট করা হয়নি)।'
+            : 'All 8 divisions and 64 districts already exist in Firestore (nothing overwritten).',
+          'success'
+        );
+        return;
+      }
+      rt.showConfirmModal({
+        title: state.lang === 'bn' ? 'নতুন বিভাগ ও জেলা ইম্পোর্ট নিশ্চিত করুন' : 'Confirm Missing Geography Import',
+        message:
+          state.lang === 'bn'
+            ? `ভ্যালিডেশন পাস হয়েছে। ফায়ারস্টোরে ${missingDivisionIds.length}টি অনুপস্থিত বিভাগ এবং ${missingDistrictIds.length}টি অনুপস্থিত জেলা যোগ করা হবে। কোনো বিদ্যমান ডকুমেন্ট পরিবর্তন করা হবে না।`
+            : `Validation passed. Insert ${missingDivisionIds.length} missing division(s) and ${missingDistrictIds.length} missing district(s) into Firestore? Existing records will NOT be modified.`,
+        lang: state.lang,
+        onConfirm: async () => {
+          try {
+            await executeGeoImportRequest(false, statusMode);
+          } catch (err: any) {
+            showToast(err?.message || 'Could not import geography records.', 'error');
+          }
+        }
+      });
+    } catch (err: any) {
+      showToast(err?.message || 'Could not inspect Firestore before import.', 'error');
+    }
+  });
+
+  document.getElementById('btn-geo-import-overwrite')?.addEventListener('click', async () => {
+    if (!ensureSession()) return;
+    const statusMode = (document.getElementById('cms-geo-status-mode') as HTMLSelectElement)?.value || 'preserve';
+    try {
+      const inspection = lastGeoInspection || (await fetchGeoValidationReport(statusMode));
+      if (!inspection?.report?.valid) {
+        showToast('Fix validation errors before importing.', 'error');
+        return;
+      }
+      rt.showConfirmModal({
+        title: state.lang === 'bn' ? 'সতর্কতা: বিদ্যমান ডকুমেন্ট ওভাররাইট' : 'Confirm Overwrite of Existing Documents',
+        message:
+          state.lang === 'bn'
+            ? `আপনি কি নিশ্চিতভাবে যাচাইকৃত ৮ বিভাগ ও ৬৪ জেলা দিয়ে ফায়ারস্টোরের বিদ্যমান রেকর্ডগুলো আপডেট (ওভাররাইট) করতে চান? কাস্টম এডিট করা নাম/বিবরণ/ছবি প্রতিস্থাপিত হতে পারে।`
+            : `Explicit confirmation required: Overwrite existing division (${inspection.firestoreDiff?.existingDivisionIds.length ?? 0}) and district (${inspection.firestoreDiff?.existingDistrictIds.length ?? 0}) documents in Firestore with the verified dataset?`,
+        lang: state.lang,
+        onConfirm: async () => {
+          try {
+            await executeGeoImportRequest(true, statusMode);
+          } catch (err: any) {
+            showToast(err?.message || 'Could not overwrite geography records.', 'error');
+          }
+        }
+      });
+    } catch (err: any) {
+      showToast(err?.message || 'Could not inspect Firestore before overwrite.', 'error');
     }
   });
 
@@ -6550,22 +7344,6 @@ function initializeNavbarEventListeners(): void {
     if (spotsSection) spotsSection.scrollIntoView({ behavior: 'smooth' });
   });
 
-  // Admin Portal / CMS Toggle Trigger (Protected)
-  document.getElementById('btn-admin-portal')?.addEventListener('click', (e) => {
-    e.preventDefault();
-    closeMobileNavbar();
-    if (state.activeView === 'cms') {
-      state.activeView = 'home';
-      navigateToPath('/');
-      renderLayoutShell();
-      updateDynamicSeo();
-      renderApp();
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-      return;
-    }
-    void openProtectedAdminRoute(true);
-  });
-
   // Navbar link triggers
   document.querySelectorAll('[data-nav]').forEach(link => {
     link.addEventListener('click', (e) => {
@@ -6885,6 +7663,7 @@ async function initializeApp(): Promise<void> {
   if (appInitialized) return;
   appInitialized = true;
   console.info('Initializing Bangladesh Tourism Portal & CMS...');
+  void testConnection();
   
   // Ensure official administrative district relationships (e.g. Jamalpur -> Mymensingh) even with cached localStorage
   cmsStore.districts = FirestoreService.normalizeDistrictAdministrativeDivision(cmsStore.districts);

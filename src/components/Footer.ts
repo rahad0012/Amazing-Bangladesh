@@ -91,14 +91,6 @@ export function renderFooter(lang: Language): string {
               ${isBn ? 'যোগাযোগ ও হেল্পলাইন' : 'Contact & Helplines'}
             </h3>
             <div class="small mb-2 text-white-50">
-              <i class="bi bi-geo-alt-fill text-warning me-2"></i>
-              <span>${isBn ? 'পর্যটন ভবন, প্লট ই-৫/সি-১, আগারগাঁও, ঢাকা-১২০৭' : 'Tourism Bhaban, Plot E-5/C-1, Agargaon, Dhaka-1207'}</span>
-            </div>
-            <div class="small mb-2 text-white-50">
-              <i class="bi bi-envelope-fill text-warning me-2"></i>
-              <a href="mailto:info@tourism.gov.bd" class="text-white-50 text-decoration-none">info@tourism.gov.bd</a>
-            </div>
-            <div class="small mb-2 text-white-50">
               <i class="bi bi-telephone-fill text-warning me-2"></i>
               <span>${isBn ? 'জাতীয় জরুরি সেবা: ৯৯৯' : 'National Emergency: 999'}</span>
             </div>
@@ -106,19 +98,20 @@ export function renderFooter(lang: Language): string {
               <i class="bi bi-shield-shaded text-warning me-2"></i>
               <span>${isBn ? 'ট্যুরিস্ট পুলিশ হেল্পলাইন: ০১৩২০-১৬৩৫৯৯' : 'Tourist Police Helpline: 01320-163599'}</span>
             </div>
-            <div class="mt-2">
+            <div class="mt-2 d-flex flex-wrap gap-2 align-items-center">
               <a href="/contact/" class="btn btn-outline-warning btn-sm rounded-pill px-3">
                 <i class="bi bi-chat-dots-fill me-1"></i>${isBn ? 'অনলাইন যোগাযোগ ফর্ম' : 'Send Us a Message'}
               </a>
-            </div>
-
-            <div class="p-2 rounded mt-3" style="background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1);">
-              <div class="d-flex align-items-center gap-2">
-                <span class="spinner-grow spinner-grow-sm text-success" aria-hidden="true"></span>
-                <span class="small text-white fw-semibold">
-                  ${isBn ? 'ক্লাউড ফায়ারস্টোর ডাটাবেস সচল' : 'Cloud Firestore Active'}
-                </span>
-              </div>
+              <button
+                type="button"
+                class="btn btn-warning btn-sm fw-semibold rounded-pill px-3 text-dark d-inline-flex align-items-center justify-content-center footer-admin-portal-btn"
+                id="btn-admin-portal"
+                title="${isBn ? 'অ্যাডমিন পোর্টাল' : 'Admin CMS Portal'}"
+                aria-label="${isBn ? 'অ্যাডমিন পোর্টাল খুলুন' : 'Open Admin CMS Portal'}"
+              >
+                <i class="bi bi-shield-lock-fill me-1" aria-hidden="true"></i>
+                <span id="label-admin-text">${isBn ? 'সিএমএস অ্যাডমিন' : 'Admin CMS'}</span>
+              </button>
             </div>
           </div>
         </div>

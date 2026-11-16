@@ -58,7 +58,11 @@ service cloud.firestore {
         isOptionalBoundedString(data, 'description_en', 4000) &&
         isOptionalBoundedString(data, 'description_bn', 4000) &&
         isOptionalBoundedString(data, 'image_url', 2000) &&
-        isOptionalBoundedString(data, 'thumbnail_url', 2000);
+        isOptionalBoundedString(data, 'thumbnail_url', 2000) &&
+        isOptionalBoundedString(data, 'seo_title_en', 200) &&
+        isOptionalBoundedString(data, 'seo_title_bn', 200) &&
+        isOptionalBoundedString(data, 'seo_description_en', 400) &&
+        isOptionalBoundedString(data, 'seo_description_bn', 400);
     }
 
     function isValidDistrict(data, docId) {
@@ -69,7 +73,11 @@ service cloud.firestore {
         data.name_bn is string && data.name_bn.size() >= 1 && data.name_bn.size() <= 160 &&
         isOptionalBoundedString(data, 'description_en', 6000) &&
         isOptionalBoundedString(data, 'description_bn', 6000) &&
-        isOptionalBoundedString(data, 'image_url', 2000);
+        isOptionalBoundedString(data, 'image_url', 2000) &&
+        isOptionalBoundedString(data, 'seo_title_en', 200) &&
+        isOptionalBoundedString(data, 'seo_title_bn', 200) &&
+        isOptionalBoundedString(data, 'seo_description_en', 400) &&
+        isOptionalBoundedString(data, 'seo_description_bn', 400);
     }
 
     function isValidCategory(data, docId) {
@@ -132,37 +140,116 @@ service cloud.firestore {
         isOptionalBoundedString(data, 'updated_at', 64);
     }
 
+    function isValidSiteSettings(data, docId) {
+      return data.keys().size() <= 45 &&
+        (!('id' in data) || (data.id is string && data.id == docId)) &&
+        isOptionalBoundedString(data, 'updated_at', 64) &&
+        isOptionalBoundedString(data, 'updated_by', 180) &&
+        (
+          (
+            docId == 'website_settings' &&
+            isOptionalBoundedString(data, 'site_title_en', 160) &&
+            isOptionalBoundedString(data, 'site_title_bn', 160) &&
+            isOptionalBoundedString(data, 'hero_heading_en', 240) &&
+            isOptionalBoundedString(data, 'hero_heading_bn', 240) &&
+            isOptionalBoundedString(data, 'hero_subtitle_en', 400) &&
+            isOptionalBoundedString(data, 'hero_subtitle_bn', 400) &&
+            (
+              !('hero_slides' in data) ||
+              (
+                data.hero_slides is list &&
+                data.hero_slides.size() <= 15 &&
+                (
+                  data.hero_slides.size() == 0 ||
+                  (
+                    data.hero_slides[0] is map &&
+                    data.hero_slides[0].keys().hasAll(['id', 'image_url', 'label_bn', 'label_en']) &&
+                    data.hero_slides[0].keys().hasOnly(['id', 'image_url', 'label_bn', 'label_en']) &&
+                    data.hero_slides[0].id is string &&
+                    data.hero_slides[0].id.size() >= 1 &&
+                    data.hero_slides[0].id.size() <= 80 &&
+                    data.hero_slides[0].image_url is string &&
+                    data.hero_slides[0].image_url.size() >= 5 &&
+                    data.hero_slides[0].image_url.size() <= 2000 &&
+                    data.hero_slides[0].label_bn is string &&
+                    data.hero_slides[0].label_bn.size() <= 160 &&
+                    data.hero_slides[0].label_en is string &&
+                    data.hero_slides[0].label_en.size() <= 160
+                  )
+                )
+              )
+            ) &&
+            isOptionalBoundedString(data, 'contact_email', 180) &&
+            isOptionalBoundedString(data, 'tourist_helpline', 80) &&
+            (!('default_language' in data) || data.default_language in ['bn', 'en']) &&
+            (!('maintenance_mode' in data) || data.maintenance_mode is bool)
+          ) ||
+          (
+            docId == 'seo_settings' &&
+            isOptionalBoundedString(data, 'default_title_en', 200) &&
+            isOptionalBoundedString(data, 'default_title_bn', 200) &&
+            isOptionalBoundedString(data, 'title_suffix_en', 120) &&
+            isOptionalBoundedString(data, 'title_suffix_bn', 120) &&
+            isOptionalBoundedString(data, 'meta_description_en', 400) &&
+            isOptionalBoundedString(data, 'meta_description_bn', 400) &&
+            isOptionalBoundedString(data, 'canonical_base_url', 500) &&
+            isOptionalBoundedString(data, 'og_image_url', 2000) &&
+            (!('robots_index' in data) || data.robots_index in ['index, follow', 'noindex, nofollow']) &&
+            isOptionalBoundedString(data, 'twitter_handle', 80)
+          ) ||
+          (
+            docId == 'legal_pages' &&
+            isOptionalBoundedString(data, 'privacy_title_en', 200) &&
+            isOptionalBoundedString(data, 'privacy_title_bn', 200) &&
+            isOptionalBoundedString(data, 'privacy_content_en', 40000) &&
+            isOptionalBoundedString(data, 'privacy_content_bn', 40000) &&
+            isOptionalBoundedString(data, 'terms_title_en', 200) &&
+            isOptionalBoundedString(data, 'terms_title_bn', 200) &&
+            isOptionalBoundedString(data, 'terms_content_en', 40000) &&
+            isOptionalBoundedString(data, 'terms_content_bn', 40000) &&
+            isOptionalBoundedString(data, 'contact_email', 180)
+          ) ||
+          (!(docId in ['website_settings', 'seo_settings', 'legal_pages']))
+        );
+    }
+
+    // Connection health check document (used by startup testConnection)
+    match /test/{docId} {
+      allow get: if docId == 'connection';
+      allow list, write: if false;
+    }
+
     // Public read for published tourism content; list enforces is_published == true or admin access
     match /divisions/{divisionId} {
-      allow get: if isValidId(divisionId) && (resource.data.is_published == true || isAdmin());
+      allow get: if isValidId(divisionId) && (resource == null || resource.data.is_published == true || isAdmin());
       allow list: if resource.data.is_published == true || isAdmin();
       allow create, update: if isValidId(divisionId) && isAdmin() && isValidDivision(request.resource.data, divisionId);
       allow delete: if isValidId(divisionId) && isAdmin();
     }
 
     match /districts/{districtId} {
-      allow get: if isValidId(districtId) && (resource.data.is_published == true || isAdmin());
+      allow get: if isValidId(districtId) && (resource == null || resource.data.is_published == true || isAdmin());
       allow list: if resource.data.is_published == true || isAdmin();
       allow create, update: if isValidId(districtId) && isAdmin() && isValidDistrict(request.resource.data, districtId);
       allow delete: if isValidId(districtId) && isAdmin();
     }
 
     match /categories/{categoryId} {
-      allow get: if isValidId(categoryId) && (resource.data.is_published == true || isAdmin());
+      allow get: if isValidId(categoryId) && (resource == null || resource.data.is_published == true || isAdmin());
       allow list: if resource.data.is_published == true || isAdmin();
       allow create, update: if isValidId(categoryId) && isAdmin() && isValidCategory(request.resource.data, categoryId);
       allow delete: if isValidId(categoryId) && isAdmin();
     }
 
     match /tourist_spots/{spotId} {
-      allow get: if isValidId(spotId) && (resource.data.is_published == true || isAdmin());
+      allow get: if isValidId(spotId) && (resource == null || resource.data.is_published == true || isAdmin());
       allow list: if resource.data.is_published == true || isAdmin();
       allow create, update: if isValidId(spotId) && isAdmin() && isValidTouristSpot(request.resource.data, spotId);
       allow delete: if isValidId(spotId) && isAdmin();
     }
 
     match /articles/{articleId} {
-      allow get: if isValidId(articleId) && (resource.data.is_published == true || isAdmin());
+      allow get: if isValidId(articleId) && (resource == null || resource.data.is_published == true || isAdmin());
       allow list: if resource.data.is_published == true || isAdmin();
       allow create, update: if isValidId(articleId) && isAdmin() && isValidArticle(request.resource.data, articleId);
       allow delete: if isValidId(articleId) && isAdmin();
@@ -176,16 +263,19 @@ service cloud.firestore {
     }
 
     match /site_settings/{settingId} {
-      allow get: if isValidId(settingId);
-      allow list: if true;
-      allow write: if isValidId(settingId) && isAdmin() && request.resource.data.keys().size() <= 45;
+      allow get: if isValidId(settingId) && (settingId in ['website_settings', 'seo_settings', 'legal_pages'] || isAdmin());
+      allow list: if isAdmin();
+      allow create, update: if isValidId(settingId) && isAdmin() && isValidSiteSettings(request.resource.data, settingId);
+      allow delete: if false;
     }
 
     match /admins/{adminId} {
       allow get: if isValidId(adminId) && (isAdmin() || (isSignedIn() && request.auth.uid == adminId));
       allow list: if isAdmin();
-      allow create, update: if isValidId(adminId) && isAdmin() && isValidAdminDoc(request.resource.data, adminId);
-      allow delete: if isValidId(adminId) && isAdmin();
+      allow create: if isValidId(adminId) && isAdmin() && isValidAdminDoc(request.resource.data, adminId);
+      allow update: if isValidId(adminId) && isAdmin() && isValidAdminDoc(request.resource.data, adminId) &&
+        request.resource.data.uid == resource.data.uid;
+      allow delete: if isValidId(adminId) && isAdmin() && request.auth.uid != adminId;
     }
 
     function isValidAuditLog(data) {

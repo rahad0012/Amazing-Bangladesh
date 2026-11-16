@@ -25,11 +25,14 @@ service firebase.storage {
         request.resource.contentType.matches('image/(jpeg|png|webp|gif|svg\\+xml)');
     }
 
-    // Public read access for published destination media assets; writes & deletes strictly restricted to verified admins
+    // Public read access for published destination media assets in allowlisted folders; writes & deletes strictly restricted to verified admins
     match /{folder}/{allPaths=**} {
-      allow read: if true;
-      allow create, update: if isAdminUser() && isValidImageUpload();
-      allow delete: if isAdminUser();
+      allow read: if folder in ['divisions', 'districts', 'categories', 'spots', 'destinations', 'articles', 'media', 'media_library', 'settings'];
+      allow create, update: if folder in ['divisions', 'districts', 'categories', 'spots', 'destinations', 'articles', 'media', 'media_library', 'settings'] &&
+        isAdminUser() &&
+        isValidImageUpload();
+      allow delete: if folder in ['divisions', 'districts', 'categories', 'spots', 'destinations', 'articles', 'media', 'media_library', 'settings'] &&
+        isAdminUser();
     }
   }
 }

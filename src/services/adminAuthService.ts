@@ -6,6 +6,7 @@
 
 import {
   signInWithEmailAndPassword,
+  signInWithPopup,
   signOut,
   setPersistence,
   browserLocalPersistence,
@@ -13,7 +14,7 @@ import {
   onIdTokenChanged,
   type User
 } from 'firebase/auth';
-import { auth } from '../firebase';
+import { auth, googleProvider } from '../firebase';
 import type { Language } from '../utils/langUtils';
 
 export interface VerifiedAdminSession {
@@ -129,8 +130,16 @@ export function mapAdminAuthError(error: unknown, lang: Language): string {
         : 'Network error occurred. Please check your internet connection and try again.';
     case 'auth/operation-not-allowed':
       return isBn
-        ? 'ফায়ারবেস অথেনটিকেশনে Email/Password সাইন-ইন পদ্ধতি সক্রিয় নেই। ফায়ারবেস কনসোল থেকে এটি চালু করুন।'
-        : 'Email/Password sign-in is not enabled in Firebase Authentication. Enable it in the Firebase Console.';
+        ? 'ফায়ারবেস অথেনটিকেশনে এই সাইন-ইন পদ্ধতি সক্রিয় নেই। ফায়ারবেস কনসোল থেকে এটি চালু করুন।'
+        : 'This sign-in method is not enabled in Firebase Authentication. Enable it in the Firebase Console.';
+    case 'auth/popup-closed-by-user':
+      return isBn
+        ? 'গুগল সাইন-ইন পপআপ সম্পন্ন হওয়ার আগেই বন্ধ করা হয়েছে।'
+        : 'Google sign-in popup was closed before completing authentication.';
+    case 'auth/popup-blocked':
+      return isBn
+        ? 'ব্রাউজার পপআপ ব্লক করেছে। অনুগ্রহ করে পপআপ অনুমতি দিয়ে আবার চেষ্টা করুন।'
+        : 'Sign-in popup was blocked by the browser. Please allow popups and try again.';
     case 'auth/user-token-expired':
     case 'auth/id-token-expired':
     case 'SESSION_EXPIRED':
@@ -309,6 +318,32 @@ export async function signInAdminWithEmailPassword(
 
   await setPersistence(auth, rememberSession ? browserLocalPersistence : browserSessionPersistence);
   const credential = await signInWithEmailAndPassword(auth, cleanEmail, password);
+
+  const outcome = await performBackendVerification(credential.user, true, onSessionExpired);
+  if (outcome.status === 'authenticated') {
+    return outcome.session;
+  }
+
+  if (outcome.status === 'unauthorized') {
+    throw new AdminAuthError('NOT_AUTHORIZED', outcome.message);
+  }
+  if (outcome.status === 'expired') {
+    throw new AdminAuthError('SESSION_EXPIRED', outcome.message);
+  }
+  if (outcome.status === 'error') {
+    throw new AdminAuthError('VERIFICATION_UNAVAILABLE', outcome.message);
+  }
+  throw new AdminAuthError('UNAUTHENTICATED', 'Authentication session could not be established.');
+}
+
+export async function signInAdminWithGoogle(
+  rememberSession: boolean,
+  onSessionExpired?: () => void
+): Promise<VerifiedAdminSession> {
+  clearInMemorySession();
+
+  await setPersistence(auth, rememberSession ? browserLocalPersistence : browserSessionPersistence);
+  const credential = await signInWithPopup(auth, googleProvider);
 
   const outcome = await performBackendVerification(credential.user, true, onSessionExpired);
   if (outcome.status === 'authenticated') {
