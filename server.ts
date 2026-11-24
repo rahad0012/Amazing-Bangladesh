@@ -3,7 +3,11 @@ import express, { type Request, type Response } from 'express';
 import fs from 'node:fs';
 import path from 'node:path';
 import http from 'node:http';
-import { handleApiRequest, type ApiResponseOutput } from './src/server/portalApiCore.ts';
+import {
+  getStoredMediaAsset,
+  handleApiRequest,
+  type ApiResponseOutput
+} from './src/server/portalApiCore.ts';
 
 const PORT = 3000;
 const HOST = '0.0.0.0';
@@ -72,6 +76,7 @@ async function dispatchApi(req: Request, res: Response): Promise<void> {
 async function createServer(): Promise<void> {
   const app = express();
   app.disable('x-powered-by');
+  app.use('/api/admin/media/upload', express.json({ limit: '1500kb' }));
   app.use(express.json({ limit: '64kb' }));
 
   // Baseline security headers (preserve iframe embeddability for preview hosts)
@@ -111,6 +116,22 @@ async function createServer(): Promise<void> {
   app.post('/api/admin/logout', dispatchApi);
   app.get('/api/admin/geography/report', dispatchApi);
   app.post('/api/admin/geography/import', dispatchApi);
+  app.post('/api/admin/media/upload', dispatchApi);
+  app.delete('/api/admin/media/:id', dispatchApi);
+  app.get('/api/media/:id', (req: Request, res: Response) => {
+    const asset = getStoredMediaAsset(String(req.params.id || ''));
+    if (!asset) {
+      res.status(404).send('Media not found');
+      return;
+    }
+    res.setHeader('Content-Type', asset.mimeType);
+    res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    if (asset.mimeType === 'image/svg+xml') {
+      res.setHeader('Content-Security-Policy', "default-src 'none'; sandbox");
+    }
+    res.send(asset.buffer);
+  });
   app.post('/api/contact', dispatchApi);
 
   const httpServer = http.createServer(app);

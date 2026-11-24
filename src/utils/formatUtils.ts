@@ -46,6 +46,12 @@ export function formatRelativeDate(isoString: string, lang: Language): string {
 
 export function optimizeImageUrl(url: string, width: number = 800): string {
   if (!url) return '';
+  if (typeof window !== 'undefined') {
+    const portalMediaMatch = url.match(/^https?:\/\/[^/]+(\/api\/media\/[a-zA-Z0-9_-]+)$/);
+    if (portalMediaMatch) {
+      return portalMediaMatch[1];
+    }
+  }
   if (url.includes('images.unsplash.com')) {
     try {
       const u = new URL(url);

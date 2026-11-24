@@ -102,6 +102,81 @@ let cachedGoogleCerts: { certs: Record<string, string>; expiresAt: number } = {
   expiresAt: 0
 };
 
+interface CachedMediaAsset {
+  buffer: Buffer;
+  mimeType: string;
+}
+
+const MEDIA_UPLOAD_DIR = path.resolve(process.cwd(), '.media-uploads');
+const MAX_MEDIA_CACHE_ITEMS = 120;
+const mediaAssetCache = new Map<string, CachedMediaAsset>();
+const ALLOWED_MEDIA_MIME_EXT: Record<string, string> = {
+  'image/jpeg': 'jpg',
+  'image/png': 'png',
+  'image/webp': 'webp',
+  'image/gif': 'gif',
+  'image/svg+xml': 'svg'
+};
+
+function cacheMediaAsset(assetId: string, asset: CachedMediaAsset): void {
+  if (mediaAssetCache.size >= MAX_MEDIA_CACHE_ITEMS) {
+    const oldestKey = mediaAssetCache.keys().next().value;
+    if (oldestKey) mediaAssetCache.delete(oldestKey);
+  }
+  mediaAssetCache.set(assetId, asset);
+}
+
+function verifyImageMagicBytes(mimeType: string, buffer: Buffer): boolean {
+  if (buffer.length === 0) return false;
+  if (mimeType === 'image/jpeg') {
+    return buffer.length >= 3 && buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff;
+  }
+  if (mimeType === 'image/png') {
+    return (
+      buffer.length >= 4 &&
+      buffer[0] === 0x89 &&
+      buffer[1] === 0x50 &&
+      buffer[2] === 0x4e &&
+      buffer[3] === 0x47
+    );
+  }
+  if (mimeType === 'image/gif') {
+    return buffer.subarray(0, 4).toString('ascii') === 'GIF8';
+  }
+  if (mimeType === 'image/webp') {
+    return (
+      buffer.length >= 12 &&
+      buffer.subarray(0, 4).toString('ascii') === 'RIFF' &&
+      buffer.subarray(8, 12).toString('ascii') === 'WEBP'
+    );
+  }
+  if (mimeType === 'image/svg+xml') {
+    const lower = buffer.toString('utf8').toLowerCase();
+    return lower.includes('<svg') && !/<script\b|javascript:|on\w+\s*=/i.test(lower);
+  }
+  return false;
+}
+
+export function getStoredMediaAsset(assetId: string): CachedMediaAsset | null {
+  if (!/^[a-zA-Z0-9_-]{1,128}$/.test(assetId)) return null;
+  const cached = mediaAssetCache.get(assetId);
+  if (cached) return cached;
+
+  try {
+    const metaPath = path.join(MEDIA_UPLOAD_DIR, `${assetId}.json`);
+    const binPath = path.join(MEDIA_UPLOAD_DIR, `${assetId}.bin`);
+    if (!fs.existsSync(metaPath) || !fs.existsSync(binPath)) return null;
+    const meta = JSON.parse(fs.readFileSync(metaPath, 'utf8')) as { mimeType?: string };
+    if (!meta.mimeType || !ALLOWED_MEDIA_MIME_EXT[meta.mimeType]) return null;
+    const buffer = fs.readFileSync(binPath);
+    const asset: CachedMediaAsset = { buffer, mimeType: meta.mimeType };
+    cacheMediaAsset(assetId, asset);
+    return asset;
+  } catch {
+    return null;
+  }
+}
+
 const NO_STORE_HEADERS: Record<string, string> = {
   'Cache-Control': 'no-store, no-cache, must-revalidate, private',
   Pragma: 'no-cache'
@@ -719,6 +794,196 @@ export async function handleApiRequest(input: ApiRequestInput): Promise<ApiRespo
           message: err instanceof Error ? err.message : 'Unable to execute geography import.'
         }
       };
+    }
+  }
+
+  if (method === 'POST' && pathNormalized === '/api/admin/media/upload') {
+    if (isRateLimited(input.clientIp, adminRateLimitMap, ADMIN_VERIFY_MAX_REQUESTS)) {
+      return {
+        status: 429,
+        headers: NO_STORE_HEADERS,
+        body: {
+          success: false,
+          code: 'RATE_LIMITED',
+          message: 'Too many requests. Please wait a moment and try again.'
+        }
+      };
+    }
+
+    const idToken = extractBearerToken(input.headers);
+    if (!idToken) {
+      return {
+        status: 401,
+        headers: NO_STORE_HEADERS,
+        body: {
+          success: false,
+          code: 'UNAUTHENTICATED',
+          message: 'Missing administrator authentication token.'
+        }
+      };
+    }
+
+    try {
+      const payload = await verifyFirebaseIdToken(idToken, config);
+      const authResult = await resolveAdminAuthorization(idToken, payload, config);
+      if (!authResult.authorized) {
+        return {
+          status: 403,
+          headers: NO_STORE_HEADERS,
+          body: {
+            success: false,
+            code: 'NOT_AUTHORIZED',
+            message: 'Access denied. Administrator privileges are required.'
+          }
+        };
+      }
+
+      const body = (input.body || {}) as {
+        fileName?: unknown;
+        mimeType?: unknown;
+        folder?: unknown;
+        dataUrl?: unknown;
+      };
+
+      const dataUrl = typeof body.dataUrl === 'string' ? body.dataUrl.trim() : '';
+      const match = dataUrl.match(/^data:(image\/(?:jpeg|png|webp|gif|svg\+xml));base64,([A-Za-z0-9+/=]+)$/);
+      if (!match) {
+        return {
+          status: 400,
+          headers: NO_STORE_HEADERS,
+          body: {
+            success: false,
+            code: 'INVALID_IMAGE_PAYLOAD',
+            message: 'Unsupported or malformed image data payload.'
+          }
+        };
+      }
+
+      const mimeType = match[1];
+      if (!ALLOWED_MEDIA_MIME_EXT[mimeType]) {
+        return {
+          status: 400,
+          headers: NO_STORE_HEADERS,
+          body: {
+            success: false,
+            code: 'UNSUPPORTED_MEDIA_TYPE',
+            message: 'Unsupported image MIME type.'
+          }
+        };
+      }
+
+      const buffer = Buffer.from(match[2], 'base64');
+      if (buffer.length === 0 || buffer.length > 980 * 1024) {
+        return {
+          status: 413,
+          headers: NO_STORE_HEADERS,
+          body: {
+            success: false,
+            code: 'IMAGE_TOO_LARGE',
+            message: 'Optimized image exceeds the 980 KB upload limit.'
+          }
+        };
+      }
+
+      if (!verifyImageMagicBytes(mimeType, buffer)) {
+        return {
+          status: 400,
+          headers: NO_STORE_HEADERS,
+          body: {
+            success: false,
+            code: 'INVALID_IMAGE_SIGNATURE',
+            message: 'Uploaded file bytes do not match declared image format.'
+          }
+        };
+      }
+
+      const fileName = sanitizeText(body.fileName).slice(0, 200) || 'image';
+      const folder = sanitizeText(body.folder).replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 64) || 'settings';
+      const assetId = `img_${Date.now()}_${crypto.randomBytes(4).toString('hex')}`;
+
+      fs.mkdirSync(MEDIA_UPLOAD_DIR, { recursive: true });
+      fs.writeFileSync(path.join(MEDIA_UPLOAD_DIR, `${assetId}.bin`), buffer);
+      fs.writeFileSync(
+        path.join(MEDIA_UPLOAD_DIR, `${assetId}.json`),
+        JSON.stringify({
+          id: assetId,
+          fileName,
+          mimeType,
+          folder,
+          bytes: buffer.length,
+          uploadedBy: payload.email || payload.sub,
+          uploadedAt: new Date().toISOString()
+        })
+      );
+
+      cacheMediaAsset(assetId, { buffer, mimeType });
+
+      return {
+        status: 200,
+        headers: NO_STORE_HEADERS,
+        body: {
+          success: true,
+          assetId,
+          url: `/api/media/${assetId}`,
+          mimeType,
+          bytes: buffer.length
+        }
+      };
+    } catch (err) {
+      if (err instanceof TokenVerificationError) {
+        return {
+          status: err.status,
+          headers: NO_STORE_HEADERS,
+          body: { success: false, code: err.code, message: err.message }
+        };
+      }
+      console.error('[admin-media-upload] Failed:', err instanceof Error ? err.message : err);
+      return {
+        status: 500,
+        headers: NO_STORE_HEADERS,
+        body: {
+          success: false,
+          code: 'MEDIA_UPLOAD_FAILED',
+          message: err instanceof Error ? err.message : 'Unable to save uploaded image.'
+        }
+      };
+    }
+  }
+
+  if (method === 'DELETE' && pathNormalized.startsWith('/api/admin/media/')) {
+    const idToken = extractBearerToken(input.headers);
+    if (!idToken) {
+      return {
+        status: 401,
+        headers: NO_STORE_HEADERS,
+        body: { success: false, code: 'UNAUTHENTICATED', message: 'Missing administrator authentication token.' }
+      };
+    }
+    try {
+      const payload = await verifyFirebaseIdToken(idToken, config);
+      const authResult = await resolveAdminAuthorization(idToken, payload, config);
+      if (!authResult.authorized) {
+        return {
+          status: 403,
+          headers: NO_STORE_HEADERS,
+          body: { success: false, code: 'NOT_AUTHORIZED', message: 'Access denied.' }
+        };
+      }
+      const assetId = pathNormalized.slice('/api/admin/media/'.length).trim();
+      if (!/^[a-zA-Z0-9_-]{1,128}$/.test(assetId)) {
+        return { status: 400, headers: NO_STORE_HEADERS, body: { success: false, message: 'Invalid media ID.' } };
+      }
+      mediaAssetCache.delete(assetId);
+      for (const ext of ['.bin', '.json']) {
+        const target = path.join(MEDIA_UPLOAD_DIR, `${assetId}${ext}`);
+        if (fs.existsSync(target)) fs.unlinkSync(target);
+      }
+      return { status: 200, headers: NO_STORE_HEADERS, body: { success: true } };
+    } catch (err) {
+      if (err instanceof TokenVerificationError) {
+        return { status: err.status, headers: NO_STORE_HEADERS, body: { success: false, code: err.code, message: err.message } };
+      }
+      return { status: 500, headers: NO_STORE_HEADERS, body: { success: false, message: 'Failed to delete media.' } };
     }
   }
 

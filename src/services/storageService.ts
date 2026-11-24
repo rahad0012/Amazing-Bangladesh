@@ -133,9 +133,220 @@ export function sanitizeUploadFilename(name: string): string {
   return clean || 'image';
 }
 
+let storageBucketAvailablePromise: Promise<boolean> | null = null;
+
+async function isFirebaseStorageAvailable(): Promise<boolean> {
+  if (!storageBucketAvailablePromise) {
+    const bucket = storage?.app?.options?.storageBucket;
+    if (!bucket) {
+      storageBucketAvailablePromise = Promise.resolve(false);
+    } else {
+      storageBucketAvailablePromise = fetch(
+        `https://firebasestorage.googleapis.com/v0/b/${encodeURIComponent(bucket)}/o?maxResults=1`,
+        {
+          method: 'GET',
+          signal: AbortSignal.timeout(3500)
+        }
+      )
+        .then(resp => resp.status !== 404)
+        .catch(() => false);
+    }
+  }
+  return storageBucketAvailablePromise;
+}
+
+function readFileAsDataUrl(file: File): Promise<string> {
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === 'string') {
+        resolve(reader.result);
+      } else {
+        reject(new Error('Failed to read image file.'));
+      }
+    };
+    reader.onerror = () => reject(new Error('Failed to read image file.'));
+    reader.readAsDataURL(file);
+  });
+}
+
+function loadImageElement(objectUrl: string): Promise<HTMLImageElement> {
+  return new Promise<HTMLImageElement>((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = () => reject(new Error('Unable to decode image for upload optimization.'));
+    img.src = objectUrl;
+  });
+}
+
+async function optimizeImageForPortalUpload(file: File, folder: string): Promise<string> {
+  const MAX_DATA_URL_LENGTH = 920_000;
+
+  if (file.type === 'image/svg+xml' || (file.type === 'image/gif' && file.size <= 680 * 1024)) {
+    const rawDataUrl = await readFileAsDataUrl(file);
+    if (rawDataUrl.length <= MAX_DATA_URL_LENGTH) {
+      return rawDataUrl;
+    }
+    throw new Error('Selected GIF/SVG file exceeds the 680 KB upload limit.');
+  }
+
+  const objectUrl = URL.createObjectURL(file);
+  try {
+    const img = await loadImageElement(objectUrl);
+    const maxDim = folder === 'settings' ? 1920 : 1400;
+    let width = img.naturalWidth || maxDim;
+    let height = img.naturalHeight || Math.round((maxDim * 9) / 16);
+
+    if (width > maxDim || height > maxDim) {
+      const ratio = Math.min(maxDim / width, maxDim / height);
+      width = Math.max(1, Math.round(width * ratio));
+      height = Math.max(1, Math.round(height * ratio));
+    }
+
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    if (!ctx) {
+      const fallbackUrl = await readFileAsDataUrl(file);
+      if (fallbackUrl.length <= MAX_DATA_URL_LENGTH) return fallbackUrl;
+      throw new Error('Image is too large and browser canvas optimization is unavailable.');
+    }
+
+    const candidateFormats = file.type === 'image/png' ? ['image/webp', 'image/jpeg'] : ['image/webp', 'image/jpeg'];
+    const qualities = [0.86, 0.76, 0.64, 0.5];
+
+    for (let scale = 1; scale >= 0.6; scale -= 0.2) {
+      const targetW = Math.max(1, Math.round(width * scale));
+      const targetH = Math.max(1, Math.round(height * scale));
+      canvas.width = targetW;
+      canvas.height = targetH;
+      ctx.clearRect(0, 0, targetW, targetH);
+      ctx.drawImage(img, 0, 0, targetW, targetH);
+
+      for (const fmt of candidateFormats) {
+        for (const q of qualities) {
+          const dataUrl = canvas.toDataURL(fmt, q);
+          if (dataUrl.startsWith(`data:${fmt};base64,`) && dataUrl.length <= MAX_DATA_URL_LENGTH) {
+            return dataUrl;
+          }
+        }
+      }
+    }
+
+    throw new Error('Image could not be compressed under the 900 KB limit. Please choose a smaller image.');
+  } finally {
+    URL.revokeObjectURL(objectUrl);
+  }
+}
+
+async function uploadViaPortalApi(
+  file: File,
+  folder: string,
+  cleanName: string,
+  onProgress?: (percent: number) => void
+): Promise<string> {
+  const user = auth.currentUser;
+  if (!user) {
+    throw new Error('Administrator authentication is required before uploading images.');
+  }
+  onProgress?.(25);
+  const dataUrl = await optimizeImageForPortalUpload(file, folder);
+  onProgress?.(60);
+
+  const idToken = await user.getIdToken();
+  const resp = await fetch('/api/admin/media/upload', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${idToken}`
+    },
+    body: JSON.stringify({
+      fileName: cleanName,
+      mimeType: file.type,
+      folder,
+      dataUrl
+    }),
+    signal: AbortSignal.timeout(25000)
+  });
+
+  const payload = (await resp.json().catch(() => ({}))) as {
+    success?: boolean;
+    url?: string;
+    message?: string;
+  };
+
+  if (!resp.ok || !payload.success || !payload.url) {
+    throw new Error(payload.message || `Image upload failed (${resp.status}).`);
+  }
+
+  onProgress?.(100);
+  if (payload.url.startsWith('http://') || payload.url.startsWith('https://')) {
+    return payload.url;
+  }
+  return `${window.location.origin}${payload.url.startsWith('/') ? payload.url : `/${payload.url}`}`;
+}
+
+function uploadToFirebaseStorageWithTimeout(
+  file: File,
+  storagePath: string,
+  onProgress?: (percent: number) => void
+): Promise<string> {
+  storage.maxUploadRetryTime = 5000;
+  storage.maxOperationRetryTime = 5000;
+  const storageRef = ref(storage, storagePath);
+
+  return new Promise<string>((resolve, reject) => {
+    let settled = false;
+    const uploadTask = uploadBytesResumable(storageRef, file, {
+      contentType: file.type,
+      customMetadata: {
+        uploadedByUid: auth.currentUser?.uid || '',
+        uploadedAt: new Date().toISOString()
+      }
+    });
+
+    const stallTimer = window.setTimeout(() => {
+      if (!settled) {
+        settled = true;
+        try {
+          uploadTask.cancel();
+        } catch {
+          // ignore cancel errors
+        }
+        reject(new Error('STORAGE_TIMEOUT'));
+      }
+    }, 10000);
+
+    uploadTask.on(
+      'state_changed',
+      snapshot => {
+        if (onProgress && snapshot.totalBytes > 0) {
+          onProgress(Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100));
+        }
+      },
+      (storageError: any) => {
+        if (settled) return;
+        settled = true;
+        window.clearTimeout(stallTimer);
+        reject(storageError);
+      },
+      async () => {
+        if (settled) return;
+        settled = true;
+        window.clearTimeout(stallTimer);
+        try {
+          const downloadUrl = await getDownloadURL(uploadTask.snapshot.ref);
+          resolve(downloadUrl);
+        } catch (urlError) {
+          reject(urlError);
+        }
+      }
+    );
+  });
+}
+
 /**
- * Upload an image safely to Firebase Storage.
- * Strictly requires an authenticated Firebase user (admin privileges enforced by storage.rules).
+ * Upload an image safely to Firebase Storage, automatically falling back to the
+ * authenticated portal media endpoint when Firebase Storage is not provisioned.
  */
 export async function uploadImageFile(
   file: File,
@@ -153,63 +364,52 @@ export async function uploadImageFile(
   }
 
   if (!auth.currentUser) {
-    throw new Error('Administrator authentication is required before uploading files to Firebase Storage.');
+    throw new Error('Administrator authentication is required before uploading files.');
   }
 
   const timestamp = Date.now();
   const cleanName = sanitizeUploadFilename(file.name);
   const safeFolder = normalizeStorageFolder(folder);
   const storagePath = `${safeFolder}/${timestamp}_${cleanName}`;
-  const storageRef = ref(storage, storagePath);
 
-  return new Promise<string>((resolve, reject) => {
-    const uploadTask = uploadBytesResumable(storageRef, file, {
-      contentType: file.type,
-      customMetadata: {
-        uploadedByUid: auth.currentUser?.uid || '',
-        uploadedAt: new Date(timestamp).toISOString()
+  const bucketAvailable = await isFirebaseStorageAvailable();
+  if (bucketAvailable) {
+    try {
+      return await uploadToFirebaseStorageWithTimeout(file, storagePath, onProgress);
+    } catch (storageError: any) {
+      const code = typeof storageError?.code === 'string' ? storageError.code : '';
+      const msg = typeof storageError?.message === 'string' ? storageError.message : '';
+      const shouldFallback =
+        msg === 'STORAGE_TIMEOUT' ||
+        code === 'storage/bucket-not-found' ||
+        code === 'storage/project-not-found' ||
+        code === 'storage/retry-limit-exceeded' ||
+        code === 'storage/unauthorized' ||
+        code === 'storage/unknown' ||
+        code === 'storage/canceled';
+      if (!shouldFallback) {
+        throw new Error(msg || 'Firebase Storage upload failed.');
       }
-    });
+      storageBucketAvailablePromise = Promise.resolve(false);
+    }
+  }
 
-    uploadTask.on(
-      'state_changed',
-      snapshot => {
-        if (onProgress && snapshot.totalBytes > 0) {
-          onProgress(Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100));
-        }
-      },
-      (storageError: any) => {
-        const code = typeof storageError?.code === 'string' ? storageError.code : '';
-        if (code === 'storage/unauthorized') {
-          reject(
-            new Error(
-              'Firebase Storage permission denied. Ensure you are signed in as an authorized admin and storage.rules are deployed.'
-            )
-          );
-          return;
-        }
-        reject(
-          new Error(
-            storageError?.message ||
-              'Firebase Storage upload failed. Please check your connection and Storage configuration.'
-          )
-        );
-      },
-      async () => {
-        try {
-          const downloadUrl = await getDownloadURL(uploadTask.snapshot.ref);
-          resolve(downloadUrl);
-        } catch (urlError: any) {
-          reject(new Error(urlError?.message || 'Uploaded image but could not retrieve download URL.'));
-        }
-      }
-    );
-  });
+  return uploadViaPortalApi(file, safeFolder, cleanName, onProgress);
 }
 
 export async function deleteStorageFile(fileUrl: string): Promise<void> {
   try {
-    if (fileUrl && (fileUrl.includes('firebasestorage.googleapis.com') || fileUrl.startsWith('gs://'))) {
+    if (!fileUrl) return;
+    const portalMediaMatch = fileUrl.match(/\/api\/media\/([a-zA-Z0-9_-]{1,128})$/);
+    if (portalMediaMatch && auth.currentUser) {
+      const idToken = await auth.currentUser.getIdToken();
+      await fetch(`/api/admin/media/${encodeURIComponent(portalMediaMatch[1])}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${idToken}` }
+      }).catch(() => {});
+      return;
+    }
+    if (fileUrl.includes('firebasestorage.googleapis.com') || fileUrl.startsWith('gs://')) {
       const fileRef = ref(storage, fileUrl);
       await deleteObject(fileRef);
     }

@@ -1481,8 +1481,8 @@ function renderHeroBannersModule(lang: Language): string {
           </h2>
           <p class="small text-muted mb-0">
             ${isBn
-              ? 'হিরো সেকশনের ছবি অবিকৃতভাবে (object-fit: contain) প্রদর্শিত হয়। নিখুঁত ভিউয়ের জন্য নিচের মাপ অনুযায়ী ছবি আপলোড করুন।'
-              : 'Hero banners render uncropped with object-fit: contain. Follow these specs for crisp, well-proportioned banners.'}
+              ? 'হিরো সেকশনের ছবি ডেস্কটপ, ট্যাবলেট ও মোবাইলে পুরো ব্যানার জুড়ে (object-fit: cover) প্রদর্শিত হয়। নিখুঁত ভিউয়ের জন্য নিচের মাপ অনুযায়ী ছবি আপলোড করুন।'
+              : 'Hero banners scale edge-to-edge across desktop, tablet, and mobile with object-fit: cover. Follow these specs for crisp banners.'}
           </p>
         </div>
         <span class="badge-published tabular-nums">
@@ -1495,14 +1495,14 @@ function renderHeroBannersModule(lang: Language): string {
           <div class="p-3 rounded-3 border bg-light h-100">
             <div class="small text-muted mb-1">${isBn ? 'প্রস্তাবিত পিক্সেল সাইজ' : 'Recommended Dimensions'}</div>
             <div class="fw-bold text-primary-bd tabular-nums">1600 × 900 px <span class="fw-normal small text-muted">(16:9)</span></div>
-            <div class="small text-muted mt-1">${isBn ? 'অথবা 1600 × 600 px (ওয়াইড ব্যানার)' : 'or 1600 × 600 px (Wide Banner)'}</div>
+            <div class="small text-muted mt-1">${isBn ? 'অথবা 1920 × 1080 px (HD)' : 'or 1920 × 1080 px (Full HD)'}</div>
           </div>
         </div>
         <div class="col-12 col-md-6 col-xl-3">
           <div class="p-3 rounded-3 border bg-light h-100">
             <div class="small text-muted mb-1">${isBn ? 'হিরো সেকশন উচ্চতা ও ডিসপ্লে' : 'Hero Display Height & Fit'}</div>
-            <div class="fw-bold text-primary-bd tabular-nums">${isBn ? 'ডেস্কটপ ৪২০px · মোবাইল ৩৬০px' : 'Desktop 420px · Mobile 360px'}</div>
-            <div class="small text-muted mt-1">${isBn ? 'object-fit: contain (ছবি কাটবে না)' : 'object-fit: contain (zero cropping)'}</div>
+            <div class="fw-bold text-primary-bd tabular-nums">${isBn ? 'ডেস্কটপ ৪৬০–৫৬০px · ট্যাব ৪২০px · মোবাইল ৩৬০px' : 'Desktop 460–560px · Tablet 420px · Mobile 360px'}</div>
+            <div class="small text-muted mt-1">${isBn ? 'object-fit: cover (পূর্ণ-বিস্তৃত রেসপন্সিভ ভিউ)' : 'object-fit: cover (full-bleed responsive)'}</div>
           </div>
         </div>
         <div class="col-12 col-md-6 col-xl-3">
@@ -1627,7 +1627,7 @@ function renderHeroBannersModule(lang: Language): string {
               <div class="col-12 col-md-4 col-lg-3">
                 <div class="rounded-2 overflow-hidden border position-relative" style="background: #0d2a23; height: 120px;">
                   <img
-                    src="${escapeHtml(slide.image_url)}"
+                    src="${escapeHtml(optimizeImageUrl(slide.image_url, 800))}"
                     alt="${escapeHtml(isBn ? slide.label_bn : slide.label_en)}"
                     class="w-100 h-100"
                     style="object-fit: contain; object-position: center;"

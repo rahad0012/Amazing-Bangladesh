@@ -21,6 +21,7 @@ import {
   setLanguagePreference, 
   getTranslation 
 } from './i18n';
+import { toBengaliNumerals, formatLocalizedNumber } from './utils/langUtils';
 
 import { 
   renderNavbar,
@@ -150,6 +151,10 @@ interface AppState {
   bookmarkedIds: Set<string>;
   currentUser: User | null;
   activeDistrictTabDivision: string;
+  plannerDaysMode: '3' | '5' | '7' | '10' | '14' | 'custom';
+  plannerCustomDays: number;
+  plannerSelectedCategoryIds: string[];
+  plannerSelectionCustomized: boolean;
   itineraryResult: string | null;
   firestoreLoading: boolean;
   firestoreError: string | null;
@@ -241,6 +246,10 @@ const state: AppState = {
   bookmarkedIds: new Set<string>(JSON.parse(localStorage.getItem('bd_tourism_bookmarks') || '[]')),
   currentUser: null,
   activeDistrictTabDivision: 'all',
+  plannerDaysMode: '7',
+  plannerCustomDays: 10,
+  plannerSelectedCategoryIds: ['beaches', 'hills', 'forests', 'historical'],
+  plannerSelectionCustomized: false,
   itineraryResult: null,
   firestoreLoading: false,
   firestoreError: null,
@@ -2175,52 +2184,566 @@ function openArticleModal(articleId: string): void {
   if (modal) modal.show();
 }
 
-// Generate Trip Itinerary
-function generateTripPlan(days: number, vibe: string): string {
-  const isBn = state.lang === 'bn';
-  if (days <= 3) {
-    if (vibe === 'beach') {
-      return isBn 
-        ? `<strong>৩ দিনের সৈকত ও মেরিন ড্রাইভ ট্রিপ:</strong><br>
-           • দিন ১: কক্সবাজার পৌঁছে কলাতলী ও লাবণী সৈকত দর্শন, সূর্যাস্ত উপভোগ।<br>
-           • দিন ২: মেরিন ড্রাইভ ধরে হিমছড়ি ঝর্ণা ও ইনানী পাথুরে সৈকত ভ্রমণ।<br>
-           • দিন ৩: রাখাইন মার্কেট ও স্থানীয় শুঁটকি বাজার পরিদর্শন শেষে প্রত্যাবর্তন।`
-        : `<strong>3 Days Beach & Marine Drive Getaway:</strong><br>
-           • Day 1: Arrive in Cox's Bazar, visit Laboni & Kolatoli beach, sunset stroll.<br>
-           • Day 2: Drive the 80km Marine Drive to Himchari waterfalls & Inani coral stones.<br>
-           • Day 3: Visit local Burmese market, seafood delicacies, and departure.`;
-    } else if (vibe === 'hills') {
-      return isBn
-        ? `<strong>৩ দিনের সাজেক ভ্যালি মেঘযাত্রা:</strong><br>
-           • দিন ১: খাগড়াছড়ি পৌঁছে চান্দের গাড়িতে সাজেক ভ্যালি যাত্রা, রুইলুই পাড়ায় সূর্যাস্ত।<br>
-           • দিন ২: ভোরে হেলিপ্যাডে মেঘের সাগর দর্শন, কংলাক পাহাড় চূড়ায় ট্র্যাকিং।<br>
-           • দিন ৩: আলুটিলা রহস্যময় গুহা ও রিছাং ঝর্ণা পরিদর্শন করে ফেরা।`
-        : `<strong>3 Days Sajek Cloud Valley Retreat:</strong><br>
-           • Day 1: Arrive in Khagrachhari, safari jeep to Sajek Valley, sunset at Ruilui.<br>
-           • Day 2: Sunrise sea-of-clouds at Helipad, trek to Kanglak Para highest peak.<br>
-           • Day 3: Explore mysterious Alutila Cave & Richhang waterfall before return.`;
-    } else {
-      return isBn
-        ? `<strong>৩ দিনের শ্রীমঙ্গল চা বাগান ও বৃষ্টিবন:</strong><br>
-           • দিন ১: ট্রেনে শ্রীমঙ্গল পৌঁছে ফিনলে চা বাগানের আঁকাবাঁকা মেঠোপথে সাইক্লিং।<br>
-           • দিন ২: সকালে লাউয়াছড়া রেইনফরেস্টে ট্র্যাকিং ও নীলকণ্ঠের ৭ রঙের চা পরখ।<br>
-           • দিন ৩: মাধবকুণ্ড জলপ্রপাত ও বাইক্কা বিলের জলজ পাখিরালয় ভ্রমণ।`
-        : `<strong>3 Days Sreemangal Tea Estates & Rainforest:</strong><br>
-           • Day 1: Train to Sreemangal, cycle through scenic tea garden paths.<br>
-           • Day 2: Morning trek at Lawachara National Park & taste 7-layer tea.<br>
-           • Day 3: Visit Madhabkunda waterfall & Baikka Beel wetland sanctuary.`;
-    }
-  } else {
-    return isBn
-      ? `<strong>৭ দিনের সোনালী বাংলাদেশ ট্র্যাকিং ও কালচারাল ট্যুর:</strong><br>
-         • দিন ১-২: পুরান ঢাকা (লালবাগ কেল্লা, আহসান মঞ্জিল, তারা মসজিদ) ও সোনারগাঁও পানাম নগর।<br>
-         • দিন ৩-৪: শ্রীমঙ্গলের চা বাগান, লাউয়াছড়া রেইনফরেস্ট এবং সিলেটের রাতারগুল সোয়াম্প ফরেস্ট।<br>
-         • দিন ৫-৭: আইকনিক ট্রেনে কক্সবাজার, ইনানী প্রবাল সৈকত ও টেকনাফ মেরিন ড্রাইভ রোমাঞ্চ।`
-      : `<strong>7 Days Golden Bangladesh Tour:</strong><br>
-         • Day 1-2: Historic Old Dhaka (Lalbagh Fort, Ahsan Manzil) & Sonargaon Panam City.<br>
-         • Day 3-4: Sreemangal tea estates, Lawachara rainforest & Ratargul swamp forest in Sylhet.<br>
-         • Day 5-7: Scenic train to Cox's Bazar, Inani beach safari & Marine Drive exploration.`;
+function getResolvedPlannerDays(): number {
+  if (state.plannerDaysMode === 'custom') {
+    return Math.max(1, Math.min(30, Math.round(state.plannerCustomDays || 10)));
   }
+  const parsed = parseInt(state.plannerDaysMode, 10);
+  return Math.max(1, Math.min(30, Number.isFinite(parsed) ? parsed : 7));
+}
+
+interface ParsedPostCost {
+  min: number;
+  max: number;
+  isFree: boolean;
+}
+
+function normalizeCostDigits(text: string): string {
+  const bnMap: Record<string, string> = {
+    '০': '0',
+    '১': '1',
+    '২': '2',
+    '৩': '3',
+    '৪': '4',
+    '৫': '5',
+    '৬': '6',
+    '৭': '7',
+    '৮': '8',
+    '৯': '9'
+  };
+  return text
+    .replace(/[০-৯]/g, ch => bnMap[ch] || ch)
+    .replace(/[–—−]/g, '-')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function parseNumericToken(token: string): number | null {
+  const cleaned = token.replace(/,/g, '').trim();
+  if (!cleaned) return null;
+  const num = Number(cleaned);
+  return Number.isFinite(num) && num >= 0 ? Math.round(num) : null;
+}
+
+// Parse single amount or min-max range from a spot's post text (estimated_cost / entry_fee)
+function parsePostCostText(rawText?: string): ParsedPostCost | null {
+  if (!rawText || !rawText.trim()) return null;
+  const normalized = normalizeCostDigits(rawText);
+
+  // 1. Explicit range (e.g. "4,000 - 6,000", "৳3500-5000", "1500 থেকে 2500 টাকা")
+  const rangeRegex = /(?:(?:৳|bdt|tk\.?|taka|টাকা)\s*)?(\d[\d,]*)\s*(?:-|to|থেকে)\s*(?:(?:৳|bdt|tk\.?|taka|টাকা)\s*)?(\d[\d,]*)(?!\s*(?:দিন|রাত|জন|ঘণ্টা|ঘন্টা|কিমি|days?|nights?|persons?|hours?|km)(?=$|[\s,.;:()/-]))/i;
+  const rangeMatch = normalized.match(rangeRegex);
+  if (rangeMatch) {
+    const a = parseNumericToken(rangeMatch[1]);
+    const b = parseNumericToken(rangeMatch[2]);
+    if (a !== null && b !== null) {
+      return { min: Math.min(a, b), max: Math.max(a, b), isFree: a === 0 && b === 0 };
+    }
+  }
+
+  // 2. Currency-tagged numbers (e.g. "৳ 3,500", "500 টাকা", "BDT 2500", "50 টাকা / 200 টাকা")
+  const currencyValues: number[] = [];
+  const prefixCurrencyRegex = /(?:৳|bdt|tk\.?|taka)\s*(\d[\d,]*)/gi;
+  const suffixCurrencyRegex = /(\d[\d,]*)\s*(?:৳|bdt|tk\.?|taka|টাকা)/gi;
+  let match: RegExpExecArray | null;
+  while ((match = prefixCurrencyRegex.exec(normalized)) !== null) {
+    const val = parseNumericToken(match[1]);
+    if (val !== null) currencyValues.push(val);
+  }
+  while ((match = suffixCurrencyRegex.exec(normalized)) !== null) {
+    const val = parseNumericToken(match[1]);
+    if (val !== null) currencyValues.push(val);
+  }
+  if (currencyValues.length > 0) {
+    const min = Math.min(...currencyValues);
+    const max = Math.max(...currencyValues);
+    return { min, max, isFree: min === 0 && max === 0 };
+  }
+
+  // 3. Free entry indicators with no positive currency numbers
+  if (/(free|no fee|no entry|বিনামূল্যে|ফ্রি|টিকিট ফ্রি|প্রবেশ ফ্রি)/i.test(normalized)) {
+    return { min: 0, max: 0, isFree: true };
+  }
+
+  // 4. Fallback: standalone numbers after stripping obvious non-currency unit phrases
+  const withoutUnits = normalized.replace(
+    /\d[\d,]*\s*(?:দিন|রাত|জন|ঘণ্টা|ঘন্টা|মিনিট|কিমি|days?|nights?|persons?|people|hours?|hrs?|mins?|km)(?=$|[\s,.;:()/-])/gi,
+    ' '
+  );
+  const plainValues: number[] = [];
+  const plainRegex = /\d[\d,]*/g;
+  while ((match = plainRegex.exec(withoutUnits)) !== null) {
+    const val = parseNumericToken(match[0]);
+    if (val !== null) plainValues.push(val);
+  }
+  if (plainValues.length > 0) {
+    const min = Math.min(...plainValues);
+    const max = Math.max(...plainValues);
+    return { min, max, isFree: min === 0 && max === 0 };
+  }
+
+  return null;
+}
+
+function formatBdtRange(min: number, max: number, isBn: boolean): string {
+  const langKey = isBn ? 'bn' : 'en';
+  if (min === 0 && max === 0) {
+    return isBn ? 'বিনামূল্যে (৳ ০)' : 'Free (BDT 0)';
+  }
+  const minStr = formatLocalizedNumber(min, langKey);
+  const maxStr = formatLocalizedNumber(max, langKey);
+  if (min === max) {
+    return isBn ? `৳ ${minStr}` : `BDT ${minStr}`;
+  }
+  return isBn ? `৳ ${minStr} – ${maxStr}` : `BDT ${minStr} – ${maxStr}`;
+}
+
+function getPublishedPlannerCategories(): Category[] {
+  return cmsStore.categories.filter(c => c.is_published !== false);
+}
+
+function getResolvedPlannerCategoryIds(publishedCategories: Category[] = getPublishedPlannerCategories()): string[] {
+  const validIds = new Set(publishedCategories.map(c => c.id));
+  const selected = state.plannerSelectedCategoryIds.filter(id => validIds.has(id));
+  if (selected.length > 0 || state.plannerSelectionCustomized) {
+    return selected;
+  }
+  return publishedCategories.slice(0, Math.min(4, publishedCategories.length)).map(c => c.id);
+}
+
+function spotMatchesCategory(spot: TouristSpot, cat: Category): boolean {
+  if (!Array.isArray(spot.category_ids)) return false;
+  const catIdLower = cat.id.toLowerCase();
+  const catSlugLower = (cat.slug || '').toLowerCase();
+  return spot.category_ids.some(cid => {
+    const c = cid.toLowerCase();
+    return c === catIdLower || (catSlugLower !== '' && c === catSlugLower);
+  });
+}
+
+function isMeaningfulCostText(raw?: string): boolean {
+  if (!raw) return false;
+  const trimmed = raw.trim();
+  if (!trimmed) return false;
+  return !/^(?:-|–|—|n\/a|na|none|null|undefined|উল্লেখ নেই|তথ্য নেই|যাচাইকৃত না হলে ফাঁকা রাখুন|leave blank if unverified)$/i.test(
+    trimmed
+  );
+}
+
+function getSpotStayWeight(spot: TouristSpot, cat: Category): number {
+  const catId = (cat.id || '').toLowerCase();
+  const ids = Array.isArray(spot.category_ids) ? spot.category_ids.map(x => x.toLowerCase()) : [];
+  const hasAny = (list: string[]) => list.includes(catId) || ids.some(id => list.includes(id));
+
+  let weight = 1.4;
+  if (hasAny(['hills', 'forests', 'islands'])) {
+    weight = 2.8;
+  } else if (hasAny(['beaches', 'lakes'])) {
+    weight = 2.4;
+  } else if (hasAny(['rivers', 'wildlife'])) {
+    weight = 1.9;
+  } else if (hasAny(['historical', 'archaeological', 'waterfalls'])) {
+    weight = 1.5;
+  } else {
+    weight = 1.2;
+  }
+
+  if (spot.is_featured) weight += 0.6;
+  if ((spot.rating || 0) >= 4.7) weight += 0.3;
+  return weight;
+}
+
+// Allocate totalDays across stops using weighted largest-remainder apportionment (every stop >= 1 day)
+function allocateStayDays(
+  stops: Array<{ spot: TouristSpot; matchedCategory: Category }>,
+  totalDays: number
+): number[] {
+  const count = stops.length;
+  if (count === 0) return [];
+  if (totalDays <= count) {
+    return stops.map((_, i) => (i < totalDays ? 1 : 0));
+  }
+
+  const allocated = new Array<number>(count).fill(1);
+  const remaining = totalDays - count;
+  const weights = stops.map(item => getSpotStayWeight(item.spot, item.matchedCategory));
+  const totalWeight = weights.reduce((sum, w) => sum + w, 0) || count;
+
+  const quotas = weights.map((w, index) => {
+    const exact = (remaining * w) / totalWeight;
+    const base = Math.floor(exact);
+    allocated[index] += base;
+    return { index, remainder: exact - base, weight: w };
+  });
+
+  const leftover = remaining - quotas.reduce((sum, q) => sum + Math.floor((remaining * q.weight) / totalWeight), 0);
+  quotas.sort((a, b) => (b.remainder !== a.remainder ? b.remainder - a.remainder : b.weight - a.weight));
+
+  for (let i = 0; i < leftover; i++) {
+    allocated[quotas[i % quotas.length].index] += 1;
+  }
+  return allocated;
+}
+
+// Generate Multi-Category Trip Itinerary with Stay-Duration Grouping & Post-Sourced Cost Estimation
+function generateTripPlan(days: number, selectedCategoryIds: string[]): string {
+  const isBn = state.lang === 'bn';
+  const totalDays = Math.max(1, Math.min(30, Math.round(days || 7)));
+  const fmtNum = (n: number) => (isBn ? toBengaliNumerals(String(n)) : String(n));
+
+  const publishedCategories = getPublishedPlannerCategories();
+  const selectedCategories = publishedCategories.filter(c => selectedCategoryIds.includes(c.id));
+
+  if (selectedCategories.length === 0) {
+    return `
+      <div class="text-center py-4 px-2">
+        <i class="bi bi-ui-checks-grid fs-2 text-warning d-block mb-2" aria-hidden="true"></i>
+        <div class="fw-bold text-primary-bd mb-1">
+          ${isBn ? 'কমপক্ষে একটি ভ্রমণ ক্যাটাগরি নির্বাচন করুন' : 'Select at least one travel category'}
+        </div>
+        <p class="small text-muted mb-0">
+          ${isBn
+            ? 'বাম পাশ থেকে আপনার পছন্দের এক বা একাধিক ক্যাটাগরি (অথবা "সবগুলো নির্বাচন") বাছাই করুন—তাহলে পোস্টের তথ্য অনুযায়ী ভ্রমণ পরিকল্পনা ও সম্ভাব্য খরচ দেখতে পাবেন।'
+            : 'Choose one or more categories (or "Select All") on the left to generate an itinerary and post-based cost estimate.'}
+        </p>
+      </div>
+    `;
+  }
+
+  const publishedSpots = cmsStore.spots
+    .filter(s => s.is_published !== false)
+    .sort((a, b) => {
+      const featDiff = Number(Boolean(b.is_featured)) - Number(Boolean(a.is_featured));
+      if (featDiff !== 0) return featDiff;
+      const ratingDiff = (b.rating || 0) - (a.rating || 0);
+      if (ratingDiff !== 0) return ratingDiff;
+      return (a.name_en || '').localeCompare(b.name_en || '');
+    });
+
+  // Cap target stops so multi-day trips (e.g. 14 or 30 days) recommend multi-day stays instead of 1-day rushing
+  const targetMaxStops =
+    totalDays <= 5
+      ? totalDays
+      : Math.min(totalDays, Math.max(Math.min(totalDays, selectedCategories.length), Math.ceil(totalDays / 2)));
+
+  // Round-robin selection across chosen categories for balanced multi-category coverage
+  const categoryQueues = selectedCategories.map(cat => ({
+    cat,
+    spots: publishedSpots.filter(spot => spotMatchesCategory(spot, cat))
+  }));
+
+  const selectedStops: Array<{ spot: TouristSpot; matchedCategory: Category }> = [];
+  const usedSpotIds = new Set<string>();
+
+  let progressed = true;
+  while (selectedStops.length < targetMaxStops && progressed) {
+    progressed = false;
+    for (const queue of categoryQueues) {
+      if (selectedStops.length >= targetMaxStops) break;
+      const nextSpot = queue.spots.find(s => !usedSpotIds.has(s.id));
+      if (nextSpot) {
+        usedSpotIds.add(nextSpot.id);
+        selectedStops.push({ spot: nextSpot, matchedCategory: queue.cat });
+        progressed = true;
+      }
+    }
+  }
+
+  if (selectedStops.length === 0) {
+    const selectedNames = selectedCategories.map(c => escapeHtml(isBn ? c.name_bn : c.name_en)).join(', ');
+    return `
+      <div class="text-center py-4 px-2">
+        <i class="bi bi-geo-alt fs-2 text-secondary d-block mb-2" aria-hidden="true"></i>
+        <div class="fw-bold text-primary-bd mb-1">
+          ${isBn ? 'নির্বাচিত ক্যাটাগরিতে এখনো কোনো প্রকাশিত গন্তব্য পোস্ট নেই' : 'No published destination posts found for the selected categories'}
+        </div>
+        <p class="small text-muted mb-0">
+          ${isBn
+            ? `নির্বাচিত ক্যাটাগরি: ${selectedNames}। অনুগ্রহ করে আরও ক্যাটাগরি নির্বাচন করুন অথবা অ্যাডমিন প্যানেল থেকে গন্তব্য পোস্ট প্রকাশ করুন।`
+            : `Selected: ${selectedNames}. Please select additional categories or publish destination posts in the CMS.`}
+        </p>
+      </div>
+    `;
+  }
+
+  // Group geographically by division order so consecutive stays follow a practical route
+  const divisionOrderMap = new Map<string, number>();
+  CANONICAL_DIVISION_ORDER.forEach((divId, idx) => divisionOrderMap.set(divId.toLowerCase(), idx));
+
+  const sortedStops = [...selectedStops].sort((a, b) => {
+    const aOrder = divisionOrderMap.get((a.spot.division_id || '').toLowerCase()) ?? 99;
+    const bOrder = divisionOrderMap.get((b.spot.division_id || '').toLowerCase()) ?? 99;
+    if (aOrder !== bOrder) return aOrder - bOrder;
+    return getSpotStayWeight(b.spot, b.matchedCategory) - getSpotStayWeight(a.spot, a.matchedCategory);
+  });
+
+  const dayAllocations = allocateStayDays(sortedStops, totalDays);
+
+  interface StayBlock {
+    spot: TouristSpot;
+    matchedCategory: Category;
+    stayDays: number;
+    startDay: number;
+    endDay: number;
+  }
+
+  const stayBlocks: StayBlock[] = [];
+  let cursorDay = 1;
+  sortedStops.forEach((item, index) => {
+    const stayDays = dayAllocations[index] || 0;
+    if (stayDays <= 0) return;
+    stayBlocks.push({
+      spot: item.spot,
+      matchedCategory: item.matchedCategory,
+      stayDays,
+      startDay: cursorDay,
+      endDay: cursorDay + stayDays - 1
+    });
+    cursorDay += stayDays;
+  });
+
+  // Aggregate post-sourced cost data across unique destinations in the plan
+  let estMinTotal = 0;
+  let estMaxTotal = 0;
+  let estCount = 0;
+  let feeMinTotal = 0;
+  let feeMaxTotal = 0;
+  let feeCount = 0;
+  let postsWithNumericCost = 0;
+
+  for (const { spot } of stayBlocks) {
+    const rawEst = (isBn ? spot.estimated_cost_bn : spot.estimated_cost_en) || spot.estimated_cost_bn || spot.estimated_cost_en || '';
+    const rawFee = (isBn ? spot.entry_fee_bn : spot.entry_fee_en) || spot.entry_fee_bn || spot.entry_fee_en || '';
+    const estText = isMeaningfulCostText(rawEst) ? rawEst.trim() : '';
+    const feeText = isMeaningfulCostText(rawFee) ? rawFee.trim() : '';
+    const parsedEst = parsePostCostText(estText);
+    const parsedFee = parsePostCostText(feeText);
+
+    if (parsedEst || parsedFee) postsWithNumericCost++;
+
+    if (parsedEst) {
+      estMinTotal += parsedEst.min;
+      estMaxTotal += parsedEst.max;
+      estCount++;
+    }
+    if (parsedFee) {
+      feeMinTotal += parsedFee.min;
+      feeMaxTotal += parsedFee.max;
+      feeCount++;
+    }
+  }
+
+  const combinedMin = estMinTotal + feeMinTotal;
+  const combinedMax = estMaxTotal + feeMaxTotal;
+  const missingCostCount = stayBlocks.length - postsWithNumericCost;
+
+  // Category-wise day distribution summary
+  const categoryDayTotals = new Map<string, { cat: Category; days: number }>();
+  for (const block of stayBlocks) {
+    const existing = categoryDayTotals.get(block.matchedCategory.id);
+    if (existing) {
+      existing.days += block.stayDays;
+    } else {
+      categoryDayTotals.set(block.matchedCategory.id, { cat: block.matchedCategory, days: block.stayDays });
+    }
+  }
+
+  const isAllSelected = selectedCategories.length === publishedCategories.length && publishedCategories.length > 0;
+  const categorySummaryLabel = isAllSelected
+    ? (isBn ? `সবগুলো ক্যাটাগরি (${fmtNum(selectedCategories.length)}টি)` : `All Categories (${selectedCategories.length})`)
+    : selectedCategories.length <= 2
+      ? selectedCategories.map(c => (isBn ? c.name_bn : c.name_en)).join(' + ')
+      : isBn
+        ? `${selectedCategories.slice(0, 2).map(c => c.name_bn).join(', ')} ও আরও ${fmtNum(selectedCategories.length - 2)}টি`
+        : `${selectedCategories.slice(0, 2).map(c => c.name_en).join(', ')} + ${selectedCategories.length - 2} more`;
+
+  const planTitle = isBn
+    ? `${fmtNum(totalDays)} দিনের ভ্রমণ ও অবস্থান পরিকল্পনা • ${categorySummaryLabel}`
+    : `${totalDays}-Day Stay & Route Plan • ${categorySummaryLabel}`;
+
+  const categoryBreakdownHtml = `
+    <div class="d-flex flex-wrap align-items-center gap-1 mb-3">
+      <span class="badge bg-primary-bd text-white">
+        ${isBn
+          ? `${fmtNum(stayBlocks.length)}টি স্থানে মোট ${fmtNum(totalDays)} দিন`
+          : `${totalDays} Days across ${stayBlocks.length} Places`}
+      </span>
+      ${Array.from(categoryDayTotals.values())
+        .map(
+          entry => `
+            <span class="badge bg-light text-dark border small fw-normal">
+              <i class="bi ${escapeHtml(entry.cat.icon || 'bi-tag')} text-success me-1" aria-hidden="true"></i>${escapeHtml(
+                isBn ? entry.cat.name_bn : entry.cat.name_en
+              )}: <strong>${isBn ? `${fmtNum(entry.days)} দিন` : `${entry.days}d`}</strong>
+            </span>
+          `
+        )
+        .join('')}
+    </div>
+  `;
+
+  let costSummaryHtml = '';
+  if (postsWithNumericCost > 0) {
+    costSummaryHtml = `
+      <div class="planner-budget-summary mb-3">
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
+          <div class="fw-bold text-primary-bd small">
+            <i class="bi bi-cash-stack text-success me-1" aria-hidden="true"></i>
+            ${isBn ? 'পোস্টের তথ্য অনুযায়ী সম্ভাব্য খরচ' : 'Estimated Cost (From Post Data)'}
+          </div>
+          <span class="badge bg-white text-secondary border small">
+            ${isBn
+              ? `${fmtNum(postsWithNumericCost)}/${fmtNum(stayBlocks.length)}টি পোস্ট থেকে প্রাপ্ত`
+              : `From ${postsWithNumericCost}/${stayBlocks.length} posts`}
+          </span>
+        </div>
+        <div class="row g-2">
+          <div class="col-sm-4">
+            <div class="planner-budget-metric">
+              <div class="planner-budget-label">${isBn ? 'মোট সম্ভাব্য খরচ' : 'Estimated Total'}</div>
+              <div class="planner-budget-value text-primary-bd">${escapeHtml(formatBdtRange(combinedMin, combinedMax, isBn))}</div>
+            </div>
+          </div>
+          <div class="col-sm-4">
+            <div class="planner-budget-metric">
+              <div class="planner-budget-label">${isBn ? 'ভ্রমণ ও থাকা-খাওয়া' : 'Trip Cost (Posts)'}</div>
+              <div class="planner-budget-value text-dark">
+                ${estCount > 0 ? escapeHtml(formatBdtRange(estMinTotal, estMaxTotal, isBn)) : `<span class="text-muted fw-normal">${isBn ? 'উল্লেখ নেই' : 'Not listed'}</span>`}
+              </div>
+            </div>
+          </div>
+          <div class="col-sm-4">
+            <div class="planner-budget-metric">
+              <div class="planner-budget-label">${isBn ? 'মোট প্রবেশ ফি' : 'Entry Fees (Posts)'}</div>
+              <div class="planner-budget-value text-dark">
+                ${feeCount > 0 ? escapeHtml(formatBdtRange(feeMinTotal, feeMaxTotal, isBn)) : `<span class="text-muted fw-normal">${isBn ? 'উল্লেখ নেই' : 'Not listed'}</span>`}
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="small text-muted mt-2" style="font-size: 0.78rem;">
+          <i class="bi bi-info-circle me-1" aria-hidden="true"></i>
+          ${missingCostCount > 0
+            ? (isBn
+                ? `এই রুটের ${fmtNum(stayBlocks.length)}টি গন্তব্যের মধ্যে ${fmtNum(missingCostCount)}টি পোস্টে এখনো খরচের তথ্য যুক্ত করা হয়নি।`
+                : `${missingCostCount} of ${stayBlocks.length} destination posts in this route do not have cost info entered yet.`)
+            : (isBn
+                ? `রুটের সকল ${fmtNum(stayBlocks.length)}টি গন্তব্য পোস্টের খরচের তথ্য হিসাব করা হয়েছে।`
+                : `Includes cost info from all ${stayBlocks.length} destination posts in this route.`)}
+        </div>
+      </div>
+    `;
+  } else {
+    costSummaryHtml = `
+      <div class="planner-budget-summary planner-budget-empty mb-3">
+        <div class="fw-bold text-primary-bd small mb-1">
+          <i class="bi bi-cash-coin text-warning me-1" aria-hidden="true"></i>
+          ${isBn ? 'সম্ভাব্য খরচ ও প্রবেশ ফি' : 'Estimated Cost & Entry Fee'}
+        </div>
+        <div class="small text-secondary mb-0">
+          ${isBn
+            ? 'এই রুটের গন্তব্য পোস্টগুলোতে এখনো "সম্ভাব্য খরচ" বা "প্রবেশ ফি" যুক্ত করা হয়নি।'
+            : 'Estimated cost or entry fee has not been added to the destination posts in this route yet.'}
+        </div>
+      </div>
+    `;
+  }
+
+  const itemsHtml = stayBlocks
+    .map(block => {
+      const { spot, matchedCategory, stayDays, startDay, endDay } = block;
+      const spotName = isBn ? (spot.name_bn || spot.name_en) : (spot.name_en || spot.name_bn);
+      const spotSlug = encodeURIComponent((spot.slug || spot.id).toLowerCase());
+      const dist = cmsStore.districts.find(d => d.id === spot.district_id);
+      const div = cmsStore.divisions.find(d => d.id === spot.division_id);
+      const distName = dist ? (isBn ? dist.name_bn : dist.name_en) : spot.district_id;
+      const divName = div ? (isBn ? div.name_bn : div.name_en) : '';
+      const locationText = divName ? `${distName}, ${divName}` : distName;
+      const catName = isBn ? matchedCategory.name_bn : matchedCategory.name_en;
+
+      const dayRangeBadge =
+        stayDays === 1
+          ? isBn
+            ? `দিন ${fmtNum(startDay)} (১ দিন)`
+            : `Day ${startDay} (1 Day)`
+          : isBn
+            ? `দিন ${fmtNum(startDay)}–${fmtNum(endDay)} (${fmtNum(stayDays)} দিন)`
+            : `Days ${startDay}–${endDay} (${stayDays} Days)`;
+
+      const stayNote =
+        stayDays >= 3
+          ? isBn
+            ? `এখানে ${fmtNum(stayDays)} দিন থাকলে মূল আকর্ষণ ও আশপাশ ভালোভাবে ঘুরে দেখা যাবে`
+            : `Recommended ${stayDays}-day stay to explore highlights & surroundings comfortably`
+          : stayDays === 2
+            ? isBn
+              ? `২ দিন থাকার উপযোগী (মূল স্পট ও রাত্রিযাপন)`
+              : `2-day stay for relaxed sightseeing & overnight`
+            : isBn
+              ? `১ দিনের সংক্ষিপ্ত ভ্রমণ`
+              : `1-day focused visit`;
+
+      const rawEst = (isBn ? spot.estimated_cost_bn : spot.estimated_cost_en) || spot.estimated_cost_bn || spot.estimated_cost_en || '';
+      const rawFee = (isBn ? spot.entry_fee_bn : spot.entry_fee_en) || spot.entry_fee_bn || spot.entry_fee_en || '';
+      const estText = isMeaningfulCostText(rawEst) ? rawEst.trim() : '';
+      const feeText = isMeaningfulCostText(rawFee) ? rawFee.trim() : '';
+
+      let postCostLine = '';
+      if (estText || feeText) {
+        const parts: string[] = [];
+        if (estText) {
+          parts.push(`${isBn ? 'সম্ভাব্য খরচ' : 'Est. cost'}: <strong>${escapeHtml(estText)}</strong>`);
+        }
+        if (feeText) {
+          parts.push(`${isBn ? 'প্রবেশ ফি' : 'Entry fee'}: <strong>${escapeHtml(feeText)}</strong>`);
+        }
+        postCostLine = `
+          <div class="planner-spot-cost mt-1">
+            <i class="bi bi-receipt-cutoff text-success me-1" aria-hidden="true"></i>${parts.join(' • ')}
+          </div>
+        `;
+      } else {
+        postCostLine = `
+          <div class="planner-spot-cost text-muted mt-1">
+            <i class="bi bi-dash-circle me-1" aria-hidden="true"></i>${isBn ? 'পোস্টে খরচের তথ্য যুক্ত নেই' : 'Cost not listed in post'}
+          </div>
+        `;
+      }
+
+      return `
+        <div class="planner-day-item">
+          <div class="d-flex flex-wrap align-items-baseline justify-content-between gap-2">
+            <div>
+              <span class="badge bg-primary-bd text-white me-2">${escapeHtml(dayRangeBadge)}</span>
+              <a
+                href="/places/${spotSlug}/"
+                class="fw-bold text-primary-bd text-decoration-none spot-detail-link"
+                data-spot-slug="${spotSlug}"
+                data-spot-id="${escapeHtml(spot.id)}"
+              >${escapeHtml(spotName)}</a>
+              <span class="text-muted small ms-1">(${escapeHtml(locationText)})</span>
+            </div>
+            <span class="badge bg-light text-secondary border small">
+              <i class="bi ${escapeHtml(matchedCategory.icon || 'bi-tag')} me-1" aria-hidden="true"></i>${escapeHtml(catName)}
+            </span>
+          </div>
+          <div class="planner-stay-note text-secondary mt-1">
+            <i class="bi bi-calendar2-check text-primary-bd me-1" aria-hidden="true"></i>${escapeHtml(stayNote)}
+          </div>
+          ${postCostLine}
+        </div>
+      `;
+    })
+    .join('');
+
+  return `
+    <div class="fw-bold text-primary-bd mb-2">${escapeHtml(planTitle)}</div>
+    ${categoryBreakdownHtml}
+    ${costSummaryHtml}
+    <div class="small text-dark planner-itinerary-list">
+      ${itemsHtml}
+    </div>
+  `;
 }
 
 function stopHeroCarousel(): void {
@@ -2953,24 +3476,77 @@ function renderApp(): void {
             <h2 class="fw-bold text-primary-bd mb-2">${t('planner_title')}</h2>
             <p class="text-secondary mb-4">${t('planner_desc')}</p>
 
+            ${(() => {
+              const plannerCategories = getPublishedPlannerCategories();
+              const resolvedCategoryIds = getResolvedPlannerCategoryIds(plannerCategories);
+              const selectedSet = new Set(resolvedCategoryIds);
+              const fmtPlannerCount = (n: number) => (isBn ? toBengaliNumerals(String(n)) : String(n));
+              return `
             <form id="trip-planner-form">
               <div class="mb-3">
                 <label for="planner-days-select" class="form-label fw-bold text-primary-bd small">${t('planner_days')}</label>
                 <select class="form-select" id="planner-days-select">
-                  <option value="3">${isBn ? '৩ দিন (সাপ্তাহিক ছুটি)' : '3 Days (Weekend Short Trip)'}</option>
-                  <option value="7" selected>${isBn ? '৭ দিন (গোল্ডেন রুট)' : '7 Days (Golden Route)'}</option>
-                  <option value="10">${isBn ? '১০ দিন (সম্পূর্ণ বাংলাদেশ দর্শন)' : '10 Days (Grand Bangladesh Tour)'}</option>
+                  <option value="3" ${state.plannerDaysMode === '3' ? 'selected' : ''}>${isBn ? '৩ দিন (সাপ্তাহিক ছুটি)' : '3 Days (Weekend Short Trip)'}</option>
+                  <option value="5" ${state.plannerDaysMode === '5' ? 'selected' : ''}>${isBn ? '৫ দিন (মাঝারি ভ্রমণ)' : '5 Days (Mid-Length Explorer)'}</option>
+                  <option value="7" ${state.plannerDaysMode === '7' ? 'selected' : ''}>${isBn ? '৭ দিন (গোল্ডেন রুট)' : '7 Days (Golden Route)'}</option>
+                  <option value="10" ${state.plannerDaysMode === '10' ? 'selected' : ''}>${isBn ? '১০ দিন (সম্পূর্ণ বাংলাদেশ দর্শন)' : '10 Days (Grand Bangladesh Tour)'}</option>
+                  <option value="14" ${state.plannerDaysMode === '14' ? 'selected' : ''}>${isBn ? '১৪ দিন (মহা-ভ্রমণ: দেশজুড়ে)' : '14 Days (Ultimate Cross-Country)'}</option>
+                  <option value="custom" ${state.plannerDaysMode === 'custom' ? 'selected' : ''}>${isBn ? 'নিজের মতো দিন সংখ্যা (১–৩০ দিন)' : 'Custom Days (1–30 Days)'}</option>
                 </select>
               </div>
 
+              <div class="mb-3 ${state.plannerDaysMode === 'custom' ? '' : 'd-none'}" id="planner-custom-days-wrap">
+                <label for="planner-custom-days" class="form-label fw-bold text-primary-bd small">
+                  ${isBn ? 'দিন সংখ্যা লিখুন (১ থেকে ৩০ দিন)' : 'Enter Number of Days (1 to 30)'}
+                </label>
+                <input
+                  type="number"
+                  class="form-control"
+                  id="planner-custom-days"
+                  min="1"
+                  max="30"
+                  value="${state.plannerCustomDays}"
+                >
+              </div>
+
               <div class="mb-4">
-                <label for="planner-vibe-select" class="form-label fw-bold text-primary-bd small">${t('planner_vibe')}</label>
-                <select class="form-select" id="planner-vibe-select">
-                  <option value="beach">${t('vibe_beach')}</option>
-                  <option value="hills">${t('vibe_hills')}</option>
-                  <option value="nature" selected>${t('vibe_nature')}</option>
-                  <option value="heritage">${t('vibe_heritage')}</option>
-                </select>
+                <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
+                  <label class="form-label fw-bold text-primary-bd small mb-0">
+                    ${t('planner_vibe')}
+                    <span class="text-muted fw-normal">(${isBn ? 'একাধিক নির্বাচন করুন' : 'Multi-select'})</span>
+                  </label>
+                  <div class="d-flex align-items-center gap-1">
+                    <span class="badge bg-light text-primary-bd border" id="planner-cats-count-badge">
+                      ${isBn
+                        ? `${fmtPlannerCount(selectedSet.size)}/${fmtPlannerCount(plannerCategories.length)}টি`
+                        : `${selectedSet.size}/${plannerCategories.length}`}
+                    </span>
+                    <button type="button" class="btn btn-sm btn-outline-bd py-0 px-2" id="planner-cats-select-all" style="font-size: 0.76rem;">
+                      ${isBn ? 'সবগুলো নির্বাচন' : 'Select All'}
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2" id="planner-cats-clear" style="font-size: 0.76rem;">
+                      ${isBn ? 'পরিষ্কার' : 'Clear'}
+                    </button>
+                  </div>
+                </div>
+                <div class="planner-cat-grid" id="planner-category-grid" role="group" aria-label="${escapeHtml(t('planner_vibe'))}">
+                  ${plannerCategories.map(cat => {
+                    const checked = selectedSet.has(cat.id);
+                    return `
+                      <label class="planner-cat-chip ${checked ? 'active' : ''}">
+                        <input
+                          type="checkbox"
+                          class="planner-cat-checkbox"
+                          name="planner-category"
+                          value="${escapeHtml(cat.id)}"
+                          ${checked ? 'checked' : ''}
+                        >
+                        <i class="bi ${escapeHtml(cat.icon || 'bi-tag')}" aria-hidden="true"></i>
+                        <span>${escapeHtml(isBn ? cat.name_bn : cat.name_en)}</span>
+                      </label>
+                    `;
+                  }).join('')}
+                </div>
               </div>
 
               <button type="submit" class="btn btn-primary-bd w-100 py-2">
@@ -2983,13 +3559,15 @@ function renderApp(): void {
             <div class="p-4 rounded-3 bg-light border h-100 d-flex flex-column justify-content-center">
               <h3 class="h5 fw-bold text-primary-bd mb-3">
                 <i class="bi bi-journal-bookmark-fill text-warning me-2" aria-hidden="true"></i>
-                ${isBn ? 'প্রস্তাবিত ভ্রমণ পথ ও রুটিন' : 'Recommended Route & Plan'}
+                ${isBn ? 'প্রস্তাবিত ভ্রমণ পথ ও সম্ভাব্য খরচ' : 'Recommended Route & Estimated Cost'}
               </h3>
               <div id="planner-output-box" class="p-3 rounded bg-white border">
-                ${state.itineraryResult || generateTripPlan(7, 'nature')}
+                ${generateTripPlan(getResolvedPlannerDays(), resolvedCategoryIds)}
               </div>
             </div>
           </div>
+              `;
+            })()}
         </div>
       </div>
     </section>
@@ -3214,18 +3792,102 @@ function attachPublicPortalEventListeners(): void {
     renderApp();
   });
 
-  // Trip planner form submission
+  // Trip planner form controls & submission
+  const daysSelectEl = document.getElementById('planner-days-select') as HTMLSelectElement | null;
+  const customDaysWrapEl = document.getElementById('planner-custom-days-wrap');
+  const customDaysInputEl = document.getElementById('planner-custom-days') as HTMLInputElement | null;
+  const plannerCategoryCheckboxes = Array.from(
+    document.querySelectorAll<HTMLInputElement>('input[name="planner-category"]')
+  );
+  const plannerCountBadge = document.getElementById('planner-cats-count-badge');
+  const plannerOutBox = document.getElementById('planner-output-box');
+
+  const syncPlannerCategoryUiAndOutput = () => {
+    const selectedIds: string[] = [];
+    for (const cb of plannerCategoryCheckboxes) {
+      const chip = cb.closest('.planner-cat-chip');
+      if (cb.checked) {
+        selectedIds.push(cb.value);
+        chip?.classList.add('active');
+      } else {
+        chip?.classList.remove('active');
+      }
+    }
+    state.plannerSelectedCategoryIds = selectedIds;
+    state.plannerSelectionCustomized = true;
+
+    if (plannerCountBadge) {
+      const totalCats = plannerCategoryCheckboxes.length;
+      plannerCountBadge.textContent =
+        state.lang === 'bn'
+          ? `${toBengaliNumerals(String(selectedIds.length))}/${toBengaliNumerals(String(totalCats))}টি`
+          : `${selectedIds.length}/${totalCats}`;
+    }
+
+    const days = getResolvedPlannerDays();
+    state.itineraryResult = generateTripPlan(days, selectedIds);
+    if (plannerOutBox) {
+      plannerOutBox.innerHTML = state.itineraryResult;
+    }
+  };
+
+  daysSelectEl?.addEventListener('change', () => {
+    const val = (daysSelectEl.value || '7') as AppState['plannerDaysMode'];
+    state.plannerDaysMode = val;
+    if (customDaysWrapEl) {
+      customDaysWrapEl.classList.toggle('d-none', val !== 'custom');
+    }
+    syncPlannerCategoryUiAndOutput();
+  });
+
+  customDaysInputEl?.addEventListener('input', () => {
+    const parsed = parseInt(customDaysInputEl.value || '10', 10);
+    if (Number.isFinite(parsed) && parsed >= 1 && parsed <= 30) {
+      state.plannerCustomDays = parsed;
+      syncPlannerCategoryUiAndOutput();
+    }
+  });
+
+  for (const cb of plannerCategoryCheckboxes) {
+    cb.addEventListener('change', () => {
+      syncPlannerCategoryUiAndOutput();
+    });
+  }
+
+  document.getElementById('planner-cats-select-all')?.addEventListener('click', () => {
+    for (const cb of plannerCategoryCheckboxes) {
+      cb.checked = true;
+    }
+    syncPlannerCategoryUiAndOutput();
+  });
+
+  document.getElementById('planner-cats-clear')?.addEventListener('click', () => {
+    for (const cb of plannerCategoryCheckboxes) {
+      cb.checked = false;
+    }
+    syncPlannerCategoryUiAndOutput();
+  });
+
   document.getElementById('trip-planner-form')?.addEventListener('submit', (e) => {
     e.preventDefault();
-    const daysSelect = document.getElementById('planner-days-select') as HTMLSelectElement;
-    const vibeSelect = document.getElementById('planner-vibe-select') as HTMLSelectElement;
-    const days = parseInt(daysSelect?.value || '7', 10);
-    const vibe = vibeSelect?.value || 'nature';
-    state.itineraryResult = generateTripPlan(days, vibe);
-    const outBox = document.getElementById('planner-output-box');
-    if (outBox) {
-      outBox.innerHTML = state.itineraryResult;
+    const mode = (daysSelectEl?.value || '7') as AppState['plannerDaysMode'];
+    state.plannerDaysMode = mode;
+    if (mode === 'custom') {
+      const customVal = parseInt(customDaysInputEl?.value || '10', 10);
+      state.plannerCustomDays = Math.max(1, Math.min(30, Number.isFinite(customVal) ? customVal : 10));
+      if (customDaysInputEl) customDaysInputEl.value = String(state.plannerCustomDays);
     }
+
+    const selectedIds = plannerCategoryCheckboxes.filter(cb => cb.checked).map(cb => cb.value);
+    if (selectedIds.length === 0) {
+      showToast(
+        state.lang === 'bn'
+          ? 'অনুগ্রহ করে কমপক্ষে ১টি ক্যাটাগরি নির্বাচন করুন।'
+          : 'Please select at least 1 category.',
+        'warning'
+      );
+    }
+    syncPlannerCategoryUiAndOutput();
   });
 
   // Article Read More buttons
@@ -3967,7 +4629,11 @@ function attachCmsEventListeners(): void {
     const box = document.getElementById('new-hero-preview-box');
     if (!box) return;
     const cleanUrl = url.trim();
-    if (!cleanUrl || (!cleanUrl.startsWith('http://') && !cleanUrl.startsWith('https://'))) {
+    const isValidUrl =
+      cleanUrl.startsWith('http://') ||
+      cleanUrl.startsWith('https://') ||
+      cleanUrl.startsWith('/api/media/');
+    if (!cleanUrl || !isValidUrl) {
       box.innerHTML = `
         <i class="bi bi-image fs-3 mb-1"></i>
         <span class="small">${state.lang === 'bn' ? 'ছবির প্রিভিউ এবং পিক্সেল সাইজ এখানে দেখা যাবে' : 'Image preview & pixel dimensions will appear here'}</span>
@@ -3975,9 +4641,10 @@ function attachCmsEventListeners(): void {
       return;
     }
 
+    const displayUrl = optimizeImageUrl(cleanUrl, 800);
     box.innerHTML = `
       <div class="position-relative w-100" style="height: 108px;">
-        <img id="new-hero-preview-img" src="${escapeHtml(cleanUrl)}" alt="Banner Preview" class="w-100 h-100 rounded-2" style="object-fit: contain;">
+        <img id="new-hero-preview-img" src="${escapeHtml(displayUrl)}" alt="Banner Preview" class="w-100 h-100 rounded-2" style="object-fit: contain;">
         <span id="new-hero-preview-dim" class="position-absolute bottom-0 end-0 m-1 badge bg-dark bg-opacity-75 tabular-nums d-none"></span>
       </div>
     `;
@@ -4031,8 +4698,8 @@ function attachCmsEventListeners(): void {
       }
       showToast(
         state.lang === 'bn'
-          ? 'ছবি ফায়ারবেস স্টোরেজে আপলোড হয়েছে। এখন যোগ বাটনে ক্লিক করে সংরক্ষণ করুন।'
-          : 'Image uploaded to Firebase Storage. Click Add & Save Hero Banner to publish.',
+          ? 'ছবি সফলভাবে আপলোড হয়েছে। এখন যোগ বাটনে ক্লিক করে সংরক্ষণ করুন।'
+          : 'Image uploaded successfully. Click Add & Save Hero Banner to publish.',
         'success'
       );
     } catch (err: any) {
@@ -4054,7 +4721,10 @@ function attachCmsEventListeners(): void {
     const labelBn = (document.getElementById('new-hero-label-bn') as HTMLInputElement)?.value.trim() || '';
     const labelEn = (document.getElementById('new-hero-label-en') as HTMLInputElement)?.value.trim() || '';
 
-    if (!url || (!url.startsWith('http://') && !url.startsWith('https://'))) {
+    if (
+      !url ||
+      (!url.startsWith('http://') && !url.startsWith('https://') && !url.startsWith('/api/media/'))
+    ) {
       showToast(
         state.lang === 'bn'
           ? 'বৈধ HTTPS ইমেজ ইউআরএল দিন বা ফাইল আপলোড করুন।'
@@ -4110,8 +4780,8 @@ function attachCmsEventListeners(): void {
       const idx = input.getAttribute('data-hero-url');
       const val = (input as HTMLInputElement).value.trim();
       const img = idx !== null ? (document.querySelector(`[data-hero-preview-img="${idx}"]`) as HTMLImageElement | null) : null;
-      if (img && (val.startsWith('http://') || val.startsWith('https://'))) {
-        img.src = val;
+      if (img && (val.startsWith('http://') || val.startsWith('https://') || val.startsWith('/api/media/'))) {
+        img.src = optimizeImageUrl(val, 800);
       }
     });
   });
