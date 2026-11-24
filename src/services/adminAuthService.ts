@@ -216,6 +216,13 @@ async function performBackendVerification(
       };
     }
 
+    if (response.status === 404) {
+      return {
+        status: 'error',
+        message: 'Admin verification endpoint (/api/admin/verify) returned 404. Ensure serverless API routing is deployed.'
+      };
+    }
+
     if (response.status === 403 || !response.ok || !data.authorized) {
       if (response.status === 403 || data.code === 'NOT_AUTHORIZED') {
         if (!user.emailVerified) {

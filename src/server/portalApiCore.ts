@@ -1,4 +1,5 @@
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import { DISTRICTS, DIVISIONS } from '../data/bangladeshData.ts';
@@ -107,7 +108,10 @@ interface CachedMediaAsset {
   mimeType: string;
 }
 
-const MEDIA_UPLOAD_DIR = path.resolve(process.cwd(), '.media-uploads');
+const MEDIA_UPLOAD_DIR =
+  process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME
+    ? path.join(os.tmpdir(), '.media-uploads')
+    : path.resolve(process.cwd(), '.media-uploads');
 const MAX_MEDIA_CACHE_ITEMS = 120;
 const mediaAssetCache = new Map<string, CachedMediaAsset>();
 const ALLOWED_MEDIA_MIME_EXT: Record<string, string> = {
