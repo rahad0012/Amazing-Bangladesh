@@ -42,6 +42,7 @@ export interface PlacesDirectoryPageProps {
   currentPage: number;
   isLoading: boolean;
   error: string | null;
+  adSlotHtml?: string;
 }
 
 const HERO_BG_IMAGE =
@@ -438,7 +439,8 @@ export function renderAllPlacesPage(props: PlacesDirectoryPageProps): string {
     searchQuery,
     divisionFilter,
     districtFilter,
-    categoryFilter
+    categoryFilter,
+    adSlotHtml
   } = props;
 
   const isBn = lang === 'bn';
@@ -689,6 +691,8 @@ export function renderAllPlacesPage(props: PlacesDirectoryPageProps): string {
         ` : ''}
       </div>
     </div>
+
+    ${adSlotHtml || ''}
 
     <!-- 7 & 8. Tourist Spot Grid + Pagination / Loading / Empty / Error States -->
     <section class="container py-5" id="places-directory-grid">

@@ -49,6 +49,8 @@ export function getAdminRouteForTab(tab: string): string {
       return '/admin/seo-settings/';
     case 'website-settings':
       return '/admin/website-settings/';
+    case 'ads-settings':
+      return '/admin/ads-settings/';
     case 'overview':
     default:
       return '/admin/dashboard/';
@@ -92,6 +94,9 @@ export function parseCurrentRoute(): ParsedRoute {
   }
   if (pathname === '/admin/website-settings') {
     return { type: 'cms', id: 'website-settings' };
+  }
+  if (pathname === '/admin/ads-settings') {
+    return { type: 'cms', id: 'ads-settings' };
   }
   if (pathname.startsWith('/admin/')) {
     return { type: 'cms', id: 'overview' };

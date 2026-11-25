@@ -47,6 +47,7 @@ export interface TravelGuidesPageProps {
   currentPage: number;
   isLoading: boolean;
   error: string | null;
+  adSlotHtml?: string;
 }
 
 const GUIDES_HERO_BG =
@@ -554,7 +555,7 @@ export function renderTravelGuidesResultsRegion(props: TravelGuidesPageProps): s
  * Render Full Travel Guides & Blog Page (/travel-guides/)
  */
 export function renderTravelGuidesPage(props: TravelGuidesPageProps): string {
-  const { lang, articles, districts, searchQuery, categoryFilter, isLoading, error } = props;
+  const { lang, articles, districts, searchQuery, categoryFilter, isLoading, error, adSlotHtml } = props;
   const isBn = lang === 'bn';
 
   const publishedArticles = articles.filter(a => a.is_published === true && a.status !== 'draft');
@@ -664,6 +665,8 @@ export function renderTravelGuidesPage(props: TravelGuidesPageProps): string {
     ${!isLoading && !error && publishedArticles.length > 0
       ? renderPopularArticlesSection(publishedArticles, districts, lang)
       : ''}
+
+    ${adSlotHtml || ''}
 
     <!-- 5. Category Filters -->
     <section class="container mb-4" id="guides-category-filters" aria-label="${isBn ? 'নিবন্ধ ক্যাটাগরি ফিল্টার' : 'Article category filters'}">

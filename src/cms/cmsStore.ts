@@ -33,7 +33,8 @@ export type CmsTab =
   | 'media'
   | 'hero-banners'
   | 'seo-settings'
-  | 'website-settings';
+  | 'website-settings'
+  | 'ads-settings';
 
 export interface MediaReferenceInfo {
   entityType: 'Division' | 'District' | 'Category' | 'Tourist Spot' | 'Travel Guide';

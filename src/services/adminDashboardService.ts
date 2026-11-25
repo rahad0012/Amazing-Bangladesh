@@ -30,9 +30,12 @@ import { TouristSpotsService } from './touristSpotsService';
 import { ArticlesService } from './articlesService';
 import { AdminsService, type AdminRecord } from './adminsService';
 import {
+  DEFAULT_ADS_SETTINGS,
   DEFAULT_SEO_SETTINGS,
   DEFAULT_WEBSITE_SETTINGS,
+  normalizeAdsSettings,
   SiteSettingsService,
+  type AdsSettingsConfig,
   type SeoSettingsConfig,
   type WebsiteSettingsConfig
 } from './siteSettingsService';
@@ -40,8 +43,10 @@ import type { LegalPagesConfig } from './legalPagesDefaults';
 import { isVerifiedAdminActive, getVerifiedAdminSession } from './adminAuthService';
 
 export {
+  DEFAULT_ADS_SETTINGS,
   DEFAULT_SEO_SETTINGS,
   DEFAULT_WEBSITE_SETTINGS,
+  type AdsSettingsConfig,
   type SeoSettingsConfig,
   type WebsiteSettingsConfig
 };
@@ -90,6 +95,7 @@ export interface AdminAuditLogEntry {
     | 'admin'
     | 'seo_settings'
     | 'website_settings'
+    | 'ads_settings'
     | 'legal_pages'
     | 'auth';
   entity_id: string;
@@ -115,6 +121,7 @@ export interface AdminDashboardSnapshot {
   auditLogStatus: 'available' | 'rules_pending' | 'error';
   seoSettings: SeoSettingsConfig;
   websiteSettings: WebsiteSettingsConfig;
+  adsSettings: AdsSettingsConfig;
   legalPages: LegalPagesConfig | null;
   syncedAt: string;
 }
@@ -131,8 +138,10 @@ export interface AdminDashboardRuntimeState {
   auditLogStatus: 'available' | 'rules_pending' | 'error';
   seoSettings: SeoSettingsConfig;
   websiteSettings: WebsiteSettingsConfig;
+  adsSettings: AdsSettingsConfig;
   savingSeo: boolean;
   savingWebsite: boolean;
+  savingAds: boolean;
 }
 
 export const adminDashboardState: AdminDashboardRuntimeState = {
@@ -147,8 +156,10 @@ export const adminDashboardState: AdminDashboardRuntimeState = {
   auditLogStatus: 'available',
   seoSettings: { ...DEFAULT_SEO_SETTINGS },
   websiteSettings: { ...DEFAULT_WEBSITE_SETTINGS },
+  adsSettings: normalizeAdsSettings(DEFAULT_ADS_SETTINGS),
   savingSeo: false,
-  savingWebsite: false
+  savingWebsite: false,
+  savingAds: false
 };
 
 export function resetAdminDashboardState(): void {
@@ -163,6 +174,7 @@ export function resetAdminDashboardState(): void {
   adminDashboardState.auditLogStatus = 'available';
   adminDashboardState.savingSeo = false;
   adminDashboardState.savingWebsite = false;
+  adminDashboardState.savingAds = false;
 }
 
 function parseSortableTime(value?: string): number {
@@ -346,10 +358,11 @@ export async function fetchAdminDashboardSnapshot(): Promise<AdminDashboardSnaps
     AdminsService.listAll(true).catch(() => [])
   ]);
 
-  const [seoSettings, websiteSettings, legalPages] = await Promise.all([
+  const [seoSettings, websiteSettings, legalPages, adsSettings] = await Promise.all([
     SiteSettingsService.getSeoSettings(true),
     SiteSettingsService.getWebsiteSettings(true),
-    SiteSettingsService.getLegalPagesSettings(true)
+    SiteSettingsService.getLegalPagesSettings(true),
+    SiteSettingsService.getAdsSettings(true)
   ]);
 
   let recentActivity: AdminAuditLogEntry[] = [];
@@ -399,6 +412,7 @@ export async function fetchAdminDashboardSnapshot(): Promise<AdminDashboardSnaps
     auditLogStatus,
     seoSettings,
     websiteSettings,
+    adsSettings,
     legalPages,
     syncedAt: new Date().toISOString()
   };
@@ -503,6 +517,31 @@ export async function saveWebsiteSettings(
     entityId: 'website_settings',
     entityTitle: 'Website Settings',
     details: `Default lang: ${saved.default_language}, Maintenance: ${saved.maintenance_mode ? 'On' : 'Off'}`
+  });
+
+  return saved;
+}
+
+export async function saveAdsSettings(
+  config: Omit<AdsSettingsConfig, 'id' | 'updated_at' | 'updated_by'>
+): Promise<AdsSettingsConfig> {
+  if (!isVerifiedAdminActive()) {
+    throw new Error('ADMIN_UNAUTHORIZED');
+  }
+  const session = getVerifiedAdminSession();
+  const saved = await SiteSettingsService.saveAdsSettings({
+    ...config,
+    updated_by: session?.email || auth.currentUser?.email || ''
+  });
+
+  adminDashboardState.adsSettings = saved;
+  const activeSlotsCount = Object.values(saved.slots).filter(s => s.enabled).length;
+  await recordAdminAuditLog({
+    action: 'settings_update',
+    entityType: 'ads_settings',
+    entityId: 'ads_settings',
+    entityTitle: 'Advertisement Control Settings',
+    details: `Master: ${saved.ads_enabled ? 'ON' : 'OFF'}, AdSense: ${saved.adsense_enabled ? 'ON' : 'OFF'}, Adsterra: ${saved.adsterra_enabled ? 'ON' : 'OFF'}, Slots: ${activeSlotsCount}/6`
   });
 
   return saved;

@@ -197,7 +197,7 @@
     },
     "SiteSettings": {
       "title": "SiteSettings",
-      "description": "Global SEO, website configuration, and editable legal documentation for the Bangladesh Tourism portal",
+      "description": "Global SEO, website configuration, advertisement control settings, and editable legal documentation for the Bangladesh Tourism portal",
       "type": "object",
       "properties": {
         "id": { "type": "string" },
@@ -237,6 +237,16 @@
         "terms_reviewed_by": { "type": "string" },
         "terms_reviewed_at": { "type": "string" },
         "contact_email": { "type": "string" },
+        "ads_enabled": { "type": "boolean" },
+        "adsense_enabled": { "type": "boolean" },
+        "adsense_client_id": { "type": "string" },
+        "adsense_auto_ads": { "type": "boolean" },
+        "adsterra_enabled": { "type": "boolean" },
+        "adsterra_global_script": { "type": "string" },
+        "custom_head_script": { "type": "string" },
+        "ads_txt_content": { "type": "string" },
+        "show_ad_label": { "type": "boolean" },
+        "slots": { "type": "object", "description": "Per-placement ad slot configurations (AdSense, Adsterra, Custom Code, or Direct Banner)" },
         "updated_at": { "type": "string" },
         "updated_by": { "type": "string" }
       }

@@ -51,6 +51,7 @@ export interface ArticleDetailPageProps {
   spots: TouristSpot[];
   isLoading: boolean;
   error: string | null;
+  adSlotHtml?: string;
 }
 
 export interface TocItem {
@@ -491,7 +492,8 @@ export function renderArticleDetailPage(props: ArticleDetailPageProps): string {
     divisions,
     spots,
     isLoading,
-    error
+    error,
+    adSlotHtml
   } = props;
 
   const isBn = lang === 'bn';
@@ -764,6 +766,8 @@ export function renderArticleDetailPage(props: ArticleDetailPageProps): string {
           </figure>
         </div>
       </div>
+
+      ${adSlotHtml || ''}
 
       <!-- Main Editorial Body + Sidebar -->
       <div class="container mt-4 mt-lg-5">

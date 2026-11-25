@@ -90,8 +90,15 @@ import {
   SiteSettingsService,
   DEFAULT_WEBSITE_SETTINGS,
   DEFAULT_SEO_SETTINGS,
+  DEFAULT_ADS_SETTINGS,
   DEFAULT_HERO_SLIDES,
+  AD_SLOT_META,
+  normalizeAdsSettings,
   getActiveHeroSlides,
+  type AdNetworkType,
+  type AdSlotConfig,
+  type AdSlotKey,
+  type AdsSettingsConfig,
   type HeroBannerSlide,
   type WebsiteSettingsConfig,
   type SeoSettingsConfig
@@ -117,6 +124,11 @@ import {
 
 import { escapeHtml, optimizeImageUrl } from './utils/formatUtils';
 import { showToast } from './utils/stateFeedback';
+import {
+  renderAdSlotHtml,
+  hydrateRenderedAdSlots,
+  syncGlobalAdScripts
+} from './utils/adsRenderer';
 
 import { type User } from 'firebase/auth';
 
@@ -212,6 +224,7 @@ interface AppState {
   adminLoginFeedback: AdminLoginFeedback | null;
   websiteSettings: WebsiteSettingsConfig;
   seoSettings: SeoSettingsConfig;
+  adsSettings: AdsSettingsConfig;
 }
 
 let heroCarouselTimer: number | null = null;
@@ -316,7 +329,8 @@ const state: AppState = {
   adminLoginSubmitting: false,
   adminLoginFeedback: null,
   websiteSettings: { ...DEFAULT_WEBSITE_SETTINGS },
-  seoSettings: { ...DEFAULT_SEO_SETTINGS }
+  seoSettings: { ...DEFAULT_SEO_SETTINGS },
+  adsSettings: normalizeAdsSettings(DEFAULT_ADS_SETTINGS)
 };
 
 // Bootstrap modal helpers
@@ -1060,6 +1074,7 @@ export function updateDynamicSeo(pageTitle?: string, metaDesc?: string, routePat
       articles: { en: 'Travel Guides Management', bn: 'ভ্রমণ গাইড ব্যবস্থাপনা' },
       media: { en: 'Image Manager', bn: 'ইমেজ ম্যানেজার' },
       'hero-banners': { en: 'Hero Banner Images', bn: 'হিরো ব্যানার ইমেজ' },
+      'ads-settings': { en: 'Ads Control Panel', bn: 'বিজ্ঞাপন নিয়ন্ত্রণ প্যানেল' },
       'seo-settings': { en: 'SEO Settings', bn: 'এসইও সেটিংস' },
       'website-settings': { en: 'Website Settings', bn: 'ওয়েবসাইট সেটিংস' }
     };
@@ -1241,6 +1256,7 @@ async function loadPortalDataFromFirestore(force: boolean = false): Promise<void
 
     state.websiteSettings = publicSettings.website;
     state.seoSettings = publicSettings.seo;
+    state.adsSettings = publicSettings.ads;
     if (publicSettings.legal) {
       cmsStore.legalPages = publicSettings.legal;
     }
@@ -1254,6 +1270,7 @@ async function loadPortalDataFromFirestore(force: boolean = false): Promise<void
     state.firestoreLoading = false;
     updateDynamicSeo();
     if (state.activeView !== 'admin-login' && state.activeView !== 'cms') {
+      renderLayoutShell();
       renderApp();
     }
   }
@@ -1966,6 +1983,7 @@ function renderLayoutShell(): void {
   if (state.activeView === 'admin-login' || state.activeView === 'cms') {
     if (navbarRoot) navbarRoot.innerHTML = '';
     if (footerRoot) footerRoot.innerHTML = '';
+    syncGlobalAdScripts(state.adsSettings, false);
     return;
   }
 
@@ -1979,7 +1997,8 @@ function renderLayoutShell(): void {
   }
 
   if (footerRoot) {
-    footerRoot.innerHTML = renderFooter(state.lang);
+    const footerAdHtml = renderAdSlotHtml('footer_banner', state.adsSettings, state.lang);
+    footerRoot.innerHTML = `${footerAdHtml}${renderFooter(state.lang)}`;
     document.getElementById('btn-admin-portal')?.addEventListener('click', (e) => {
       e.preventDefault();
       if (state.activeView === 'cms') {
@@ -1993,6 +2012,7 @@ function renderLayoutShell(): void {
       }
       void openProtectedAdminRoute(true);
     });
+    hydrateRenderedAdSlots(state.adsSettings, true);
   }
 }
 
@@ -2894,6 +2914,12 @@ function startHeroCarousel(): void {
 // MAIN RENDER FUNCTION (Handles Portal vs CMS)
 // ============================================================================
 function renderApp(): void {
+  renderAppContent();
+  const isPublicView = state.activeView !== 'admin-login' && state.activeView !== 'cms';
+  hydrateRenderedAdSlots(state.adsSettings, isPublicView);
+}
+
+function renderAppContent(): void {
   const root = document.getElementById('app-root');
   if (!root) return;
 
@@ -3053,7 +3079,8 @@ function renderApp(): void {
       categoryFilter: state.placesCategoryFilter,
       currentPage: state.placesCurrentPage,
       isLoading: state.firestoreLoading,
-      error: state.firestoreError
+      error: state.firestoreError,
+      adSlotHtml: renderAdSlotHtml('directory_top', state.adsSettings, state.lang)
     });
     attachPlacesPageEventListeners();
     return;
@@ -3073,7 +3100,8 @@ function renderApp(): void {
       bookmarkedIds: state.bookmarkedIds,
       galleryIndex: state.spotDetailGalleryIndex,
       isLoading: state.spotDetailLoading,
-      error: state.spotDetailError
+      error: state.spotDetailError,
+      adSlotHtml: renderAdSlotHtml('spot_detail_mid', state.adsSettings, state.lang, { compact: true })
     });
     attachSpotDetailPageEventListeners();
     return;
@@ -3123,7 +3151,8 @@ function renderApp(): void {
       categoryFilter: state.guidesCategoryFilter,
       currentPage: state.guidesCurrentPage,
       isLoading: state.firestoreLoading,
-      error: state.firestoreError
+      error: state.firestoreError,
+      adSlotHtml: renderAdSlotHtml('directory_top', state.adsSettings, state.lang)
     });
     attachTravelGuidesPageEventListeners();
     return;
@@ -3140,7 +3169,8 @@ function renderApp(): void {
       divisions: cmsStore.divisions.filter(d => d.is_published !== false),
       spots: cmsStore.spots.filter(s => s.is_published === true),
       isLoading: state.guideDetailLoading,
-      error: state.guideDetailError
+      error: state.guideDetailError,
+      adSlotHtml: renderAdSlotHtml('article_detail_mid', state.adsSettings, state.lang)
     });
     attachArticleDetailPageEventListeners();
     return;
@@ -3443,6 +3473,8 @@ function renderApp(): void {
       </div>
     </section>
 
+    ${renderAdSlotHtml('home_banner', state.adsSettings, state.lang)}
+
     <!-- SECTION 1: Administrative Divisions -->
     <section class="container py-4" id="divisions">
       <div class="d-flex justify-content-between align-items-end mb-4">
@@ -3513,6 +3545,8 @@ function renderApp(): void {
         </div>
       `}
     </section>
+
+    ${renderAdSlotHtml('home_mid', state.adsSettings, state.lang)}
 
     <!-- SECTION 3: All Districts Directory (Organized by Division Tabs) -->
     <section class="container py-5" id="districts">
@@ -4116,6 +4150,9 @@ async function loadAdminDashboardData(force: boolean = false, silent: boolean = 
       const snapshot = await rt.fetchAdminDashboardSnapshot();
       snapshot.districts = FirestoreService.normalizeDistrictAdministrativeDivision(snapshot.districts);
       rt.syncCmsStoreFromAdminSnapshot(snapshot);
+      state.websiteSettings = snapshot.websiteSettings;
+      state.seoSettings = snapshot.seoSettings;
+      state.adsSettings = snapshot.adsSettings;
       state.firestoreHydrated = true;
     } catch (err: any) {
       if (err?.message === 'ADMIN_UNAUTHORIZED') {
@@ -4647,6 +4684,238 @@ function attachCmsEventListeners(): void {
       rt.adminDashboardState.savingWebsite = false;
       renderApp();
     }
+  });
+
+  // Ads Control Settings Handlers (`ads-settings` tab)
+  const syncAdToggleLabels = (): void => {
+    const isBn = state.lang === 'bn';
+    const masterChk = document.getElementById('ads-master-enabled') as HTMLInputElement | null;
+    const adsenseChk = document.getElementById('ads-adsense-enabled') as HTMLInputElement | null;
+    const adsterraChk = document.getElementById('ads-adsterra-enabled') as HTMLInputElement | null;
+
+    if (masterChk) {
+      const box = document.getElementById('ads-master-switch-box');
+      if (box) {
+        box.classList.toggle('bg-success-subtle', masterChk.checked);
+        box.classList.toggle('border-success-subtle', masterChk.checked);
+        box.classList.toggle('bg-light', !masterChk.checked);
+      }
+      const badgeText = masterChk.checked
+        ? (isBn ? 'সাইট বিজ্ঞাপন: চালু' : 'Global Ads: ON')
+        : (isBn ? 'সাইট বিজ্ঞাপন: বন্ধ' : 'Global Ads: OFF');
+      ['ads-top-status-badge', 'ads-master-status-badge'].forEach(id => {
+        const badge = document.getElementById(id);
+        if (!badge) return;
+        badge.className = masterChk.checked ? 'badge-published' : 'badge-draft';
+        badge.textContent = badgeText;
+      });
+    }
+
+    if (adsenseChk) {
+      const lbl = document.getElementById('ads-adsense-enabled-label');
+      if (lbl) lbl.textContent = adsenseChk.checked ? (isBn ? 'চালু' : 'ON') : (isBn ? 'বন্ধ' : 'OFF');
+    }
+
+    if (adsterraChk) {
+      const lbl = document.getElementById('ads-adsterra-enabled-label');
+      if (lbl) lbl.textContent = adsterraChk.checked ? (isBn ? 'চালু' : 'ON') : (isBn ? 'বন্ধ' : 'OFF');
+    }
+  };
+
+  const ensureNetworkAndMasterSynced = (network?: string, autoEnableMaster: boolean = false): void => {
+    if (network === 'adsense') {
+      const adsenseChk = document.getElementById('ads-adsense-enabled') as HTMLInputElement | null;
+      if (adsenseChk && !adsenseChk.checked) adsenseChk.checked = true;
+    } else if (network === 'adsterra') {
+      const adsterraChk = document.getElementById('ads-adsterra-enabled') as HTMLInputElement | null;
+      if (adsterraChk && !adsterraChk.checked) adsterraChk.checked = true;
+    }
+    if (autoEnableMaster) {
+      const masterChk = document.getElementById('ads-master-enabled') as HTMLInputElement | null;
+      if (masterChk && !masterChk.checked) masterChk.checked = true;
+    }
+    syncAdToggleLabels();
+  };
+
+  document.getElementById('ads-master-enabled')?.addEventListener('change', syncAdToggleLabels);
+  document.getElementById('ads-adsense-enabled')?.addEventListener('change', syncAdToggleLabels);
+  document.getElementById('ads-adsterra-enabled')?.addEventListener('change', syncAdToggleLabels);
+
+  document.getElementById('ads-adsense-client-id')?.addEventListener('input', (e) => {
+    const val = (e.target as HTMLInputElement).value.trim();
+    if (/^ca-pub-\d{8,24}$/i.test(val)) {
+      ensureNetworkAndMasterSynced('adsense', false);
+    }
+  });
+
+  document.getElementById('ads-adsense-auto-ads')?.addEventListener('change', (e) => {
+    if ((e.target as HTMLInputElement).checked) {
+      ensureNetworkAndMasterSynced('adsense', true);
+    }
+  });
+
+  document.getElementById('ads-adsterra-global-script')?.addEventListener('input', (e) => {
+    if ((e.target as HTMLTextAreaElement).value.trim().length > 0) {
+      ensureNetworkAndMasterSynced('adsterra', false);
+    }
+  });
+
+  document.querySelectorAll('[data-ad-slot-network]').forEach(sel => {
+    sel.addEventListener('change', () => {
+      const slotKey = sel.getAttribute('data-ad-slot-network');
+      if (!slotKey) return;
+      const network = (sel as HTMLSelectElement).value;
+      const isBanner = network === 'banner_image';
+      document.querySelector(`[data-ad-slot-code-wrap="${slotKey}"]`)?.classList.toggle('d-none', isBanner);
+      document.querySelector(`[data-ad-slot-banner-wrap="${slotKey}"]`)?.classList.toggle('d-none', !isBanner);
+      const slotEnabled = (document.querySelector(`[data-ad-slot-enabled="${slotKey}"]`) as HTMLInputElement | null)?.checked;
+      if (slotEnabled) {
+        ensureNetworkAndMasterSynced(network, false);
+      }
+    });
+  });
+
+  document.querySelectorAll('[data-ad-slot-enabled]').forEach(chk => {
+    chk.addEventListener('change', () => {
+      const slotKey = chk.getAttribute('data-ad-slot-enabled');
+      if (!slotKey) return;
+      const checked = Boolean((chk as HTMLInputElement).checked);
+      const card = document.querySelector(`[data-ad-slot-card="${slotKey}"]`);
+      card?.classList.toggle('is-enabled', checked);
+      if (checked) {
+        const network = (document.querySelector(`[data-ad-slot-network="${slotKey}"]`) as HTMLSelectElement | null)?.value;
+        ensureNetworkAndMasterSynced(network, true);
+      }
+    });
+  });
+
+  document.querySelectorAll('[data-ad-slot-code]').forEach(area => {
+    area.addEventListener('input', () => {
+      const slotKey = area.getAttribute('data-ad-slot-code');
+      if (!slotKey) return;
+      if ((area as HTMLTextAreaElement).value.trim().length > 0) {
+        const network = (document.querySelector(`[data-ad-slot-network="${slotKey}"]`) as HTMLSelectElement | null)?.value;
+        ensureNetworkAndMasterSynced(network, false);
+      }
+    });
+  });
+
+  const collectAdsSettingsFromDom = (): Omit<AdsSettingsConfig, 'id' | 'updated_at' | 'updated_by'> => {
+    const slots = {} as Record<AdSlotKey, AdSlotConfig>;
+    for (const meta of AD_SLOT_META) {
+      const enabled = Boolean(
+        (document.querySelector(`[data-ad-slot-enabled="${meta.key}"]`) as HTMLInputElement | null)?.checked
+      );
+      const network = ((document.querySelector(`[data-ad-slot-network="${meta.key}"]`) as HTMLSelectElement | null)
+        ?.value || 'adsense') as AdNetworkType;
+      const code =
+        (document.querySelector(`[data-ad-slot-code="${meta.key}"]`) as HTMLTextAreaElement | null)?.value.trim() || '';
+      const imageUrl =
+        (document.querySelector(`[data-ad-slot-image="${meta.key}"]`) as HTMLInputElement | null)?.value.trim() || '';
+      const linkUrl =
+        (document.querySelector(`[data-ad-slot-link="${meta.key}"]`) as HTMLInputElement | null)?.value.trim() || '';
+      const altText =
+        (document.querySelector(`[data-ad-slot-alt="${meta.key}"]`) as HTMLInputElement | null)?.value.trim() || '';
+
+      slots[meta.key] = {
+        enabled,
+        network,
+        code,
+        image_url: imageUrl,
+        link_url: linkUrl,
+        alt_text: altText
+      };
+    }
+
+    return {
+      ads_enabled: Boolean((document.getElementById('ads-master-enabled') as HTMLInputElement | null)?.checked),
+      show_ad_label: Boolean((document.getElementById('ads-show-label') as HTMLInputElement | null)?.checked),
+      adsense_enabled: Boolean((document.getElementById('ads-adsense-enabled') as HTMLInputElement | null)?.checked),
+      adsense_client_id:
+        (document.getElementById('ads-adsense-client-id') as HTMLInputElement | null)?.value.trim() || '',
+      adsense_auto_ads: Boolean((document.getElementById('ads-adsense-auto-ads') as HTMLInputElement | null)?.checked),
+      adsterra_enabled: Boolean((document.getElementById('ads-adsterra-enabled') as HTMLInputElement | null)?.checked),
+      adsterra_global_script:
+        (document.getElementById('ads-adsterra-global-script') as HTMLTextAreaElement | null)?.value.trim() || '',
+      custom_head_script:
+        (document.getElementById('ads-custom-head-script') as HTMLTextAreaElement | null)?.value.trim() || '',
+      ads_txt_content:
+        (document.getElementById('ads-txt-content') as HTMLTextAreaElement | null)?.value.trim() || '',
+      slots
+    };
+  };
+
+  const persistAdsSettingsFromForm = async (
+    payload: Omit<AdsSettingsConfig, 'id' | 'updated_at' | 'updated_by'>,
+    successMsg: string
+  ): Promise<void> => {
+    if (!ensureSession() || rt.adminDashboardState.savingAds) return;
+    rt.adminDashboardState.savingAds = true;
+    renderApp();
+
+    try {
+      const savedAds = await rt.saveAdsSettings(payload);
+      state.adsSettings = savedAds;
+      syncGlobalAdScripts(state.adsSettings, false);
+      showToast(successMsg, 'success');
+    } catch (err: any) {
+      if (err?.message === 'ADMIN_UNAUTHORIZED') {
+        void handleAdminSessionExpired();
+        return;
+      }
+      const rawMsg = typeof err?.message === 'string' ? err.message : '';
+      const isPermDenied = rawMsg.includes('Missing or insufficient permissions') || err?.code === 'permission-denied';
+      showToast(
+        isPermDenied
+          ? (state.lang === 'bn'
+              ? 'Firestore Security Rules অনুমতি দেয়নি! কনসোল থেকে পুরো নতুন firestore.rules ফাইলটি Publish করুন।'
+              : 'Firestore permission denied for site_settings/ads_settings. Publish the full updated firestore.rules in Cloud Console.')
+          : (rawMsg || 'Failed to save ads settings.'),
+        'error'
+      );
+    } finally {
+      rt.adminDashboardState.savingAds = false;
+      renderApp();
+    }
+  };
+
+  document.getElementById('form-admin-ads-settings')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const collected = collectAdsSettingsFromDom();
+    if (
+      collected.adsense_enabled &&
+      collected.adsense_client_id &&
+      !/^ca-pub-\d{8,24}$/i.test(collected.adsense_client_id)
+    ) {
+      showToast(
+        state.lang === 'bn'
+          ? 'AdSense Publisher ID অবশ্যই "ca-pub-" দিয়ে শুরু হতে হবে (যেমন: ca-pub-1234567890123456)।'
+          : 'AdSense Publisher ID must start with "ca-pub-" followed by digits.',
+        'error'
+      );
+      return;
+    }
+
+    await persistAdsSettingsFromForm(
+      collected,
+      state.lang === 'bn'
+        ? 'বিজ্ঞাপন সেটিংস ফায়ারস্টোরে সংরক্ষিত হয়েছে।'
+        : 'Advertisement settings saved to Cloud Firestore.'
+    );
+  });
+
+  document.querySelectorAll('[data-ads-turn-off-all]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      if (!ensureSession() || rt.adminDashboardState.savingAds) return;
+      const collected = collectAdsSettingsFromDom();
+      collected.ads_enabled = false;
+      void persistAdsSettingsFromForm(
+        collected,
+        state.lang === 'bn'
+          ? 'সম্পূর্ণ ওয়েবসাইটের সকল বিজ্ঞাপন বন্ধ করা হয়েছে।'
+          : 'All advertisements across the website have been turned off.'
+      );
+    });
   });
 
   // Hero Banners Management Handlers (`hero-banners` tab)
@@ -8494,18 +8763,54 @@ async function initializeApp(): Promise<void> {
   } else if (initialRoute.type === 'cms') {
     await openProtectedAdminRoute(false, (initialRoute.id as CmsTab) || 'overview');
   } else if (initialRoute.type === 'division' && initialRoute.id) {
+    void SiteSettingsService.getAdsSettings().then(ads => {
+      state.adsSettings = ads;
+      if (state.activeView !== 'cms' && state.activeView !== 'admin-login') {
+        renderLayoutShell();
+        renderApp();
+      }
+    });
     await loadDivisionDetailFromFirestore(initialRoute.id, true);
   } else if (initialRoute.type === 'district' && initialRoute.id) {
+    void SiteSettingsService.getAdsSettings().then(ads => {
+      state.adsSettings = ads;
+      if (state.activeView !== 'cms' && state.activeView !== 'admin-login') {
+        renderLayoutShell();
+        renderApp();
+      }
+    });
     await loadDistrictDetailFromFirestore(initialRoute.id, true);
   } else if (initialRoute.type === 'category-detail' && initialRoute.id) {
+    void SiteSettingsService.getAdsSettings().then(ads => {
+      state.adsSettings = ads;
+      if (state.activeView !== 'cms' && state.activeView !== 'admin-login') {
+        renderLayoutShell();
+        renderApp();
+      }
+    });
     await loadCategoryDetailFromFirestore(initialRoute.id, true);
   } else if (initialRoute.type === 'spot-detail' && initialRoute.id) {
+    void SiteSettingsService.getAdsSettings().then(ads => {
+      state.adsSettings = ads;
+      if (state.activeView !== 'cms' && state.activeView !== 'admin-login') {
+        renderLayoutShell();
+        renderApp();
+      }
+    });
     await loadSpotDetailFromFirestore(initialRoute.id, true);
   } else if (initialRoute.type === 'guide-detail' && initialRoute.id) {
+    void SiteSettingsService.getAdsSettings().then(ads => {
+      state.adsSettings = ads;
+      if (state.activeView !== 'cms' && state.activeView !== 'admin-login') {
+        renderLayoutShell();
+        renderApp();
+      }
+    });
     await loadArticleDetailFromFirestore(initialRoute.id, true);
   } else {
     // Fetch live division & destination data from Firestore (renders loading state while in flight)
     await loadPortalDataFromFirestore();
+    renderLayoutShell();
   }
 
   // Handle deep-linked spot modal on /places/#spot-...

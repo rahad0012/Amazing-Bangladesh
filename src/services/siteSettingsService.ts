@@ -107,6 +107,136 @@ export interface WebsiteSettingsConfig {
   updated_by?: string;
 }
 
+export type AdNetworkType = 'adsense' | 'adsterra' | 'custom_code' | 'banner_image';
+
+export type AdSlotKey =
+  | 'home_banner'
+  | 'home_mid'
+  | 'directory_top'
+  | 'spot_detail_mid'
+  | 'article_detail_mid'
+  | 'footer_banner';
+
+export interface AdSlotConfig {
+  enabled: boolean;
+  network: AdNetworkType;
+  code: string;
+  image_url: string;
+  link_url: string;
+  alt_text: string;
+}
+
+export interface AdsSettingsConfig {
+  id: 'ads_settings';
+  ads_enabled: boolean;
+  adsense_enabled: boolean;
+  adsense_client_id: string;
+  adsense_auto_ads: boolean;
+  adsterra_enabled: boolean;
+  adsterra_global_script: string;
+  custom_head_script: string;
+  ads_txt_content: string;
+  show_ad_label: boolean;
+  slots: Record<AdSlotKey, AdSlotConfig>;
+  updated_at: string;
+  updated_by?: string;
+}
+
+export const AD_SLOT_META: Array<{
+  key: AdSlotKey;
+  titleBn: string;
+  titleEn: string;
+  descBn: string;
+  descEn: string;
+  recommendedSize: string;
+}> = [
+  {
+    key: 'home_banner',
+    titleBn: 'হোমপেজ টপ ব্যানার',
+    titleEn: 'Homepage Top Banner',
+    descBn: 'সার্চ ও পরিসংখ্যান ব্যানারের নিচে প্রদর্শিত হবে।',
+    descEn: 'Displayed below the search & stats banner on the homepage.',
+    recommendedSize: '728×90 / Responsive'
+  },
+  {
+    key: 'home_mid',
+    titleBn: 'হোমপেজ মিড সেকশন',
+    titleEn: 'Homepage Mid Section',
+    descBn: 'জনপ্রিয় দর্শনীয় স্থান ও ৬৪ জেলা সেকশনের মাঝখানে।',
+    descEn: 'Placed between Featured Destinations and 64 Districts sections.',
+    recommendedSize: '728×90 / Native Banner'
+  },
+  {
+    key: 'directory_top',
+    titleBn: 'ডিরেক্টরি ও সার্চ পেজ',
+    titleEn: 'Directory & Search Pages',
+    descBn: 'সকল দর্শনীয় স্থান, বিভাগ, জেলা, ভ্রমণ গাইড ও সার্চ পেজে।',
+    descEn: 'Shown on Places, Divisions, Districts, Travel Guides, and Search pages.',
+    recommendedSize: '728×90 / 300×250'
+  },
+  {
+    key: 'spot_detail_mid',
+    titleBn: 'দর্শনীয় স্থান ডিটেইলস পেজ',
+    titleEn: 'Tourist Spot Detail Page',
+    descBn: 'প্রতিটি দর্শনীয় স্থানের বিস্তারিত পেজের ভেতরে।',
+    descEn: 'Rendered inside individual tourist spot detail pages.',
+    recommendedSize: 'Responsive / In-Article'
+  },
+  {
+    key: 'article_detail_mid',
+    titleBn: 'ভ্রমণ গাইড ও আর্টিকেল পেজ',
+    titleEn: 'Travel Guide Article Page',
+    descBn: 'ব্লগ ও ভ্রমণ গাইড পড়ার পেজের ভেতরে।',
+    descEn: 'Rendered inside travel guide & blog article pages.',
+    recommendedSize: 'In-Article / 300×250'
+  },
+  {
+    key: 'footer_banner',
+    titleBn: 'ফুটার টপ ব্যানার (সব পাবলিক পেজ)',
+    titleEn: 'Above Footer (All Public Pages)',
+    descBn: 'প্রতিটি পাবলিক পেজের ফুটারের ঠিক উপরে প্রদর্শিত হবে।',
+    descEn: 'Displayed above the site footer across all public routes.',
+    recommendedSize: '728×90 / 320×50 Mobile'
+  }
+];
+
+function createEmptyAdSlot(): AdSlotConfig {
+  return {
+    enabled: false,
+    network: 'adsense',
+    code: '',
+    image_url: '',
+    link_url: '',
+    alt_text: ''
+  };
+}
+
+export function createDefaultAdSlots(): Record<AdSlotKey, AdSlotConfig> {
+  return {
+    home_banner: createEmptyAdSlot(),
+    home_mid: createEmptyAdSlot(),
+    directory_top: createEmptyAdSlot(),
+    spot_detail_mid: createEmptyAdSlot(),
+    article_detail_mid: createEmptyAdSlot(),
+    footer_banner: createEmptyAdSlot()
+  };
+}
+
+export const DEFAULT_ADS_SETTINGS: AdsSettingsConfig = {
+  id: 'ads_settings',
+  ads_enabled: false,
+  adsense_enabled: false,
+  adsense_client_id: '',
+  adsense_auto_ads: false,
+  adsterra_enabled: false,
+  adsterra_global_script: '',
+  custom_head_script: '',
+  ads_txt_content: '',
+  show_ad_label: true,
+  slots: createDefaultAdSlots(),
+  updated_at: ''
+};
+
 export const DEFAULT_SEO_SETTINGS: SeoSettingsConfig = {
   id: 'seo_settings',
   default_title_en: 'Beautiful Bangladesh - Official Tourism Portal',
@@ -201,6 +331,51 @@ export function normalizeWebsiteSettings(raw?: Partial<WebsiteSettingsConfig> | 
     hero_slides: sanitizedSlides.length > 0 ? sanitizedSlides : DEFAULT_HERO_SLIDES.map(slide => ({ ...slide })),
     default_language: raw?.default_language === 'en' ? 'en' : 'bn',
     maintenance_mode: Boolean(raw?.maintenance_mode)
+  };
+}
+
+function normalizeAdSlot(rawSlot?: Partial<AdSlotConfig> | null): AdSlotConfig {
+  const validNetworks: AdNetworkType[] = ['adsense', 'adsterra', 'custom_code', 'banner_image'];
+  const network = validNetworks.includes(rawSlot?.network as AdNetworkType)
+    ? (rawSlot!.network as AdNetworkType)
+    : 'adsense';
+  return {
+    enabled: Boolean(rawSlot?.enabled),
+    network,
+    code: typeof rawSlot?.code === 'string' ? rawSlot.code.trim().slice(0, 10000) : '',
+    image_url: typeof rawSlot?.image_url === 'string' ? rawSlot.image_url.trim().slice(0, 2000) : '',
+    link_url: typeof rawSlot?.link_url === 'string' ? rawSlot.link_url.trim().slice(0, 2000) : '',
+    alt_text: typeof rawSlot?.alt_text === 'string' ? rawSlot.alt_text.trim().slice(0, 200) : ''
+  };
+}
+
+export function normalizeAdsSettings(raw?: Partial<AdsSettingsConfig> | null): AdsSettingsConfig {
+  const defaults = createDefaultAdSlots();
+  const rawSlots = (raw?.slots || {}) as Partial<Record<AdSlotKey, Partial<AdSlotConfig>>>;
+  return {
+    id: 'ads_settings',
+    ads_enabled: Boolean(raw?.ads_enabled),
+    adsense_enabled: Boolean(raw?.adsense_enabled),
+    adsense_client_id: typeof raw?.adsense_client_id === 'string' ? raw.adsense_client_id.trim().slice(0, 64) : '',
+    adsense_auto_ads: Boolean(raw?.adsense_auto_ads),
+    adsterra_enabled: Boolean(raw?.adsterra_enabled),
+    adsterra_global_script:
+      typeof raw?.adsterra_global_script === 'string' ? raw.adsterra_global_script.trim().slice(0, 10000) : '',
+    custom_head_script:
+      typeof raw?.custom_head_script === 'string' ? raw.custom_head_script.trim().slice(0, 8000) : '',
+    ads_txt_content:
+      typeof raw?.ads_txt_content === 'string' ? raw.ads_txt_content.trim().slice(0, 12000) : '',
+    show_ad_label: raw?.show_ad_label !== undefined ? Boolean(raw.show_ad_label) : true,
+    slots: {
+      home_banner: normalizeAdSlot(rawSlots.home_banner || defaults.home_banner),
+      home_mid: normalizeAdSlot(rawSlots.home_mid || defaults.home_mid),
+      directory_top: normalizeAdSlot(rawSlots.directory_top || defaults.directory_top),
+      spot_detail_mid: normalizeAdSlot(rawSlots.spot_detail_mid || defaults.spot_detail_mid),
+      article_detail_mid: normalizeAdSlot(rawSlots.article_detail_mid || defaults.article_detail_mid),
+      footer_banner: normalizeAdSlot(rawSlots.footer_banner || defaults.footer_banner)
+    },
+    updated_at: typeof raw?.updated_at === 'string' ? raw.updated_at.slice(0, 64) : '',
+    updated_by: typeof raw?.updated_by === 'string' ? raw.updated_by.slice(0, 180) : undefined
   };
 }
 
@@ -345,20 +520,68 @@ export const SiteSettingsService = {
     }
   },
 
+  async getAdsSettings(bypassCache: boolean = false): Promise<AdsSettingsConfig> {
+    const fetchFromFirestore = async (): Promise<AdsSettingsConfig> => {
+      const docSnap = await getDoc(doc(db, COLLECTIONS.SITE_SETTINGS, 'ads_settings'));
+      if (!docSnap.exists()) return normalizeAdsSettings(DEFAULT_ADS_SETTINGS);
+      return normalizeAdsSettings(docSnap.data() as Partial<AdsSettingsConfig>);
+    };
+
+    try {
+      if (bypassCache) {
+        return await fetchFromFirestore();
+      }
+      return await cachedFirestoreFetch('doc:site_settings:ads_settings', fetchFromFirestore, 30_000);
+    } catch (error) {
+      if (isPermissionDeniedError(error)) {
+        console.warn(
+          'Ads settings read denied by Firestore rules (deploy updated firestore.rules to enable public ads_settings read).'
+        );
+      } else {
+        console.warn('Could not load ads settings from Firestore:', error);
+      }
+      return normalizeAdsSettings(DEFAULT_ADS_SETTINGS);
+    }
+  },
+
+  async saveAdsSettings(
+    config: Omit<AdsSettingsConfig, 'id' | 'updated_at'> & { updated_at?: string }
+  ): Promise<AdsSettingsConfig> {
+    const normalized = stripUndefined(
+      normalizeAdsSettings({
+        ...config,
+        updated_at: new Date().toISOString()
+      })
+    );
+    try {
+      await setDoc(doc(db, COLLECTIONS.SITE_SETTINGS, 'ads_settings'), normalized, { merge: true });
+      invalidateFirestoreCache('doc:site_settings:ads_settings');
+      return normalized;
+    } catch (error) {
+      if (isPermissionDeniedError(error)) {
+        handleFirestoreError(error, OperationType.WRITE, `${COLLECTIONS.SITE_SETTINGS}/ads_settings`);
+      }
+      throw error;
+    }
+  },
+
   async getAllPublicSettings(): Promise<{
     website: WebsiteSettingsConfig;
     seo: SeoSettingsConfig;
     legal: LegalPagesConfig;
+    ads: AdsSettingsConfig;
   }> {
-    const [website, seo, legal] = await Promise.all([
+    const [website, seo, legal, ads] = await Promise.all([
       SiteSettingsService.getWebsiteSettings(),
       SiteSettingsService.getSeoSettings(),
-      SiteSettingsService.getLegalPagesSettings()
+      SiteSettingsService.getLegalPagesSettings(),
+      SiteSettingsService.getAdsSettings().catch(() => normalizeAdsSettings(DEFAULT_ADS_SETTINGS))
     ]);
     return {
       website,
       seo,
-      legal: legal || { ...DEFAULT_LEGAL_PAGES }
+      legal: legal || { ...DEFAULT_LEGAL_PAGES },
+      ads
     };
   },
 

@@ -12,16 +12,17 @@ service cloud.firestore {
 
     function isAdminEmail() {
       return isSignedIn() &&
+        'email' in request.auth.token &&
+        'email_verified' in request.auth.token &&
         request.auth.token.email in ["bluesky90987@gmail.com", "mdrahad0529@gmail.com"] &&
         request.auth.token.email_verified == true;
     }
 
     function hasAdminClaim() {
       return isSignedIn() && (
-        request.auth.token.admin == true ||
-        request.auth.token.isAdmin == true ||
-        request.auth.token.role == 'admin' ||
-        request.auth.token.role == 'super_admin'
+        ('admin' in request.auth.token && request.auth.token.admin == true) ||
+        ('isAdmin' in request.auth.token && request.auth.token.isAdmin == true) ||
+        ('role' in request.auth.token && request.auth.token.role in ['admin', 'super_admin'])
       );
     }
 
@@ -140,6 +141,49 @@ service cloud.firestore {
         isOptionalBoundedString(data, 'updated_at', 64);
     }
 
+    function isValidAdSlot(slotsMap, slotKey) {
+      return !(slotKey in slotsMap) || (
+        slotsMap[slotKey] is map &&
+        slotsMap[slotKey].keys().hasOnly(['enabled', 'network', 'code', 'image_url', 'link_url', 'alt_text']) &&
+        (!('enabled' in slotsMap[slotKey]) || slotsMap[slotKey].enabled is bool) &&
+        (!('network' in slotsMap[slotKey]) || slotsMap[slotKey].network in ['adsense', 'adsterra', 'custom_code', 'banner_image']) &&
+        isOptionalBoundedString(slotsMap[slotKey], 'code', 10000) &&
+        isOptionalBoundedString(slotsMap[slotKey], 'image_url', 2000) &&
+        isOptionalBoundedString(slotsMap[slotKey], 'link_url', 2000) &&
+        isOptionalBoundedString(slotsMap[slotKey], 'alt_text', 200)
+      );
+    }
+
+    function isValidAdsSettings(data) {
+      return data.keys().hasOnly([
+          'id', 'ads_enabled', 'adsense_enabled', 'adsense_client_id', 'adsense_auto_ads',
+          'adsterra_enabled', 'adsterra_global_script', 'custom_head_script',
+          'ads_txt_content', 'show_ad_label', 'slots', 'updated_at', 'updated_by'
+        ]) &&
+        (!('ads_enabled' in data) || data.ads_enabled is bool) &&
+        (!('adsense_enabled' in data) || data.adsense_enabled is bool) &&
+        isOptionalBoundedString(data, 'adsense_client_id', 64) &&
+        (!('adsense_auto_ads' in data) || data.adsense_auto_ads is bool) &&
+        (!('adsterra_enabled' in data) || data.adsterra_enabled is bool) &&
+        isOptionalBoundedString(data, 'adsterra_global_script', 10000) &&
+        isOptionalBoundedString(data, 'custom_head_script', 8000) &&
+        isOptionalBoundedString(data, 'ads_txt_content', 12000) &&
+        (!('show_ad_label' in data) || data.show_ad_label is bool) &&
+        (
+          !('slots' in data) ||
+          (
+            data.slots is map &&
+            data.slots.keys().hasOnly(['home_banner', 'home_mid', 'directory_top', 'spot_detail_mid', 'article_detail_mid', 'footer_banner']) &&
+            isValidAdSlot(data.slots, 'home_banner') &&
+            isValidAdSlot(data.slots, 'home_mid') &&
+            isValidAdSlot(data.slots, 'directory_top') &&
+            isValidAdSlot(data.slots, 'spot_detail_mid') &&
+            isValidAdSlot(data.slots, 'article_detail_mid') &&
+            isValidAdSlot(data.slots, 'footer_banner')
+          )
+        );
+    }
+
     function isValidSiteSettings(data, docId) {
       return data.keys().size() <= 45 &&
         (!('id' in data) || (data.id is string && data.id == docId)) &&
@@ -209,7 +253,11 @@ service cloud.firestore {
             isOptionalBoundedString(data, 'terms_content_bn', 40000) &&
             isOptionalBoundedString(data, 'contact_email', 180)
           ) ||
-          (!(docId in ['website_settings', 'seo_settings', 'legal_pages']))
+          (
+            docId == 'ads_settings' &&
+            isValidAdsSettings(data)
+          ) ||
+          (!(docId in ['website_settings', 'seo_settings', 'legal_pages', 'ads_settings']))
         );
     }
 
@@ -263,7 +311,7 @@ service cloud.firestore {
     }
 
     match /site_settings/{settingId} {
-      allow get: if isValidId(settingId) && (settingId in ['website_settings', 'seo_settings', 'legal_pages'] || isAdmin());
+      allow get: if isValidId(settingId) && (settingId in ['website_settings', 'seo_settings', 'legal_pages', 'ads_settings'] || isAdmin());
       allow list: if isAdmin();
       allow create, update: if isValidId(settingId) && isAdmin() && isValidSiteSettings(request.resource.data, settingId);
       allow delete: if false;

@@ -63,7 +63,8 @@ export {
   recordAdminAuditLog,
   resetAdminDashboardState,
   saveSeoSettings,
-  saveWebsiteSettings
+  saveWebsiteSettings,
+  saveAdsSettings
 } from '../services/adminDashboardService';
 
 export {

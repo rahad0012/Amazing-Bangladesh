@@ -15,7 +15,11 @@ import {
   type AdminAuditLogEntry,
   type RecentContentUpdateItem
 } from '../services/adminDashboardService';
-import { getActiveHeroSlides } from '../services/siteSettingsService';
+import {
+  AD_SLOT_META,
+  getActiveHeroSlides,
+  type AdSlotKey
+} from '../services/siteSettingsService';
 
 import { ARTICLE_CATEGORIES } from '../data/bangladeshData';
 
@@ -199,6 +203,13 @@ function getTabMeta(tab: CmsTab, lang: Language): { title: string; subtitle: str
         title: isBn ? 'ওয়েবসাইট সেটিংস' : 'Website Settings',
         subtitle: isBn ? 'পোর্টালের সাধারণ পরিচিতি, হেল্পলাইন ও আইনি নথি পরিচালনা করুন' : 'Configure portal branding, contact info, language defaults, and legal pages'
       };
+    case 'ads-settings':
+      return {
+        title: isBn ? 'বিজ্ঞাপন নিয়ন্ত্রণ প্যানেল (Ads Control)' : 'Ads Control Panel',
+        subtitle: isBn
+          ? 'Google AdSense, Adsterra ও কাস্টম ব্যানার বিজ্ঞাপন চালু, বন্ধ ও প্লেসমেন্ট পরিচালনা করুন'
+          : 'Enable, configure, or turn off Google AdSense, Adsterra, and custom banner ads across the portal'
+      };
   }
 }
 
@@ -238,6 +249,7 @@ export function renderCmsDashboard(lang: Language, _onExitCms: () => void, onRef
     labelBn: string;
   }> = [
     { tab: 'hero-banners', icon: 'bi-card-image', labelEn: 'Hero Banners', labelBn: 'হিরো ব্যানার' },
+    { tab: 'ads-settings', icon: 'bi-megaphone', labelEn: 'Ads Control', labelBn: 'বিজ্ঞাপন (Ads)' },
     { tab: 'seo-settings', icon: 'bi-search', labelEn: 'SEO Settings', labelBn: 'এসইও সেটিংস' },
     { tab: 'website-settings', icon: 'bi-sliders', labelEn: 'Website Settings', labelBn: 'ওয়েবসাইট সেটিংস' }
   ];
@@ -374,6 +386,14 @@ export function renderCmsDashboard(lang: Language, _onExitCms: () => void, onRef
             }
             <button
               type="button"
+              class="btn ${activeTab === 'ads-settings' ? 'btn-primary-bd' : 'btn-outline-bd'} btn-sm text-nowrap"
+              data-cms-tab="ads-settings"
+            >
+              <i class="bi bi-megaphone me-1"></i>
+              <span>${isBn ? 'বিজ্ঞাপন (Ads)' : 'Ads'}</span>
+            </button>
+            <button
+              type="button"
               class="btn btn-outline-secondary btn-sm text-nowrap"
               id="admin-refresh-dashboard-btn"
               ${adminDashboardState.status === 'loading' ? 'disabled' : ''}
@@ -425,6 +445,8 @@ function renderTabContent(lang: Language, onRefresh: () => void): string {
       return renderMediaModule(lang);
     case 'hero-banners':
       return renderHeroBannersModule(lang);
+    case 'ads-settings':
+      return renderAdsSettingsModule(lang);
     case 'seo-settings':
       return renderSeoSettingsModule(lang);
     case 'website-settings':
@@ -714,6 +736,9 @@ function renderOverviewTab(lang: Language): string {
         <button type="button" class="btn btn-outline-bd btn-sm px-3 text-nowrap" data-quick-action="add-media">
           <i class="bi bi-cloud-arrow-up me-1"></i>${isBn ? 'ছবি আপলোড' : 'Upload Image'}
         </button>
+        <button type="button" class="btn btn-outline-bd btn-sm px-3 text-nowrap" data-cms-tab="ads-settings">
+          <i class="bi bi-megaphone me-1"></i>${isBn ? 'বিজ্ঞাপন ও অ্যাড কোড (Ads)' : 'Ads & Ad Code'}
+        </button>
         <button type="button" class="btn btn-outline-bd btn-sm px-3 text-nowrap" data-cms-tab="hero-banners">
           <i class="bi bi-card-image me-1"></i>${isBn ? 'হিরো ব্যানার ইমেজ' : 'Hero Banners'}
         </button>
@@ -825,6 +850,17 @@ function renderOverviewTab(lang: Language): string {
                 </span>
               </div>
               <div class="admin-kv-row">
+                <span class="text-muted small">${isBn ? 'বিজ্ঞাপন (Ads)' : 'Advertisements (Ads)'}</span>
+                <span class="${adminDashboardState.adsSettings.ads_enabled ? 'badge-published' : 'badge-draft'}">
+                  <i class="bi ${adminDashboardState.adsSettings.ads_enabled ? 'bi-megaphone-fill' : 'bi-pause-circle'}"></i>
+                  ${
+                    adminDashboardState.adsSettings.ads_enabled
+                      ? (isBn ? 'চালু' : 'ON')
+                      : (isBn ? 'বন্ধ' : 'OFF')
+                  } (${AD_SLOT_META.filter(m => adminDashboardState.adsSettings.slots?.[m.key]?.enabled).length}/${AD_SLOT_META.length})
+                </span>
+              </div>
+              <div class="admin-kv-row">
                 <span class="text-muted small">${isBn ? 'রক্ষণাবেক্ষণ মোড' : 'Maintenance Mode'}</span>
                 <span class="small fw-semibold ${adminDashboardState.websiteSettings.maintenance_mode ? 'text-warning-emphasis' : 'text-success'}">
                   ${
@@ -837,9 +873,12 @@ function renderOverviewTab(lang: Language): string {
             </div>
           </div>
 
-          <div class="d-flex gap-2 mt-3 pt-3 border-top">
-            <button type="button" class="btn btn-outline-bd btn-sm flex-grow-1" data-quick-action="edit-legal">
-              ${isBn ? 'আইনি নথি সম্পাদনা' : 'Edit Legal Pages'}
+          <div class="d-flex flex-wrap gap-2 mt-3 pt-3 border-top">
+            <button type="button" class="btn btn-primary-bd btn-sm flex-grow-1" data-cms-tab="ads-settings">
+              <i class="bi bi-megaphone me-1"></i>${isBn ? 'Ads কোড ও সেটিংস' : 'Ads & Ad Code'}
+            </button>
+            <button type="button" class="btn btn-outline-bd btn-sm" data-quick-action="edit-legal">
+              ${isBn ? 'আইনি নথি' : 'Legal'}
             </button>
             <button type="button" class="btn btn-outline-secondary btn-sm" data-cms-tab="website-settings">
               ${isBn ? 'সেটিংস' : 'Settings'}
@@ -1357,6 +1396,26 @@ function renderWebsiteSettingsModule(lang: Language): string {
       <div class="col-12 col-xl-4 d-flex flex-column gap-4">
         <div class="admin-panel-card p-4">
           <h2 class="h6 fw-bold text-primary-bd mb-2">
+            <i class="bi bi-megaphone me-1 text-accent-bd"></i>${isBn ? 'বিজ্ঞাপন নিয়ন্ত্রণ (Ads Control)' : 'Ads & Ad Code Control'}
+          </h2>
+          <p class="small text-muted mb-3">
+            ${isBn
+              ? 'AdSense, Adsterra, কাস্টম কোড এবং ইমেজ ব্যানার চালু/বন্ধ ও কোড সংরক্ষণ করুন।'
+              : 'Configure AdSense, Adsterra, custom HTML/JS ad code, and direct banner placements.'}
+          </p>
+          <div class="d-flex justify-content-between align-items-center small mb-3">
+            <span class="text-muted">${isBn ? 'সাইট বিজ্ঞাপন অবস্থা:' : 'Global Ads Status:'}</span>
+            <span class="${adminDashboardState.adsSettings.ads_enabled ? 'badge-published' : 'badge-draft'}">
+              ${adminDashboardState.adsSettings.ads_enabled ? (isBn ? 'চালু' : 'ON') : (isBn ? 'বন্ধ' : 'OFF')}
+            </span>
+          </div>
+          <button type="button" class="btn btn-primary-bd btn-sm w-100" data-cms-tab="ads-settings">
+            <i class="bi bi-sliders2 me-1"></i>${isBn ? 'বিজ্ঞাপন ও অ্যাড কোড পরিচালনা করুন' : 'Manage Ads & Ad Code'}
+          </button>
+        </div>
+
+        <div class="admin-panel-card p-4">
+          <h2 class="h6 fw-bold text-primary-bd mb-2">
             <i class="bi bi-card-image me-1"></i>${isBn ? 'হিরো ব্যানার স্লাইডার' : 'Hero Banner Carousel'}
           </h2>
           <p class="small text-muted mb-3">
@@ -1458,6 +1517,430 @@ function renderWebsiteSettingsModule(lang: Language): string {
         </div>
       </div>
     </div>
+  `;
+}
+
+// ============================================================================
+// ADS CONTROL MODULE (ADSENSE, ADSTERRA & CUSTOM PLACEMENTS)
+// ============================================================================
+function renderAdsSettingsModule(lang: Language): string {
+  const isBn = lang === 'bn';
+  const ads = adminDashboardState.adsSettings;
+  const saving = adminDashboardState.savingAds;
+  const activeSlotsCount = AD_SLOT_META.filter(m => ads.slots?.[m.key]?.enabled).length;
+
+  const hasAnyConfiguredAd =
+    Boolean(ads.adsense_client_id.trim()) ||
+    Boolean(ads.adsterra_global_script.trim()) ||
+    Boolean(ads.custom_head_script.trim()) ||
+    AD_SLOT_META.some(m => {
+      const s = ads.slots?.[m.key];
+      return Boolean(s && (s.enabled || s.code.trim() || s.image_url.trim()));
+    });
+
+  return `
+    <form id="form-admin-ads-settings">
+      <!-- Top Save Bar (Always visible without scrolling) -->
+      <div class="admin-panel-card p-3 mb-4 d-flex flex-wrap justify-content-between align-items-center gap-3">
+        <div class="d-flex flex-wrap align-items-center gap-2">
+          <span class="${ads.ads_enabled ? 'badge-published' : 'badge-draft'}" id="ads-top-status-badge">
+            ${ads.ads_enabled ? (isBn ? 'সাইট বিজ্ঞাপন: চালু' : 'Global Ads: ON') : (isBn ? 'সাইট বিজ্ঞাপন: বন্ধ' : 'Global Ads: OFF')}
+          </span>
+          <span class="badge bg-light text-dark border tabular-nums">
+            ${isBn ? `সক্রিয় স্লট: ${activeSlotsCount} / ${AD_SLOT_META.length}` : `Active Slots: ${activeSlotsCount} / ${AD_SLOT_META.length}`}
+          </span>
+          ${
+            ads.updated_at
+              ? `<span class="small text-muted tabular-nums d-none d-md-inline">
+                   · ${isBn ? 'সংরক্ষিত:' : 'Saved:'} ${escapeHtml(formatAdminDate(ads.updated_at, lang))}
+                 </span>`
+              : ''
+          }
+        </div>
+        <div class="d-flex flex-wrap gap-2">
+          <button type="button" class="btn btn-outline-danger btn-sm px-3" id="btn-ads-turn-off-all-top" data-ads-turn-off-all ${saving ? 'disabled' : ''}>
+            <i class="bi bi-pause-circle me-1"></i>${isBn ? 'সব বিজ্ঞাপন বন্ধ করুন' : 'Turn Off All Ads'}
+          </button>
+          <button type="submit" class="btn btn-primary-bd btn-sm px-3" ${saving ? 'disabled' : ''}>
+            ${
+              saving
+                ? `<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>${isBn ? 'সংরক্ষণ হচ্ছে...' : 'Saving...'}`
+                : `<i class="bi bi-check2-circle me-1"></i>${isBn ? 'বিজ্ঞাপন সেটিংস সংরক্ষণ করুন' : 'Save Ads Settings'}`
+            }
+          </button>
+        </div>
+      </div>
+
+      ${
+        !ads.ads_enabled && hasAnyConfiguredAd
+          ? `
+        <div class="alert alert-warning d-flex align-items-start gap-2 mb-4" role="status">
+          <i class="bi bi-exclamation-triangle-fill mt-1"></i>
+          <div class="small">
+            <strong>${isBn ? 'মাস্টার বিজ্ঞাপন সুইচ এখন বন্ধ আছে!' : 'Master Advertisement Switch is currently OFF!'}</strong>
+            ${
+              isBn
+                ? 'স্লট বা কোড দেয়া থাকলেও নিচের "ওয়েবসাইটে বিজ্ঞাপন প্রদর্শন চালু করুন" সুইচটি চালু করে সংরক্ষণ না করলে পাবলিক সাইটে কোনো বিজ্ঞাপন দেখা যাবে না।'
+                : 'Even with ad slots or scripts configured, public pages will not display ads until you turn ON the Master Switch below and save.'
+            }
+          </div>
+        </div>`
+          : ''
+      }
+
+      <!-- 1. Master Kill Switch & Live Status Summary -->
+      <div class="admin-panel-card p-4 mb-4">
+        <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 pb-3 mb-3 border-bottom">
+          <div>
+            <h2 class="h6 fw-bold text-primary-bd mb-1">
+              <i class="bi bi-megaphone-fill text-accent-bd me-2"></i>
+              ${isBn ? 'মাস্টার বিজ্ঞাপন নিয়ন্ত্রণ (Master Switch)' : 'Master Advertisement Control'}
+            </h2>
+            <p class="small text-muted mb-0">
+              ${isBn
+                ? 'এক ক্লিকে সম্পূর্ণ ওয়েবসাইটের সব বিজ্ঞাপন চালু বা বন্ধ করুন। অ্যাডমিন প্যানেলে কখনোই বিজ্ঞাপন চলবে না।'
+                : 'Turn all ads across the public website on or off with one switch. Ads never load inside the Admin Panel.'}
+            </p>
+          </div>
+          <div class="d-flex flex-wrap align-items-center gap-2">
+            <span class="${ads.ads_enabled ? 'badge-published' : 'badge-draft'}" id="ads-master-status-badge">
+              ${ads.ads_enabled ? (isBn ? 'সাইট বিজ্ঞাপন: চালু' : 'Global Ads: ON') : (isBn ? 'সাইট বিজ্ঞাপন: বন্ধ' : 'Global Ads: OFF')}
+            </span>
+          </div>
+        </div>
+
+        <div class="row g-3 align-items-center">
+          <div class="col-md-6">
+            <div class="form-check form-switch p-3 rounded-3 border ${ads.ads_enabled ? 'bg-success-subtle border-success-subtle' : 'bg-light'}" id="ads-master-switch-box">
+              <input
+                class="form-check-input ms-0 me-2"
+                type="checkbox"
+                role="switch"
+                id="ads-master-enabled"
+                style="cursor: pointer;"
+                ${ads.ads_enabled ? 'checked' : ''}
+              >
+              <label class="form-check-label fw-bold text-primary-bd" for="ads-master-enabled" style="cursor: pointer;">
+                ${isBn ? 'ওয়েবসাইটে বিজ্ঞাপন প্রদর্শন চালু করুন (Master ON/OFF)' : 'Enable Advertisements Sitewide (Master ON/OFF)'}
+              </label>
+              <div class="small text-muted mt-1">
+                ${isBn
+                  ? 'এটি বন্ধ থাকলে AdSense, Adsterra ও কাস্টম ব্যানার সবই সাথে সাথে বন্ধ হয়ে যাবে।'
+                  : 'When OFF, all AdSense, Adsterra, and custom ad slots are immediately disabled.'}
+              </div>
+            </div>
+          </div>
+
+          <div class="col-md-6">
+            <div class="form-check form-switch p-3 rounded-3 border bg-light">
+              <input
+                class="form-check-input ms-0 me-2"
+                type="checkbox"
+                role="switch"
+                id="ads-show-label"
+                style="cursor: pointer;"
+                ${ads.show_ad_label ? 'checked' : ''}
+              >
+              <label class="form-check-label fw-semibold text-primary-bd" for="ads-show-label" style="cursor: pointer;">
+                ${isBn ? 'বিজ্ঞাপনের উপরে "বিজ্ঞাপন • Advertisement" লেবেল দেখান' : 'Show "Advertisement" disclosure label above slots'}
+              </label>
+              <div class="small text-muted mt-1">
+                ${isBn
+                  ? 'Google AdSense নীতিমালা ও পাঠকদের স্বচ্ছতার জন্য এটি চালু রাখা ভালো।'
+                  : 'Recommended for AdSense policy compliance and clear UX separation.'}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 2. Ad Networks: Google AdSense & Adsterra -->
+      <div class="row g-4 mb-4">
+        <!-- Google AdSense Card -->
+        <div class="col-12 col-xl-6">
+          <div class="admin-panel-card p-4 h-100">
+            <div class="d-flex justify-content-between align-items-center gap-2 pb-3 mb-3 border-bottom">
+              <div>
+                <h2 class="h6 fw-bold text-primary-bd mb-0">
+                  <i class="bi bi-google text-success me-2"></i>Google AdSense
+                </h2>
+                <div class="small text-muted">
+                  ${isBn ? 'Auto Ads, Publisher ID ও ads.txt পরিচালনা করুন' : 'Manage Publisher ID, Auto Ads, and ads.txt'}
+                </div>
+              </div>
+              <div class="form-check form-switch mb-0">
+                <input
+                  class="form-check-input"
+                  type="checkbox"
+                  role="switch"
+                  id="ads-adsense-enabled"
+                  ${ads.adsense_enabled ? 'checked' : ''}
+                >
+                <label class="form-check-label small fw-bold" for="ads-adsense-enabled" id="ads-adsense-enabled-label">
+                  ${ads.adsense_enabled ? (isBn ? 'চালু' : 'ON') : (isBn ? 'বন্ধ' : 'OFF')}
+                </label>
+              </div>
+            </div>
+
+            <div class="mb-3">
+              <label for="ads-adsense-client-id" class="form-label small fw-semibold text-primary-bd">
+                ${isBn ? 'AdSense Publisher ID (ca-pub-...)' : 'AdSense Publisher ID (ca-pub-...)'}
+              </label>
+              <input
+                type="text"
+                class="form-control font-monospace"
+                id="ads-adsense-client-id"
+                placeholder="ca-pub-1234567890123456"
+                value="${escapeHtml(ads.adsense_client_id)}"
+                maxlength="64"
+              >
+              <div class="form-text small">
+                ${isBn
+                  ? 'এখানে ca-pub- দিয়ে শুরু হওয়া আপনার AdSense পাবলিশার আইডি দিলে <head>-এ অটো-ভেরিফিকেশন মেটা ট্যাগ যুক্ত হবে।'
+                  : 'Entering your ca-pub-... ID automatically injects the Google AdSense account verification meta tag.'}
+              </div>
+            </div>
+
+            <div class="form-check form-switch mb-3">
+              <input
+                class="form-check-input"
+                type="checkbox"
+                role="switch"
+                id="ads-adsense-auto-ads"
+                ${ads.adsense_auto_ads ? 'checked' : ''}
+              >
+              <label class="form-check-label small fw-semibold text-primary-bd" for="ads-adsense-auto-ads">
+                ${isBn ? 'AdSense Auto Ads স্ক্রিপ্ট চালু করুন' : 'Enable AdSense Auto Ads Script'}
+              </label>
+            </div>
+
+            <div>
+              <label for="ads-txt-content" class="form-label small fw-semibold text-primary-bd">
+                ${isBn ? 'ads.txt কনটেন্ট (/ads.txt)' : 'ads.txt Content (served at /ads.txt)'}
+              </label>
+              <textarea
+                class="form-control font-monospace small"
+                id="ads-txt-content"
+                rows="3"
+                maxlength="12000"
+                placeholder="google.com, pub-0000000000000000, DIRECT, f08c47fec0942fa0"
+              >${escapeHtml(ads.ads_txt_content)}</textarea>
+            </div>
+          </div>
+        </div>
+
+        <!-- Adsterra & Other Networks Card -->
+        <div class="col-12 col-xl-6">
+          <div class="admin-panel-card p-4 h-100">
+            <div class="d-flex justify-content-between align-items-center gap-2 pb-3 mb-3 border-bottom">
+              <div>
+                <h2 class="h6 fw-bold text-primary-bd mb-0">
+                  <i class="bi bi-lightning-charge-fill text-warning me-2"></i>
+                  ${isBn ? 'Adsterra ও অন্যান্য নেটওয়ার্ক' : 'Adsterra & Other Ad Networks'}
+                </h2>
+                <div class="small text-muted">
+                  ${isBn ? 'Social Bar, Popunder ও ভেরিফিকেশন ট্যাগ' : 'Social Bar, Popunder, and verification tags'}
+                </div>
+              </div>
+              <div class="form-check form-switch mb-0">
+                <input
+                  class="form-check-input"
+                  type="checkbox"
+                  role="switch"
+                  id="ads-adsterra-enabled"
+                  ${ads.adsterra_enabled ? 'checked' : ''}
+                >
+                <label class="form-check-label small fw-bold" for="ads-adsterra-enabled" id="ads-adsterra-enabled-label">
+                  ${ads.adsterra_enabled ? (isBn ? 'চালু' : 'ON') : (isBn ? 'বন্ধ' : 'OFF')}
+                </label>
+              </div>
+            </div>
+
+            <div class="mb-3">
+              <label for="ads-adsterra-global-script" class="form-label small fw-semibold text-primary-bd">
+                ${isBn ? 'Adsterra গ্লোবাল স্ক্রিপ্ট (Social Bar / Popunder)' : 'Adsterra Global Script (Social Bar / Popunder)'}
+              </label>
+              <textarea
+                class="form-control font-monospace small"
+                id="ads-adsterra-global-script"
+                rows="4"
+                maxlength="10000"
+                placeholder="<script type='text/javascript' src='//pl....js'></script>"
+              >${escapeHtml(ads.adsterra_global_script)}</textarea>
+              <div class="form-text small">
+                ${isBn
+                  ? 'Adsterra Social Bar বা Popunder-এর সম্পূর্ণ <script> কোড এখানে পেস্ট করুন। Adsterra বন্ধ করলে এটি অটো বন্ধ হবে।'
+                  : 'Paste Adsterra Social Bar or Popunder <script> snippet here. Toggling Adsterra OFF stops executing it.'}
+              </div>
+            </div>
+
+            <div>
+              <label for="ads-custom-head-script" class="form-label small fw-semibold text-primary-bd">
+                ${isBn ? 'অতিরিক্ত <head> ভেরিফিকেশন বা অ্যাড স্ক্রিপ্ট (ঐচ্ছিক)' : 'Extra <head> Verification / Ad Script (Optional)'}
+              </label>
+              <textarea
+                class="form-control font-monospace small"
+                id="ads-custom-head-script"
+                rows="3"
+                maxlength="8000"
+                placeholder="<meta name='...' content='...' />"
+              >${escapeHtml(ads.custom_head_script)}</textarea>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 3. Per-Placement Ad Slots -->
+      <div class="admin-panel-card p-4 mb-4">
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 pb-3 mb-3 border-bottom">
+          <div>
+            <h2 class="h6 fw-bold text-primary-bd mb-1">
+              <i class="bi bi-layout-text-window-reverse me-2"></i>
+              ${isBn ? 'পৃষ্ঠাভিত্তিক বিজ্ঞাপন স্লট (Per-Placement Ad Slots)' : 'Page Placement Ad Slots'}
+            </h2>
+            <p class="small text-muted mb-0">
+              ${isBn
+                ? 'প্রতিটি জায়গার জন্য আলাদাভাবে AdSense ইউনিট, Adsterra ব্যানার, কাস্টম কোড অথবা ডিরেক্ট ইমেজ ব্যানার চালু/বন্ধ করুন।'
+                : 'Individually enable or configure AdSense, Adsterra banners, custom HTML/JS, or direct image banners per placement.'}
+            </p>
+          </div>
+        </div>
+
+        <div class="row g-3">
+          ${AD_SLOT_META.map(meta => {
+            const slot = ads.slots[meta.key];
+            const isBanner = slot.network === 'banner_image';
+            return `
+              <div class="col-12 col-lg-6">
+                <div class="admin-ad-slot-card p-3 h-100 ${slot.enabled ? 'is-enabled' : ''}" data-ad-slot-card="${meta.key}">
+                  <div class="d-flex justify-content-between align-items-start gap-2 mb-2">
+                    <div class="min-w-0">
+                      <div class="fw-bold text-primary-bd small">
+                        ${escapeHtml(isBn ? meta.titleBn : meta.titleEn)}
+                      </div>
+                      <div class="text-muted" style="font-size: 0.76rem;">
+                        ${escapeHtml(isBn ? meta.descBn : meta.descEn)}
+                        <span class="badge bg-light text-secondary border ms-1">${escapeHtml(meta.recommendedSize)}</span>
+                      </div>
+                    </div>
+                    <div class="form-check form-switch mb-0 flex-shrink-0">
+                      <input
+                        class="form-check-input"
+                        type="checkbox"
+                        role="switch"
+                        id="ad-slot-enabled-${meta.key}"
+                        data-ad-slot-enabled="${meta.key}"
+                        ${slot.enabled ? 'checked' : ''}
+                      >
+                    </div>
+                  </div>
+
+                  <div class="mb-2">
+                    <label for="ad-slot-network-${meta.key}" class="form-label small fw-semibold text-secondary mb-1">
+                      ${isBn ? 'বিজ্ঞাপন নেটওয়ার্ক / ধরন' : 'Ad Network / Format'}
+                    </label>
+                    <select
+                      class="form-select form-select-sm"
+                      id="ad-slot-network-${meta.key}"
+                      data-ad-slot-network="${meta.key}"
+                    >
+                      <option value="adsense" ${slot.network === 'adsense' ? 'selected' : ''}>Google AdSense (Unit Code)</option>
+                      <option value="adsterra" ${slot.network === 'adsterra' ? 'selected' : ''}>Adsterra (Banner / Native Script)</option>
+                      <option value="custom_code" ${slot.network === 'custom_code' ? 'selected' : ''}>${isBn ? 'কাস্টম HTML / JS অ্যাড কোড' : 'Custom HTML / JS Ad Code'}</option>
+                      <option value="banner_image" ${slot.network === 'banner_image' ? 'selected' : ''}>${isBn ? 'ডিরেক্ট ইমেজ ব্যানার + লিংক' : 'Direct Banner Image + Link'}</option>
+                    </select>
+                  </div>
+
+                  <div class="${isBanner ? 'd-none' : ''}" data-ad-slot-code-wrap="${meta.key}">
+                    <label for="ad-slot-code-${meta.key}" class="form-label small fw-semibold text-secondary mb-1">
+                      ${isBn ? 'অ্যাড ইউনিট কোড (<ins> বা <script>)' : 'Ad Unit Snippet (<ins> or <script>)'}
+                    </label>
+                    <textarea
+                      class="form-control form-control-sm font-monospace"
+                      id="ad-slot-code-${meta.key}"
+                      data-ad-slot-code="${meta.key}"
+                      rows="3"
+                      maxlength="10000"
+                      placeholder="${isBn ? 'এখানে AdSense <ins> বা Adsterra <script> কোড দিন...' : 'Paste AdSense <ins> or Adsterra <script> code here...'}"
+                    >${escapeHtml(slot.code)}</textarea>
+                  </div>
+
+                  <div class="${isBanner ? '' : 'd-none'}" data-ad-slot-banner-wrap="${meta.key}">
+                    <div class="mb-2">
+                      <label for="ad-slot-image-${meta.key}" class="form-label small fw-semibold text-secondary mb-1">
+                        ${isBn ? 'ব্যানার ছবির URL' : 'Banner Image URL'}
+                      </label>
+                      <input
+                        type="url"
+                        class="form-control form-control-sm"
+                        id="ad-slot-image-${meta.key}"
+                        data-ad-slot-image="${meta.key}"
+                        placeholder="https://..."
+                        value="${escapeHtml(slot.image_url)}"
+                        maxlength="2000"
+                      >
+                    </div>
+                    <div class="row g-2">
+                      <div class="col-sm-7">
+                        <label for="ad-slot-link-${meta.key}" class="form-label small fw-semibold text-secondary mb-1">
+                          ${isBn ? 'ক্লিক টার্গেট লিংক' : 'Click Destination URL'}
+                        </label>
+                        <input
+                          type="url"
+                          class="form-control form-control-sm"
+                          id="ad-slot-link-${meta.key}"
+                          data-ad-slot-link="${meta.key}"
+                          placeholder="https://..."
+                          value="${escapeHtml(slot.link_url)}"
+                          maxlength="2000"
+                        >
+                      </div>
+                      <div class="col-sm-5">
+                        <label for="ad-slot-alt-${meta.key}" class="form-label small fw-semibold text-secondary mb-1">
+                          ${isBn ? 'বিকল্প টেক্সট (Alt)' : 'Alt / Sponsor Text'}
+                        </label>
+                        <input
+                          type="text"
+                          class="form-control form-control-sm"
+                          id="ad-slot-alt-${meta.key}"
+                          data-ad-slot-alt="${meta.key}"
+                          placeholder="${isBn ? 'স্পন্সরড ব্যানার' : 'Sponsored Banner'}"
+                          value="${escapeHtml(slot.alt_text)}"
+                          maxlength="200"
+                        >
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            `;
+          }).join('')}
+        </div>
+      </div>
+
+      <!-- 4. Save & Quick Disable Controls -->
+      <div class="admin-panel-card p-3 d-flex flex-wrap justify-content-between align-items-center gap-3">
+        <div class="small text-muted">
+          ${
+            ads.updated_at
+              ? `<i class="bi bi-clock-history me-1"></i>${isBn ? 'সর্বশেষ সংরক্ষণ:' : 'Last saved:'} <strong class="text-primary-bd tabular-nums">${escapeHtml(formatAdminDate(ads.updated_at, lang))}</strong>`
+              : `<i class="bi bi-cloud-check me-1"></i>${isBn ? 'সংরক্ষণ করলে ফায়ারস্টোর site_settings/ads_settings-এ সেভ হবে।' : 'Saved directly to Cloud Firestore at site_settings/ads_settings.'}`
+          }
+        </div>
+        <div class="d-flex flex-wrap gap-2">
+          <button type="button" class="btn btn-outline-danger btn-sm px-3" id="btn-ads-turn-off-all" data-ads-turn-off-all ${saving ? 'disabled' : ''}>
+            <i class="bi bi-pause-circle me-1"></i>${isBn ? 'সব বিজ্ঞাপন বন্ধ করুন' : 'Turn Off All Ads'}
+          </button>
+          <button type="submit" class="btn btn-primary-bd px-4" ${saving ? 'disabled' : ''}>
+            ${
+              saving
+                ? `<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>${isBn ? 'সংরক্ষণ হচ্ছে...' : 'Saving...'}`
+                : `<i class="bi bi-check2-circle me-1"></i>${isBn ? 'বিজ্ঞাপন সেটিংস সংরক্ষণ করুন' : 'Save Ads Settings'}`
+            }
+          </button>
+        </div>
+      </div>
+    </form>
   `;
 }
 

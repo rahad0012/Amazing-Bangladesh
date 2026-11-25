@@ -111,6 +111,56 @@ async function createServer(): Promise<void> {
     res.status(404).send('Sitemap not found');
   });
 
+  let cachedAdsTxt: { value: string; expiresAt: number } | null = null;
+  app.get('/ads.txt', async (_req: Request, res: Response) => {
+    const now = Date.now();
+    if (cachedAdsTxt && now < cachedAdsTxt.expiresAt) {
+      if (!cachedAdsTxt.value) {
+        res.status(404).type('text/plain; charset=utf-8').send('ads.txt not configured');
+        return;
+      }
+      res.type('text/plain; charset=utf-8').send(cachedAdsTxt.value);
+      return;
+    }
+
+    try {
+      const cfgPath = path.resolve(process.cwd(), 'firebase-applet-config.json');
+      let projectId = (process.env.VITE_FIREBASE_PROJECT_ID || '').trim();
+      let dbId = '(default)';
+      if (fs.existsSync(cfgPath)) {
+        const parsed = JSON.parse(fs.readFileSync(cfgPath, 'utf8')) as {
+          projectId?: string;
+          firestoreDatabaseId?: string;
+        };
+        if (parsed.projectId) projectId = parsed.projectId.trim();
+        if (parsed.firestoreDatabaseId) dbId = parsed.firestoreDatabaseId.trim();
+      }
+      if (!projectId) {
+        res.status(404).type('text/plain; charset=utf-8').send('ads.txt not configured');
+        return;
+      }
+      const docUrl = `https://firestore.googleapis.com/v1/projects/${encodeURIComponent(projectId)}/databases/${encodeURIComponent(dbId)}/documents/site_settings/ads_settings`;
+      const resp = await fetch(docUrl);
+      if (!resp.ok) {
+        cachedAdsTxt = { value: '', expiresAt: now + 30_000 };
+        res.status(404).type('text/plain; charset=utf-8').send('ads.txt not configured');
+        return;
+      }
+      const payload = (await resp.json()) as {
+        fields?: { ads_txt_content?: { stringValue?: string } };
+      };
+      const adsTxt = (payload?.fields?.ads_txt_content?.stringValue || '').trim();
+      cachedAdsTxt = { value: adsTxt, expiresAt: now + 60_000 };
+      if (!adsTxt) {
+        res.status(404).type('text/plain; charset=utf-8').send('ads.txt not configured');
+        return;
+      }
+      res.type('text/plain; charset=utf-8').send(`${adsTxt}\n`);
+    } catch {
+      res.status(404).type('text/plain; charset=utf-8').send('ads.txt not configured');
+    }
+  });
+
   app.get('/api/health', dispatchApi);
   app.post('/api/admin/verify', dispatchApi);
   app.post('/api/admin/logout', dispatchApi);

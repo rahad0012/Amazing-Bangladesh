@@ -105,6 +105,7 @@ export function syncCmsStoreFromAdminSnapshot(snapshot: AdminDashboardSnapshot):
   adminDashboardState.auditLogStatus = snapshot.auditLogStatus;
   adminDashboardState.seoSettings = snapshot.seoSettings;
   adminDashboardState.websiteSettings = snapshot.websiteSettings;
+  adminDashboardState.adsSettings = snapshot.adsSettings;
   adminDashboardState.lastSyncedAt = snapshot.syncedAt;
   adminDashboardState.status = 'loaded';
   adminDashboardState.errorMessage = null;

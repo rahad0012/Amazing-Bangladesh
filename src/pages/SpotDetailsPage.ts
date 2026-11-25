@@ -36,6 +36,7 @@ export interface SpotDetailPageProps {
   galleryIndex: number;
   isLoading: boolean;
   error: string | null;
+  adSlotHtml?: string;
 }
 
 const FALLBACK_SPOT_HERO =
@@ -98,7 +99,8 @@ export function renderSpotDetailPage(props: SpotDetailPageProps): string {
     bookmarkedIds,
     galleryIndex,
     isLoading,
-    error
+    error,
+    adSlotHtml
   } = props;
 
   const isBn = lang === 'bn';
@@ -543,6 +545,8 @@ export function renderSpotDetailPage(props: SpotDetailPageProps): string {
               </section>
             </div>
           </div>
+
+          ${adSlotHtml || ''}
 
           <!-- 14. Important Travel Tips -->
           <section class="rounded-4 border border-warning-subtle bg-warning-subtle p-4 mb-4" aria-labelledby="spot-tips-heading">
