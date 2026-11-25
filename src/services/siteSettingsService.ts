@@ -554,7 +554,7 @@ export const SiteSettingsService = {
       })
     );
     try {
-      await setDoc(doc(db, COLLECTIONS.SITE_SETTINGS, 'ads_settings'), normalized, { merge: true });
+      await setDoc(doc(db, COLLECTIONS.SITE_SETTINGS, 'ads_settings'), normalized);
       invalidateFirestoreCache('doc:site_settings:ads_settings');
       return normalized;
     } catch (error) {

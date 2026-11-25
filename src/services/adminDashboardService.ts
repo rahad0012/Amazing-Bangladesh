@@ -528,6 +528,7 @@ export async function saveAdsSettings(
   if (!isVerifiedAdminActive()) {
     throw new Error('ADMIN_UNAUTHORIZED');
   }
+  await auth.currentUser?.getIdToken(true).catch(() => undefined);
   const session = getVerifiedAdminSession();
   const saved = await SiteSettingsService.saveAdsSettings({
     ...config,
