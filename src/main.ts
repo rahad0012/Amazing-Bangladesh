@@ -1259,10 +1259,17 @@ async function loadPortalDataFromFirestore(force: boolean = false): Promise<void
   }
 }
 
+let divisionDetailRequestSeq = 0;
+let districtDetailRequestSeq = 0;
+let spotDetailRequestSeq = 0;
+let categoryDetailRequestSeq = 0;
+let articleDetailRequestSeq = 0;
+
 // Targeted Firestore loader for Dynamic Division Details Page (/divisions/:slug/)
 async function loadDivisionDetailFromFirestore(slugOrId: string, force: boolean = false): Promise<void> {
   const normalizedSlug = slugOrId.trim().toLowerCase();
   if (!normalizedSlug) {
+    divisionDetailRequestSeq += 1;
     state.divisionDetailSlug = '';
     state.divisionDetailDivision = null;
     state.divisionDetailDistricts = [];
@@ -1276,15 +1283,28 @@ async function loadDivisionDetailFromFirestore(slugOrId: string, force: boolean 
     return;
   }
 
+  const loadedDivisionMatches = Boolean(
+    state.divisionDetailDivision &&
+      (state.divisionDetailDivision.slug?.trim().toLowerCase() === normalizedSlug ||
+        state.divisionDetailDivision.id.trim().toLowerCase() === normalizedSlug)
+  );
+
   if (
     !force &&
     state.divisionDetailSlug === normalizedSlug &&
     !state.divisionDetailLoading &&
-    (state.divisionDetailDivision || state.divisionDetailNotFound)
+    (loadedDivisionMatches || state.divisionDetailNotFound)
   ) {
     return;
   }
 
+  const requestId = ++divisionDetailRequestSeq;
+  if (state.divisionDetailSlug !== normalizedSlug || !loadedDivisionMatches) {
+    state.divisionDetailDivision = null;
+    state.divisionDetailDistricts = [];
+    state.divisionDetailSpots = [];
+    state.divisionDetailArticles = [];
+  }
   state.divisionDetailSlug = normalizedSlug;
   state.divisionDetailLoading = true;
   state.divisionDetailError = null;
@@ -1401,6 +1421,7 @@ async function loadDivisionDetailFromFirestore(slugOrId: string, force: boolean 
       }
     }
 
+    if (requestId !== divisionDetailRequestSeq) return;
     if (!resolvedDivision) {
       state.divisionDetailDivision = null;
       state.divisionDetailDistricts = [];
@@ -1415,11 +1436,13 @@ async function loadDivisionDetailFromFirestore(slugOrId: string, force: boolean 
       state.divisionDetailNotFound = false;
     }
   } catch (err: any) {
+    if (requestId !== divisionDetailRequestSeq) return;
     console.warn(`Could not load division details for "${normalizedSlug}":`, err);
     state.divisionDetailError =
       err instanceof Error ? err.message : 'Unable to retrieve division details from Firestore.';
     state.divisionDetailDivision = null;
   } finally {
+    if (requestId !== divisionDetailRequestSeq) return;
     state.divisionDetailLoading = false;
     updateDynamicSeo();
     renderApp();
@@ -1430,6 +1453,7 @@ async function loadDivisionDetailFromFirestore(slugOrId: string, force: boolean 
 async function loadDistrictDetailFromFirestore(slugOrId: string, force: boolean = false): Promise<void> {
   const normalizedSlug = slugOrId.trim().toLowerCase();
   if (!normalizedSlug) {
+    districtDetailRequestSeq += 1;
     state.districtDetailSlug = '';
     state.districtDetailDistrict = null;
     state.districtDetailDivision = null;
@@ -1444,15 +1468,29 @@ async function loadDistrictDetailFromFirestore(slugOrId: string, force: boolean 
     return;
   }
 
+  const loadedDistrictMatches = Boolean(
+    state.districtDetailDistrict &&
+      (state.districtDetailDistrict.slug?.trim().toLowerCase() === normalizedSlug ||
+        state.districtDetailDistrict.id.trim().toLowerCase() === normalizedSlug)
+  );
+
   if (
     !force &&
     state.districtDetailSlug === normalizedSlug &&
     !state.districtDetailLoading &&
-    (state.districtDetailDistrict || state.districtDetailNotFound)
+    (loadedDistrictMatches || state.districtDetailNotFound)
   ) {
     return;
   }
 
+  const requestId = ++districtDetailRequestSeq;
+  if (state.districtDetailSlug !== normalizedSlug || !loadedDistrictMatches) {
+    state.districtDetailDistrict = null;
+    state.districtDetailDivision = null;
+    state.districtDetailSiblingDistricts = [];
+    state.districtDetailSpots = [];
+    state.districtDetailArticles = [];
+  }
   state.districtDetailSlug = normalizedSlug;
   state.districtDetailLoading = true;
   state.districtDetailError = null;
@@ -1533,6 +1571,7 @@ async function loadDistrictDetailFromFirestore(slugOrId: string, force: boolean 
       }
     }
 
+    if (requestId !== districtDetailRequestSeq) return;
     if (!resolvedDistrict) {
       state.districtDetailDistrict = null;
       state.districtDetailDivision = null;
@@ -1549,11 +1588,13 @@ async function loadDistrictDetailFromFirestore(slugOrId: string, force: boolean 
       state.districtDetailNotFound = false;
     }
   } catch (err: any) {
+    if (requestId !== districtDetailRequestSeq) return;
     console.warn(`Could not load district details for "${normalizedSlug}":`, err);
     state.districtDetailError =
       err instanceof Error ? err.message : 'Unable to retrieve district details from Firestore.';
     state.districtDetailDistrict = null;
   } finally {
+    if (requestId !== districtDetailRequestSeq) return;
     state.districtDetailLoading = false;
     updateDynamicSeo();
     renderApp();
@@ -1564,6 +1605,7 @@ async function loadDistrictDetailFromFirestore(slugOrId: string, force: boolean 
 async function loadSpotDetailFromFirestore(slugOrId: string, force: boolean = false): Promise<void> {
   const normalizedSlug = slugOrId.trim().toLowerCase();
   if (!normalizedSlug) {
+    spotDetailRequestSeq += 1;
     state.spotDetailSlug = '';
     state.spotDetailSpot = null;
     state.spotDetailDivision = null;
@@ -1578,15 +1620,33 @@ async function loadSpotDetailFromFirestore(slugOrId: string, force: boolean = fa
     return;
   }
 
+  const aliasTarget = FirestoreService.SPOT_SLUG_ALIASES[normalizedSlug];
+  const loadedSpotMatches = Boolean(
+    state.spotDetailSpot &&
+      (state.spotDetailSpot.slug?.trim().toLowerCase() === normalizedSlug ||
+        state.spotDetailSpot.id.trim().toLowerCase() === normalizedSlug ||
+        (!!aliasTarget &&
+          (state.spotDetailSpot.slug?.trim().toLowerCase() === aliasTarget ||
+            state.spotDetailSpot.id.trim().toLowerCase() === aliasTarget)))
+  );
+
   if (
     !force &&
     state.spotDetailSlug === normalizedSlug &&
     !state.spotDetailLoading &&
-    (state.spotDetailSpot || state.spotDetailNotFound)
+    (loadedSpotMatches || state.spotDetailNotFound)
   ) {
     return;
   }
 
+  const requestId = ++spotDetailRequestSeq;
+  if (state.spotDetailSlug !== normalizedSlug || !loadedSpotMatches) {
+    state.spotDetailSpot = null;
+    state.spotDetailDivision = null;
+    state.spotDetailDistrict = null;
+    state.spotDetailNearbySpots = [];
+    state.spotDetailArticles = [];
+  }
   state.spotDetailSlug = normalizedSlug;
   state.spotDetailLoading = true;
   state.spotDetailError = null;
@@ -1608,6 +1668,7 @@ async function loadSpotDetailFromFirestore(slugOrId: string, force: boolean = fa
       }
     }
 
+    if (requestId !== spotDetailRequestSeq) return;
     if (!resolvedSpot || resolvedSpot.is_published !== true) {
       state.spotDetailSpot = null;
       state.spotDetailDivision = null;
@@ -1648,6 +1709,7 @@ async function loadSpotDetailFromFirestore(slugOrId: string, force: boolean = fa
         }
       }
 
+      if (requestId !== spotDetailRequestSeq) return;
       if (fsCategories.length > 0) {
         cmsStore.categories = fsCategories;
       }
@@ -1660,11 +1722,13 @@ async function loadSpotDetailFromFirestore(slugOrId: string, force: boolean = fa
       state.spotDetailNotFound = false;
     }
   } catch (err: any) {
+    if (requestId !== spotDetailRequestSeq) return;
     console.warn(`Could not load tourist spot details for "${normalizedSlug}":`, err);
     state.spotDetailError =
       err instanceof Error ? err.message : 'Unable to retrieve destination details from Firestore.';
     state.spotDetailSpot = null;
   } finally {
+    if (requestId !== spotDetailRequestSeq) return;
     state.spotDetailLoading = false;
     updateDynamicSeo();
     renderApp();
@@ -1675,6 +1739,7 @@ async function loadSpotDetailFromFirestore(slugOrId: string, force: boolean = fa
 async function loadCategoryDetailFromFirestore(slugOrId: string, force: boolean = false): Promise<void> {
   const normalizedSlug = slugOrId.trim().toLowerCase();
   if (!normalizedSlug) {
+    categoryDetailRequestSeq += 1;
     state.categoryDetailSlug = '';
     state.categoryDetailCategory = null;
     state.categoryDetailSpots = [];
@@ -1686,15 +1751,30 @@ async function loadCategoryDetailFromFirestore(slugOrId: string, force: boolean 
     return;
   }
 
+  const catAliasTarget = FirestoreService.CATEGORY_SLUG_ALIASES[normalizedSlug];
+  const loadedCategoryMatches = Boolean(
+    state.categoryDetailCategory &&
+      (state.categoryDetailCategory.slug?.trim().toLowerCase() === normalizedSlug ||
+        state.categoryDetailCategory.id.trim().toLowerCase() === normalizedSlug ||
+        (!!catAliasTarget &&
+          (state.categoryDetailCategory.slug?.trim().toLowerCase() === catAliasTarget ||
+            state.categoryDetailCategory.id.trim().toLowerCase() === catAliasTarget)))
+  );
+
   if (
     !force &&
     state.categoryDetailSlug === normalizedSlug &&
     !state.categoryDetailLoading &&
-    (state.categoryDetailCategory || state.categoryDetailNotFound)
+    (loadedCategoryMatches || state.categoryDetailNotFound)
   ) {
     return;
   }
 
+  const requestId = ++categoryDetailRequestSeq;
+  if (state.categoryDetailSlug !== normalizedSlug || !loadedCategoryMatches) {
+    state.categoryDetailCategory = null;
+    state.categoryDetailSpots = [];
+  }
   state.categoryDetailSlug = normalizedSlug;
   state.categoryDetailLoading = true;
   state.categoryDetailError = null;
@@ -1727,6 +1807,7 @@ async function loadCategoryDetailFromFirestore(slugOrId: string, force: boolean 
       resolvedCategory ||
       findPublishedCategoryBySlugOrId(normalizedSlug, cmsStore.categories);
 
+    if (requestId !== categoryDetailRequestSeq) return;
     if (!activeCategory || activeCategory.is_published !== true) {
       state.categoryDetailCategory = null;
       state.categoryDetailSpots = [];
@@ -1741,12 +1822,14 @@ async function loadCategoryDetailFromFirestore(slugOrId: string, force: boolean 
       state.firestoreHydrated = true;
     }
   } catch (err: any) {
+    if (requestId !== categoryDetailRequestSeq) return;
     console.warn(`Could not load category details for "${normalizedSlug}":`, err);
     state.categoryDetailError =
       err instanceof Error ? err.message : 'Unable to retrieve category details from Firestore.';
     state.categoryDetailCategory = null;
     state.categoryDetailSpots = [];
   } finally {
+    if (requestId !== categoryDetailRequestSeq) return;
     state.categoryDetailLoading = false;
     updateDynamicSeo();
     renderApp();
@@ -1757,6 +1840,7 @@ async function loadCategoryDetailFromFirestore(slugOrId: string, force: boolean 
 async function loadArticleDetailFromFirestore(slugOrId: string, force: boolean = false): Promise<void> {
   const normalizedSlug = slugOrId.trim().toLowerCase();
   if (!normalizedSlug) {
+    articleDetailRequestSeq += 1;
     state.guideDetailSlug = '';
     state.guideDetailArticle = null;
     state.guideDetailNotFound = true;
@@ -1767,15 +1851,25 @@ async function loadArticleDetailFromFirestore(slugOrId: string, force: boolean =
     return;
   }
 
+  const loadedArticleMatches = Boolean(
+    state.guideDetailArticle &&
+      (state.guideDetailArticle.slug?.trim().toLowerCase() === normalizedSlug ||
+        state.guideDetailArticle.id.trim().toLowerCase() === normalizedSlug)
+  );
+
   if (
     !force &&
     state.guideDetailSlug === normalizedSlug &&
     !state.guideDetailLoading &&
-    (state.guideDetailArticle || state.guideDetailNotFound)
+    (loadedArticleMatches || state.guideDetailNotFound)
   ) {
     return;
   }
 
+  const requestId = ++articleDetailRequestSeq;
+  if (state.guideDetailSlug !== normalizedSlug || !loadedArticleMatches) {
+    state.guideDetailArticle = null;
+  }
   state.guideDetailSlug = normalizedSlug;
   state.guideDetailLoading = true;
   state.guideDetailError = null;
@@ -1791,6 +1885,7 @@ async function loadArticleDetailFromFirestore(slugOrId: string, force: boolean =
       FirestoreService.getAllPublishedSpots()
     ]);
 
+    if (requestId !== articleDetailRequestSeq) return;
     if (fsDivisions.length > 0) {
       cmsStore.divisions = normalizeFirestoreDivisions(fsDivisions);
     }
@@ -1827,11 +1922,13 @@ async function loadArticleDetailFromFirestore(slugOrId: string, force: boolean =
       state.firestoreHydrated = true;
     }
   } catch (err: any) {
+    if (requestId !== articleDetailRequestSeq) return;
     console.warn(`Could not load travel article for "${normalizedSlug}":`, err);
     state.guideDetailError =
       err instanceof Error ? err.message : 'Unable to retrieve travel article from Firestore.';
     state.guideDetailArticle = null;
   } finally {
+    if (requestId !== articleDetailRequestSeq) return;
     state.guideDetailLoading = false;
     updateDynamicSeo();
     renderApp();
@@ -5943,7 +6040,17 @@ function openSpotDetailPage(slugOrId: string, pushUrl: boolean = true): void {
   dismissOpenSpotModal();
   const knownSpot = findPublishedSpotBySlugOrId(slugOrId);
   const targetSlug = (knownSpot?.slug || slugOrId).trim().toLowerCase();
+  const isDifferentSlug = state.spotDetailSlug !== targetSlug;
   state.activeView = 'spot-detail';
+  if (isDifferentSlug) {
+    state.spotDetailSpot = null;
+    state.spotDetailDivision = null;
+    state.spotDetailDistrict = null;
+    state.spotDetailNearbySpots = [];
+    state.spotDetailArticles = [];
+    state.spotDetailNotFound = false;
+    state.spotDetailError = null;
+  }
   state.spotDetailSlug = targetSlug;
   state.spotDetailGalleryIndex = 0;
   if (pushUrl) {
@@ -5953,7 +6060,7 @@ function openSpotDetailPage(slugOrId: string, pushUrl: boolean = true): void {
   updateDynamicSeo();
   renderApp();
   window.scrollTo({ top: 0, behavior: 'smooth' });
-  loadSpotDetailFromFirestore(targetSlug);
+  loadSpotDetailFromFirestore(targetSlug, isDifferentSlug);
 }
 
 function openAllCategoriesPage(pushUrl: boolean = true): void {
@@ -5975,7 +6082,14 @@ function openCategoryDetailPage(slugOrId: string, pushUrl: boolean = true): void
   dismissOpenSpotModal();
   const knownCat = findPublishedCategoryBySlugOrId(slugOrId);
   const targetSlug = (knownCat?.slug || knownCat?.id || slugOrId).trim().toLowerCase();
+  const isDifferentSlug = state.categoryDetailSlug !== targetSlug;
   state.activeView = 'category-detail';
+  if (isDifferentSlug) {
+    state.categoryDetailCategory = null;
+    state.categoryDetailSpots = [];
+    state.categoryDetailNotFound = false;
+    state.categoryDetailError = null;
+  }
   state.categoryDetailSlug = targetSlug;
   state.categoryDetailDivisionFilter = 'all';
   state.categoryDetailDistrictFilter = 'all';
@@ -5987,7 +6101,7 @@ function openCategoryDetailPage(slugOrId: string, pushUrl: boolean = true): void
   updateDynamicSeo();
   renderApp();
   window.scrollTo({ top: 0, behavior: 'smooth' });
-  loadCategoryDetailFromFirestore(targetSlug);
+  loadCategoryDetailFromFirestore(targetSlug, isDifferentSlug);
 }
 
 function openTravelGuidesPage(pushUrl: boolean = true): void {
@@ -6016,7 +6130,13 @@ function openArticleDetailPage(slugOrId: string, pushUrl: boolean = true): void 
         a.id.trim().toLowerCase() === normalizedInput)
   );
   const targetSlug = (known?.slug || normalizedInput).trim().toLowerCase();
+  const isDifferentSlug = state.guideDetailSlug !== targetSlug;
   state.activeView = 'guide-detail';
+  if (isDifferentSlug) {
+    state.guideDetailArticle = null;
+    state.guideDetailNotFound = false;
+    state.guideDetailError = null;
+  }
   state.guideDetailSlug = targetSlug;
   if (pushUrl) {
     navigateToPath(`/travel-guides/${encodeURIComponent(targetSlug)}/`);
@@ -6025,7 +6145,7 @@ function openArticleDetailPage(slugOrId: string, pushUrl: boolean = true): void 
   updateDynamicSeo();
   renderApp();
   window.scrollTo({ top: 0, behavior: 'smooth' });
-  loadArticleDetailFromFirestore(targetSlug);
+  loadArticleDetailFromFirestore(targetSlug, isDifferentSlug);
 }
 
 const VALID_SEARCH_TYPES = new Set<SearchTypeFilter>(['all', 'spot', 'district', 'division', 'guide', 'category']);
