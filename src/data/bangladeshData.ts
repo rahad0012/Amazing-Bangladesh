@@ -20,10 +20,33 @@ export interface Division {
   seo_title_bn?: string;
   seo_description_en?: string;
   seo_description_bn?: string;
+  geography_en?: string;
+  geography_bn?: string;
+  rivers_en?: string;
+  rivers_bn?: string;
+  climate_en?: string;
+  climate_bn?: string;
+  culture_en?: string;
+  culture_bn?: string;
+  heritage_highlights_en?: string[];
+  heritage_highlights_bn?: string[];
   is_published: boolean;
   order: number;
   created_at?: string;
   updated_at?: string;
+}
+
+export interface DivisionRegionalOverview {
+  geography_bn: string;
+  geography_en: string;
+  rivers_bn: string;
+  rivers_en: string;
+  climate_bn: string;
+  climate_en: string;
+  culture_bn: string;
+  culture_en: string;
+  heritage_highlights_bn: string[];
+  heritage_highlights_en: string[];
 }
 
 export interface District {
@@ -383,6 +406,143 @@ export const DIVISIONS: Division[] = [
     order: 8
   }
 ];
+
+export const DIVISION_REGIONAL_OVERVIEWS: Record<string, DivisionRegionalOverview> = {
+  dhaka: {
+    geography_bn:
+      'বাংলাদেশের কেন্দ্রস্থলে অবস্থিত ঢাকা বিভাগ পদ্মা, যমুনা, মেঘনা, শীতলক্ষ্যা, বুড়িগঙ্গা ও ধলেশ্বরী নদীর উর্বর পলিমাটির সমভূমি এবং মধুপুর গড়ের লাল মাটির টিলা নিয়ে গঠিত। রাজধানী ঢাকা ছাড়াও গাজীপুর, নারায়ণগঞ্জ, সোনারগাঁও ও টাঙ্গাইল অঞ্চল দেশের অর্থনৈতিক ও যোগাযোগ কেন্দ্রবিন্দু।',
+    geography_en:
+      'Situated at the heart of Bangladesh, Dhaka Division spans fertile alluvial floodplains woven by the Padma, Jamuna, Buriganga, Shitalakshya, and Dhaleshwari rivers alongside the elevated red-soil terraces of the Madhupur Tract.',
+    rivers_bn: 'বুড়িগঙ্গা, পদ্মা, যমুনা, শীতলক্ষ্যা, ধলেশ্বরী, আড়িয়াল খাঁ',
+    rivers_en: 'Buriganga, Padma, Jamuna, Shitalakshya, Dhaleshwari, Arial Khan',
+    climate_bn: 'অক্টোবর–মার্চ (শীত ও বসন্তে ঐতিহাসিক স্থাপনা ও নদীভ্রমণের সেরা সময়)',
+    climate_en: 'October–March (cool dry season ideal for heritage walks and river cruises)',
+    culture_bn:
+      'সুলতানি ও মুঘল স্থাপত্য, ঐতিহ্যবাহী জামদানি বয়নশিল্প, টাঙ্গাইলের তাঁতশিল্প, পুরান ঢাকার রসনাবিলাস (কাচ্চি বিরিয়ানি ও বাকরখানি) এবং পহেলা বৈশাখ ও একুশের সাংস্কৃতিক চেতনা এই বিভাগের প্রাণ।',
+    culture_en:
+      'Renowned for Mughal and Bengal Sultanate architecture, UNESCO-recognized Jamdani weaving, Tangail handloom sarees, Old Dhaka culinary traditions, and vibrant literary and performing arts festivals.',
+    heritage_highlights_bn: ['লালবাগ কেল্লা ও আহসান মঞ্জিল', 'সোনারগাঁও পানাম নগর', 'জামদানি ও টাঙ্গাইল তাঁত ঐতিহ্য', 'ভাওয়াল ও মধুপুর শালবন'],
+    heritage_highlights_en: ['Lalbagh Fort & Ahsan Manzil', 'Historic Sonargaon Panam City', 'Jamdani & Tangail Handloom Craft', 'Bhawal & Madhupur Sal Forests']
+  },
+  chattogram: {
+    geography_bn:
+      'চট্টগ্রাম বিভাগ বাংলাদেশের দক্ষিণ-পূর্বাঞ্চল জুড়ে বিস্তৃত—যেখানে একদিকে বঙ্গোপসাগরের ১২০ কিলোমিটার দীর্ঘ সমুদ্র সৈকত ও প্রবাল দ্বীপ সেন্টমার্টিন, অন্যদিকে রাঙামাটি, বান্দরবান ও খাগড়াছড়ির সুউচ্চ সবুজ পাহাড়, গিরিখাত ও কাপ্তাই হ্রদ অবস্থিত।',
+    geography_en:
+      'Stretching across southeastern Bangladesh, Chattogram Division unites coastal plains and the 120 km Bay of Bengal shoreline with the dramatic folded mountain ridges, waterfalls, and Kaptai Lake of the Chittagong Hill Tracts.',
+    rivers_bn: 'কর্ণফুলী, সাঙ্গু, মাতামুহুরী, হালদা, ফেনী, গোমতী, মেঘনা মোহনা',
+    rivers_en: 'Karnaphuli, Sangu, Matamuhuri, Halda, Feni, Gomati, Meghna Estuary',
+    climate_bn: 'নভেম্বর–মার্চ (সমুদ্র ও দ্বীপ ভ্রমণ); জুলাই–অক্টোবর (পাহাড়ে মেঘ ও ঝর্ণা)',
+    climate_en: 'Nov–Mar for beaches & coral islands; Jul–Oct for misty hill peaks & waterfalls',
+    culture_bn:
+      'বন্দরনগরীর সমুদ্রবাণিজ্যের ইতিহাস, ঐতিহ্যবাহী মেজবানি ভোজন, চাকমা-মারমা-ত্রিপুরা-বমসহ বৈচিত্র্যময় ক্ষুদ্র নৃগোষ্ঠীর বিজু-সাংগ্রাই-বৈসাবি উৎসব, পুঁথি সাহিত্য এবং পাহাড়ি জুম ও হস্তশিল্প এই অঞ্চলকে অনন্য করেছে।',
+    culture_en:
+      'Shaped by centuries of maritime trade, famous Mezban feasts, Buddhist monasteries, and the rich cultural tapestry of Chakma, Marma, Tripura, and Bawm hill communities celebrating Boisabi.',
+    heritage_highlights_bn: ['কক্সবাজার ও সেন্টমার্টিন প্রবাল দ্বীপ', 'সাজেক ভ্যালি ও বান্দরবান গিরিশৃঙ্গ', 'ময়নামতি প্রাচীন বৌদ্ধ বিহার', 'ঐতিহ্যবাহী মেজবানি ও পাহাড়ি সংস্কৃতি'],
+    heritage_highlights_en: ['Cox’s Bazar & Saint Martin’s Island', 'Sajek Valley & Bandarban Peaks', 'Mainamati Ancient Buddhist Ruins', 'Mezban Heritage & Hill Textiles']
+  },
+  sylhet: {
+    geography_bn:
+      'দেশের উত্তর-পূর্বাঞ্চলের সিলেট বিভাগ টিলা ও পাহাড়ের পাদদেশ, মৌলভীবাজার-হবিগঞ্জের সবুজ চা বাগান, পাথুরে স্বচ্ছ নদী জাফলং-বিছনাকান্দি এবং সুনামগঞ্জের বিশাল টাঙ্গুয়ার ও হাকালুকি হাওর জলাভূমি নিয়ে গঠিত।',
+    geography_en:
+      'Tucked in the northeast beneath the Meghalaya foothills, Sylhet Division is defined by undulating tea-terraced hillocks, crystal stone-bed rivers, subtropical rainforests, and vast seasonal wetlands known as haors.',
+    rivers_bn: 'সুরমা, কুশিয়ারা, পিয়াইন, গোয়াইন, যাদুকাটা, মনু, খোয়াই',
+    rivers_en: 'Surma, Kushiyara, Piyain, Gowain, Jadukata, Manu, Khowai',
+    climate_bn: 'জুলাই–অক্টোবর (হাওর ও জলমগ্ন বনের জন্য); নভেম্বর–ফেব্রুয়ারি (চা বাগান ও অতিথি পাখি)',
+    climate_en: 'Jul–Oct for flooded swamp forests & haor cruises; Nov–Feb for tea estates & birdwatching',
+    culture_bn:
+      'হযরত শাহজালাল (রহ.) ও শাহপরান (রহ.)-এর পুণ্যভূমি, মরমী কবি হাসন রাজা, বাউল সম্রাট শাহ আবদুল করিম ও রাধারমণের লোকগান, মণিপুরী নৃত্য-তাঁতশিল্প এবং সাতকড়া ও চায়ের আতিথেয়তা সিলেটের অনন্য পরিচয়।',
+    culture_en:
+      'Celebrated as a spiritual sanctuary of Sufi shrines and mystic baul poetry (Hason Raja & Shah Abdul Karim), alongside Manipuri classical dance, handloom crafts, and legendary tea hospitality.',
+    heritage_highlights_bn: ['টাঙ্গুয়ার হাওর রামসার জলাভূমি', 'রাতারগুল জলমগ্ন সোয়াম্প বন', 'শ্রীমঙ্গল চা বাগান ও লাউয়াছড়া', 'জাফলং ও মণিপুরী সংস্কৃতি'],
+    heritage_highlights_en: ['Tanguar Haor Ramsar Wetland', 'Ratargul Freshwater Swamp Forest', 'Sreemangal Tea & Lawachara Park', 'Jaflong & Manipuri Heritage']
+  },
+  khulna: {
+    geography_bn:
+      'বাংলাদেশের দক্ষিণ-পশ্চিমাঞ্চলের খুলনা বিভাগ গাঙ্গেয় ব-দ্বীপের সমভূমি এবং দক্ষিণে বিশ্বের বৃহত্তম একক ম্যানগ্রোভ অরণ্য সুন্দরবনের জোয়ার-ভাটার জটিল নদী-খাল ও দ্বীপাঞ্চল নিয়ে গঠিত।',
+    geography_en:
+      'Covering southwestern Bangladesh along the Ganges Delta, Khulna Division transitions from fertile riverine plains to the tidal creeks, mudflats, and mangrove islands of the UNESCO-listed Sundarbans.',
+    rivers_bn: 'ভৈরব, রূপসা, পশুর, গড়াই, মধুমতি, কপোতাক্ষ, বলেশ্বর',
+    rivers_en: 'Bhairab, Rupsha, Pashur, Gorai, Madhumati, Kopotakkho, Baleshwar',
+    climate_bn: 'নভেম্বর–মার্চ (সুন্দরবন ইকো-ক্রুজ ও ঐতিহাসিক মসজিদ দর্শনের আদর্শ মৌসুম)',
+    climate_en: 'November–March (calm winter tides ideal for Sundarbans wildlife safaris & heritage tours)',
+    culture_bn:
+      'বাগেরহাটের সুলতানি যুগের খলিফাতাবাদ মসজিদ নগরী, বিশ্বকবি রবীন্দ্রনাথ ঠাকুরের শিলাইদহ কুঠিবাড়ি, মহাকবি মাইকেল মধুসূদন দত্ত ও ফকির লালন শাহ-র কুষ্টিয়া আখড়াবাড়ি এবং চুইঝাল ও গলদা-বাগদা রন্ধনশিল্প এ অঞ্চলের গর্ব।',
+    culture_en:
+      'Steeped in Khan Jahan Ali’s 15th-century mosque city of Khalifatabad, Lalon Fakir’s mystic Baul heritage in Kushtia, Rabindranath Tagore’s Shilaidaha Kuthibari, and famed Chuijhal cuisine.',
+    heritage_highlights_bn: ['সুন্দরবন ইউনেস্কো বিশ্ব ঐতিহ্য', 'ষাট গম্বুজ মসজিদ (খলিফাতাবাদ)', 'লালন আখড়াবাড়ি ও শিলাইদহ কুঠিবাড়ি', 'জলজ ম্যানগ্রোভ ও বাউল ঐতিহ্য'],
+    heritage_highlights_en: ['UNESCO Sundarbans Mangrove', 'Sixty Dome Mosque (Bagerhat)', 'Lalon Shrine & Tagore Kuthibari', 'Baul Music & Chuijhal Gastronomy']
+  },
+  rajshahi: {
+    geography_bn:
+      'উত্তর-পশ্চিমাঞ্চলের রাজশাহী বিভাগ পদ্মা ও যমুনা নদী বিধৌত এবং প্রাচীন বরেন্দ্র ভূমির উচ্চ লালমাটি, চলনবিল জলাভূমি ও সমতল উর্বর কৃষিজমি নিয়ে বিস্তৃত।',
+    geography_en:
+      'Located in northwestern Bangladesh, Rajshahi Division encompasses the elevated Pleistocene terraces of the ancient Barind Tract, the vast Chalan Beel wetlands, and the fertile Padma–Jamuna river basins.',
+    rivers_bn: 'পদ্মা, যমুনা, আত্রাই, মহানন্দা, করতোয়া, বড়াল',
+    rivers_en: 'Padma, Jamuna, Atrai, Mahananda, Karatoya, Baral',
+    climate_bn: 'নভেম্বর–ফেব্রুয়ারি (প্রত্নস্থল ভ্রমণ); মে–জুলাই (চাঁপাইনবাবগঞ্জ ও রাজশাহীর আম উৎসব)',
+    climate_en: 'Nov–Feb for archaeological heritage; May–Jul for the famed mango harvest season',
+    culture_bn:
+      'পুণ্ড্রবর্ধনের মহাস্থানগড়, পাহাড়পুর সোমপুর মহাবিহার, পুঠিয়া রাজবাড়ি ও পোড়ামাটির মন্দির, রাজশাহী রেশম শিল্প, গম্ভীরা লোকসংগীত এবং বগুড়ার দই ও আমের ঐতিহ্য এই বিভাগকে বাংলাদেশের সাংস্কৃতিক শিকড়ে পরিণত করেছে।',
+    culture_en:
+      'Cradle of ancient Bengal civilization featuring Mahasthangarh, Paharpur Somapura Mahavihara, Puthia terracotta temples, fine Rajshahi silk weaving, Gambhira folk theatre, and Bogura’s famous sweet curd.',
+    heritage_highlights_bn: ['সোমপুর মহাবিহার (ইউনেস্কো ঐতিহ্য)', 'মহাস্থানগড় ও বেহুলার বাসরঘর', 'পুঠিয়া রাজবাড়ি ও মন্দির নগরী', 'রাজশাহী সিল্ক, আম ও বগুড়ার দই'],
+    heritage_highlights_en: ['Somapura Mahavihara (UNESCO)', 'Ancient Mahasthangarh Citadel', 'Puthia Temple Complex', 'Rajshahi Silk, Mangoes & Curd']
+  },
+  barishal: {
+    geography_bn:
+      'দক্ষিণাঞ্চলের বরিশাল বিভাগ অসংখ্য নদী-শাখানদী, খাল ও দ্বীপের জালিকায় বোনা ‘বাংলার ভেনিস’—যেখানে উত্তরে মেঘনা-কীর্তনখোলার মোহনা এবং দক্ষিণে পটুয়াখালী ও ভোলার বঙ্গোপসাগর উপকূল অবস্থিত।',
+    geography_en:
+      'Known as the Venice of Bengal, Barishal Division is an intricate coastal delta crisscrossed by mighty estuaries, tranquil canals, river islands like Bhola, and the sandy shores of Kuakata on the Bay of Bengal.',
+    rivers_bn: 'কীর্তনখোলা, মেঘনা, তেতুলিয়া, বিষখালী, বলেশ্বর, আড়িয়াল খাঁ, সন্ধ্যা',
+    rivers_en: 'Kirtankhola, Meghna, Tetulia, Bishkhali, Baleshwar, Arial Khan, Sandhya',
+    climate_bn: 'অক্টোবর–মার্চ (কুয়াকাটা সৈকত ও নদীবিহার); জুলাই–সেপ্টেম্বর (ভাসমান পেয়ারা বাজার)',
+    climate_en: 'Oct–Mar for coastal beaches & river cruises; Jul–Sep for the floating guava markets',
+    culture_bn:
+      'ভিমরুলি ও আটঘর কুড়িয়ানার শতবর্ষী ভাসমান নৌকা বাজার, শাপলার বিল সাতলা, কুয়াকাটার রাখাইন সংস্কৃতি, কবি জীবনানন্দ দাশ ও কামিনী রায়ের সাহিত্যঐতিহ্য এবং বালাম চাল ও ইলিশ মাছের সংস্কৃতি এ অঞ্চলের প্রাণ।',
+    culture_en:
+      'Famous for century-old floating guava & vegetable markets in Jhalokati, Satla water-lily wetlands, Rakhine coastal heritage in Kuakata, literary legacy of Jibanananda Das, and abundant river Hilsa.',
+    heritage_highlights_bn: ['কুয়াকাটা সূর্যোদয়-সূর্যাস্ত সৈকত', 'ভিমরুলি ভাসমান পেয়ারা বাজার', 'সাতলা লাল শাপলা বিল ও দুর্গাসাগর', 'গুঠিয়া মসজিদ ও মিয়াবাড়ি'],
+    heritage_highlights_en: ['Kuakata Sunrise & Sunset Beach', 'Bhimruli Floating Guava Market', 'Satla Red Water-Lily Wetlands', 'Guthia Mosque & River Heritage']
+  },
+  rangpur: {
+    geography_bn:
+      'দেশের উত্তরাঞ্চলের রংপুর বিভাগ হিমালয়ের পাদদেশীয় সমভূমি, তিস্তা, ব্রহ্মপুত্র ও ধরলার অববাহিকা এবং পঞ্চগড়-তেঁতুলিয়ার সুবিস্তৃত সমতল চা বাগান ও শস্যক্ষেত্র নিয়ে গঠিত—যেখান থেকে পরিষ্কার শরৎ ও শীতে কাঞ্চনজঙ্ঘার চূড়া দেখা যায়।',
+    geography_en:
+      'Set on the sub-Himalayan piedmont plains of northern Bangladesh, Rangpur Division is watered by the Teesta, Brahmaputra, and Karatoya rivers, offering flat-land tea gardens in Panchagarh with clear-day views of Kanchenjunga.',
+    rivers_bn: 'তিস্তা, ব্রহ্মপুত্র, ধরলা, করতোয়া, দুধকুমার, মহানন্দা, পুনর্ভবা',
+    rivers_en: 'Teesta, Brahmaputra, Dharla, Karatoya, Dudhkumar, Mahananda, Punarbhaba',
+    climate_bn: 'অক্টোবর–ফেব্রুয়ারি (কাঞ্চনজঙ্ঘা দর্শন, কান্তজিউ মন্দির ও রাজবাড়ি ভ্রমণের সেরা সময়)',
+    climate_en: 'October–February (crisp northern skies for Kanchenjunga vistas & heritage exploration)',
+    culture_bn:
+      'দিনাজপুরের অষ্টাদশ শতকের কান্তজিউ টেরাকোটা মন্দির, রংপুরের তাজহাট রাজবাড়ি, নারী জাগরণের অগ্রদূত বেগম রোকেয়ার জন্মভূমি পায়রাবন্দ, ভাওয়াইয়া সংগীত ও শতরঞ্জি বুননশিল্প উত্তরবঙ্গের অমূল্য ঐতিহ্য।',
+    culture_en:
+      'Celebrated for the intricate terracotta craftsmanship of Kantajew Temple, Tajhat Palace, Begum Rokeya’s birthplace at Pairaband, soulful Bhawaiya folk songs, and traditional Shatranji handwoven rugs.',
+    heritage_highlights_bn: ['কান্তজিউ টেরাকোটা মন্দির (দিনাজপুর)', 'তাজহাট জমিদার বাড়ি ও পায়রাবন্দ', 'তেঁতুলিয়া সমতল চা বাগান ও কাঞ্চনজঙ্ঘা', 'ভাওয়াইয়া সংগীত ও শতরঞ্জি শিল্প'],
+    heritage_highlights_en: ['Kantajew Terracotta Temple', 'Tajhat Palace & Pairaband', 'Tetulia Tea Gardens & Kanchenjunga', 'Bhawaiya Folk & Shatranji Crafts']
+  },
+  mymensingh: {
+    geography_bn:
+      'ব্রহ্মপুত্র নদের অববাহিকায় অবস্থিত ময়মনসিংহ বিভাগ উত্তরে ভারতের মেঘালয় গারো পাহাড়ের পাদদেশ, নেত্রকোনার বিরিশিরি চীনামাটির পাহাড়, সোমেশ্বরী-কংস নদী ও শেরপুরের গজনী-মধুটিলা বনাঞ্চল দ্বারা সমৃদ্ধ।',
+    geography_en:
+      'Bordered by Meghalaya’s Garo Hills to the north and bisected by the Old Brahmaputra River, Mymensingh Division blends wooded foothill valleys, Susang Durgapur’s white ceramic clay hills, and riverine floodplains.',
+    rivers_bn: 'পুরাতন ব্রহ্মপুত্র, সোমেশ্বরী, কংস, যমুনা, ভোগাই, ঝিনাই',
+    rivers_en: 'Old Brahmaputra, Someshwari, Kangsha, Jamuna, Bhogai, Jhinai',
+    climate_bn: 'অক্টোবর–মার্চ (বিরিশিরি নীল হ্রদ, গারো পাহাড় ও হাওর প্রান্ত ভ্রমণের সেরা সময়)',
+    climate_en: 'October–March (ideal dry season when Birishiri’s lake glows bright turquoise)',
+    culture_bn:
+      'মৈমনসিংহ গীতিকা ও মহুয়া-মলুয়ার লোকসাহিত্য, শিল্পাচার্য জয়নুল আবেদিন সংগ্রহশালা, শশী লজ, গারো-হাজং-কোচ আদিবাসীদের ওয়ানগালা উৎসব এবং মুক্তাগাছার মণ্ডা ও নকশিকাঁথা এই বিভাগের সাংস্কৃতিক ঐশ্বর্য।',
+    culture_en:
+      'Home to the classic Mymensingh Gitika ballads, Zainul Abedin Sangrahashala, Shashi Lodge, Garo and Hajong indigenous Wangala harvest traditions, Nakshi Kantha embroidery, and famous Muktagacha Monda.',
+    heritage_highlights_bn: ['বিরিশিরি চীনামাটির পাহাড় ও সোমেশ্বরী', 'শশী লজ ও জয়নুল আবেদিন সংগ্রহশালা', 'মৈমনসিংহ গীতিকা ও গারো সংস্কৃতি', 'মধুটিলা-গজনী ও মুক্তাগাছার মণ্ডা'],
+    heritage_highlights_en: ['Birishiri Clay Hills & Someshwari', 'Shashi Lodge & Zainul Art Museum', 'Mymensingh Gitika & Garo Culture', 'Gajni Forest & Muktagacha Monda']
+  }
+};
+
+export function getDivisionRegionalOverviewFallback(divisionSlugOrId?: string): DivisionRegionalOverview | null {
+  if (!divisionSlugOrId) return null;
+  const normalized = divisionSlugOrId.trim().toLowerCase().replace(/^div_/, '');
+  return DIVISION_REGIONAL_OVERVIEWS[normalized] || null;
+}
 
 // All 64 Official Districts of Bangladesh (Accurately partitioned by Division)
 export const DISTRICTS: District[] = [

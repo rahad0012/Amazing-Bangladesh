@@ -20,6 +20,7 @@ import { escapeHtml } from '../utils/formatUtils';
 
 import {
   ARTICLE_CATEGORIES,
+  getDivisionRegionalOverviewFallback,
   type Division,
   type District,
   type Category,
@@ -62,7 +63,7 @@ function isValidHttpUrl(url: string): boolean {
 
 function isValidImageSourceUrl(url: string): boolean {
   if (!url) return false;
-  if (url.startsWith('data:image/')) return true;
+  if (url.startsWith('data:image/') || url.startsWith('/api/media/')) return true;
   return isValidHttpUrl(url);
 }
 
@@ -288,6 +289,25 @@ export function openDivisionFormModal(division?: Division, lang: Language = 'bn'
 
   const isEdit = !!division;
   const isBn = lang === 'bn';
+  const overviewDefaults = division ? getDivisionRegionalOverviewFallback(division.slug || division.id) : null;
+  const geographyEnVal = division?.geography_en ?? overviewDefaults?.geography_en ?? '';
+  const geographyBnVal = division?.geography_bn ?? overviewDefaults?.geography_bn ?? '';
+  const riversEnVal = division?.rivers_en ?? overviewDefaults?.rivers_en ?? '';
+  const riversBnVal = division?.rivers_bn ?? overviewDefaults?.rivers_bn ?? '';
+  const climateEnVal = division?.climate_en ?? overviewDefaults?.climate_en ?? '';
+  const climateBnVal = division?.climate_bn ?? overviewDefaults?.climate_bn ?? '';
+  const cultureEnVal = division?.culture_en ?? overviewDefaults?.culture_en ?? '';
+  const cultureBnVal = division?.culture_bn ?? overviewDefaults?.culture_bn ?? '';
+  const highlightsEnVal = (
+    division?.heritage_highlights_en && division.heritage_highlights_en.length > 0
+      ? division.heritage_highlights_en
+      : overviewDefaults?.heritage_highlights_en || []
+  ).join(', ');
+  const highlightsBnVal = (
+    division?.heritage_highlights_bn && division.heritage_highlights_bn.length > 0
+      ? division.heritage_highlights_bn
+      : overviewDefaults?.heritage_highlights_bn || []
+  ).join(', ');
 
   container.innerHTML = `
     <div class="modal-travel-header d-flex justify-content-between align-items-center">
@@ -366,6 +386,99 @@ export function openDivisionFormModal(division?: Division, lang: Language = 'bn'
               <span class="bilingual-badge-bn">বাংলা</span>
             </label>
             <textarea class="form-control" id="div-desc-bn" rows="2" required placeholder="বিভাগের সংক্ষিপ্ত পরিচিতি...">${escapeHtml(division?.description_bn || '')}</textarea>
+          </div>
+
+          <div class="col-12">
+            <div class="border rounded-3 p-3 bg-light">
+              <div class="fw-bold small text-primary-bd mb-1 d-flex align-items-center gap-2">
+                <i class="bi bi-globe-asia-australia text-success"></i>
+                <span>${isBn ? 'বিভাগের ভৌগোলিক ও সাংস্কৃতিক পরিচয় (বিস্তারিত পাতা)' : 'Geographic & Cultural Overview (Division Detail Page)'}</span>
+              </div>
+              <p class="text-muted mb-3" style="font-size: 0.78rem;">
+                ${isBn
+                  ? 'বিভাগের বিস্তারিত পাতার "ভৌগোলিক ও সাংস্কৃতিক পরিচয়" সেকশনে প্রদর্শিত ভূপ্রকৃতি, নদ-নদী, সেরা মৌসুম, সংস্কৃতি ও আকর্ষণসমূহ এখান থেকে সম্পাদনা করুন।'
+                  : 'Edit the geography, major rivers, best season, culture, and signature highlights displayed on this division’s detail page.'}
+              </p>
+
+              <div class="row g-3">
+                <div class="col-md-6">
+                  <label class="form-label fw-bold small text-primary-bd" for="div-geography-en">
+                    Geography &amp; Landscape (EN)
+                    <span class="bilingual-badge-en">English</span>
+                  </label>
+                  <textarea class="form-control form-control-sm" id="div-geography-en" rows="3" maxlength="3000" placeholder="Landforms, floodplains, hills...">${escapeHtml(geographyEnVal)}</textarea>
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label fw-bold small text-primary-bd" for="div-geography-bn">
+                    ভৌগোলিক অবস্থান ও প্রকৃতি (বাংলা)
+                    <span class="bilingual-badge-bn">বাংলা</span>
+                  </label>
+                  <textarea class="form-control form-control-sm" id="div-geography-bn" rows="3" maxlength="3000" placeholder="বিভাগের ভূপ্রকৃতি ও ভৌগোলিক অবস্থান...">${escapeHtml(geographyBnVal)}</textarea>
+                </div>
+
+                <div class="col-md-6">
+                  <label class="form-label fw-bold small text-primary-bd" for="div-rivers-en">
+                    Major Rivers &amp; Waterways (EN)
+                    <span class="bilingual-badge-en">English</span>
+                  </label>
+                  <input type="text" class="form-control form-control-sm" id="div-rivers-en" value="${escapeHtml(riversEnVal)}" maxlength="500" placeholder="e.g. Padma, Jamuna, Buriganga">
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label fw-bold small text-primary-bd" for="div-rivers-bn">
+                    প্রধান নদ-নদী ও জলপথ (বাংলা)
+                    <span class="bilingual-badge-bn">বাংলা</span>
+                  </label>
+                  <input type="text" class="form-control form-control-sm" id="div-rivers-bn" value="${escapeHtml(riversBnVal)}" maxlength="500" placeholder="যেমন: পদ্মা, যমুনা, বুড়িগঙ্গা">
+                </div>
+
+                <div class="col-md-6">
+                  <label class="form-label fw-bold small text-primary-bd" for="div-climate-en">
+                    Best Season to Visit (EN)
+                    <span class="bilingual-badge-en">English</span>
+                  </label>
+                  <input type="text" class="form-control form-control-sm" id="div-climate-en" value="${escapeHtml(climateEnVal)}" maxlength="500" placeholder="e.g. October–March (cool dry season)">
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label fw-bold small text-primary-bd" for="div-climate-bn">
+                    ভ্রমণের সেরা মৌসুম (বাংলা)
+                    <span class="bilingual-badge-bn">বাংলা</span>
+                  </label>
+                  <input type="text" class="form-control form-control-sm" id="div-climate-bn" value="${escapeHtml(climateBnVal)}" maxlength="500" placeholder="যেমন: অক্টোবর–মার্চ">
+                </div>
+
+                <div class="col-md-6">
+                  <label class="form-label fw-bold small text-primary-bd" for="div-culture-en">
+                    Culture, Heritage &amp; Traditions (EN)
+                    <span class="bilingual-badge-en">English</span>
+                  </label>
+                  <textarea class="form-control form-control-sm" id="div-culture-en" rows="3" maxlength="3000" placeholder="Architecture, crafts, festivals, cuisine...">${escapeHtml(cultureEnVal)}</textarea>
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label fw-bold small text-primary-bd" for="div-culture-bn">
+                    সংস্কৃতি, ঐতিহ্য ও জীবনধারা (বাংলা)
+                    <span class="bilingual-badge-bn">বাংলা</span>
+                  </label>
+                  <textarea class="form-control form-control-sm" id="div-culture-bn" rows="3" maxlength="3000" placeholder="ঐতিহ্য, উৎসব, কারুশিল্প ও খাবার...">${escapeHtml(cultureBnVal)}</textarea>
+                </div>
+
+                <div class="col-md-6">
+                  <label class="form-label fw-bold small text-primary-bd" for="div-highlights-en">
+                    Signature Cultural Highlights (EN)
+                    <span class="bilingual-badge-en">English</span>
+                  </label>
+                  <textarea class="form-control form-control-sm" id="div-highlights-en" rows="2" maxlength="1000" placeholder="Comma-separated: Lalbagh Fort, Jamdani Craft">${escapeHtml(highlightsEnVal)}</textarea>
+                  <div class="form-text" style="font-size: 0.72rem;">${isBn ? 'কমা (,) দিয়ে আলাদা করে লিখুন' : 'Separate items with commas (,)'}</div>
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label fw-bold small text-primary-bd" for="div-highlights-bn">
+                    উল্লেখযোগ্য সাংস্কৃতিক ও ঐতিহ্যবাহী আকর্ষণ (বাংলা)
+                    <span class="bilingual-badge-bn">বাংলা</span>
+                  </label>
+                  <textarea class="form-control form-control-sm" id="div-highlights-bn" rows="2" maxlength="1000" placeholder="কমা দিয়ে লিখুন: লালবাগ কেল্লা, জামদানি শিল্প">${escapeHtml(highlightsBnVal)}</textarea>
+                  <div class="form-text" style="font-size: 0.72rem;">${isBn ? 'কমা (,) দিয়ে আলাদা করে লিখুন' : 'Separate items with commas (,)'}</div>
+                </div>
+              </div>
+            </div>
           </div>
 
           <div class="col-12">
@@ -459,6 +572,24 @@ export function openDivisionFormModal(division?: Division, lang: Language = 'bn'
       return;
     }
 
+    const geographyEn = (document.getElementById('div-geography-en') as HTMLTextAreaElement)?.value.trim() || undefined;
+    const geographyBn = (document.getElementById('div-geography-bn') as HTMLTextAreaElement)?.value.trim() || undefined;
+    const riversEn = (document.getElementById('div-rivers-en') as HTMLInputElement)?.value.trim() || undefined;
+    const riversBn = (document.getElementById('div-rivers-bn') as HTMLInputElement)?.value.trim() || undefined;
+    const climateEn = (document.getElementById('div-climate-en') as HTMLInputElement)?.value.trim() || undefined;
+    const climateBn = (document.getElementById('div-climate-bn') as HTMLInputElement)?.value.trim() || undefined;
+    const cultureEn = (document.getElementById('div-culture-en') as HTMLTextAreaElement)?.value.trim() || undefined;
+    const cultureBn = (document.getElementById('div-culture-bn') as HTMLTextAreaElement)?.value.trim() || undefined;
+    const parseHighlightsList = (raw: string): string[] | undefined => {
+      const items = raw
+        .split(/[\n,]+/)
+        .map(item => item.trim())
+        .filter(Boolean);
+      return items.length > 0 ? items.slice(0, 15) : undefined;
+    };
+    const highlightsEn = parseHighlightsList((document.getElementById('div-highlights-en') as HTMLTextAreaElement)?.value || '');
+    const highlightsBn = parseHighlightsList((document.getElementById('div-highlights-bn') as HTMLTextAreaElement)?.value || '');
+
     const divSeoFields = readSeoFields('div');
 
     const newDiv: Division = {
@@ -475,6 +606,16 @@ export function openDivisionFormModal(division?: Division, lang: Language = 'bn'
       thumbnail_url: division?.thumbnail_url ?? imgUrl,
       description_en: descEn,
       description_bn: descBn,
+      geography_en: geographyEn,
+      geography_bn: geographyBn,
+      rivers_en: riversEn,
+      rivers_bn: riversBn,
+      climate_en: climateEn,
+      climate_bn: climateBn,
+      culture_en: cultureEn,
+      culture_bn: cultureBn,
+      heritage_highlights_en: highlightsEn,
+      heritage_highlights_bn: highlightsBn,
       ...divSeoFields,
       is_published: (document.getElementById('div-published') as HTMLInputElement).checked,
       created_at: division?.created_at
