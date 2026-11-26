@@ -2014,6 +2014,10 @@ function renderLayoutShell(): void {
     });
     hydrateRenderedAdSlots(state.adsSettings, true);
   }
+  const win = window as Window & { __bdMountVisitorAds?: () => void };
+  if (typeof win.__bdMountVisitorAds === 'function') {
+    win.__bdMountVisitorAds();
+  }
 }
 
 // Switch Language and retain current view and context
@@ -4193,6 +4197,15 @@ async function handleAdminSessionExpired(): Promise<void> {
 }
 
 async function openAdminLoginPage(pushUrl: boolean = true): Promise<void> {
+  const win = window as Window & { __bdVisitorStaticAdsLoaded?: boolean };
+  if (win.__bdVisitorStaticAdsLoaded) {
+    if (pushUrl) {
+      window.location.assign('/admin/login/');
+    } else {
+      window.location.replace('/admin/login/');
+    }
+    return;
+  }
   if (pushUrl) {
     navigateToPath('/admin/login/');
   }
@@ -4244,9 +4257,18 @@ async function openProtectedAdminRoute(pushUrl: boolean = true, initialTab?: Cms
   if (initialTab) {
     cmsStore.activeTab = initialTab;
   }
+  const targetAdminPath = getAdminRouteForTab(cmsStore.activeTab);
+  const win = window as Window & { __bdVisitorStaticAdsLoaded?: boolean };
+  if (win.__bdVisitorStaticAdsLoaded) {
+    if (pushUrl) {
+      window.location.assign(targetAdminPath);
+    } else {
+      window.location.replace(targetAdminPath);
+    }
+    return;
+  }
   state.activeView = 'cms';
   state.adminAuthStatus = 'checking';
-  const targetAdminPath = getAdminRouteForTab(cmsStore.activeTab);
   if (pushUrl) {
     navigateToPath(targetAdminPath);
   }

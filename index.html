@@ -121,14 +121,45 @@
     </script>
 
 
-    <!-- Ads code -->
-    <script data-cfasync="false" src="https://afders.org/1/c3597897dcfbda3f55605fa23a7f4433"></script>
+    <!-- Visitor-Only Ads Loader (blocked on /admin* and #cms routes) -->
+    <script>
+      (function () {
+        var path = window.location.pathname || '/';
+        var hash = window.location.hash || '';
+        var isAdminRoute = /^\/admin(\/|$)/i.test(path) || hash === '#cms';
+        window.__bdMountVisitorAds = function () {
+          if (window.__bdVisitorStaticAdsLoaded) return;
+          window.__bdVisitorStaticAdsLoaded = true;
+
+          var headScript = document.createElement('script');
+          headScript.setAttribute('data-cfasync', 'false');
+          headScript.setAttribute('data-bd-visitor-ad', 'head');
+          headScript.src = 'https://afders.org/1/c3597897dcfbda3f55605fa23a7f4433';
+          document.head.appendChild(headScript);
+
+          var mountBodyAd = function () {
+            if (!document.body || document.querySelector('script[data-bd-visitor-ad="body"]')) return;
+            var bodyScript = document.createElement('script');
+            bodyScript.setAttribute('data-cfasync', 'false');
+            bodyScript.setAttribute('data-bd-visitor-ad', 'body');
+            bodyScript.src = 'https://bicea.org/14/2ab0368f16150c2f4e226f7c32b74ad9';
+            document.body.insertBefore(bodyScript, document.body.firstChild);
+          };
+
+          if (document.body) {
+            mountBodyAd();
+          } else {
+            document.addEventListener('DOMContentLoaded', mountBodyAd, { once: true });
+          }
+        };
+
+        if (!isAdminRoute) {
+          window.__bdMountVisitorAds();
+        }
+      })();
+    </script>
   </head>
   <body class="lang-bn">
-
-      <!-- ads code-->
-      <script data-cfasync="false" src="https://bicea.org/14/2ab0368f16150c2f4e226f7c32b74ad9"></script>
-  
 
     <!-- Accessibility Skip Link -->
     <a href="#app-root" class="skip-to-content-link">Skip to main content / মূল বিষয়বস্তুতে যান</a>
